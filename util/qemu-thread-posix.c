@@ -673,7 +673,7 @@ void qemu_avatar_mq_open_read(QemuAvatarMessageQueue *mq, const char *name)
 {
 #if defined(__APPLE__) || defined(__NetBSD__)
 #else
-    mqd_t m = mq_open(name, O_CREAT | O_RDONLY, 0666, NULL);
+    mqd_t m = mq_open(name, O_CREAT | O_RDONLY | O_NONBLOCK, 0666, NULL);
 
     if(m == -1)
     {
@@ -688,7 +688,7 @@ void qemu_avatar_mq_open_write(QemuAvatarMessageQueue *mq, const char *name)
 {
 #if defined(__APPLE__) || defined(__NetBSD__)
 #else
-    mqd_t m = mq_open(name, O_CREAT | O_WRONLY, 0666, NULL);
+    mqd_t m = mq_open(name, O_CREAT | O_WRONLY | O_NONBLOCK, 0666, NULL);
  
     if(m == -1)
     {
@@ -712,16 +712,23 @@ void qemu_avatar_mq_send(QemuAvatarMessageQueue *mq, void *msg, size_t len)
 #endif
 }
 
-void qemu_avatar_mq_receive(QemuAvatarMessageQueue *mq, void *buffer, size_t len)
+int qemu_avatar_mq_receive(QemuAvatarMessageQueue *mq, void *buffer, size_t len)
 {
 #if defined(__APPLE__) || defined(__NetBSD__)
 #else
     int rc = mq_receive(mq->mq, buffer, len, NULL);
 
-    if (rc < 0) 
+    if(errno != EAGAIN)
+    {
+        return -1;
+    }
+
+    if (rc < 0 && errno != EAGAIN)
     {
         error_exit(errno, __func__);
     }
+
+    return 0;
 #endif
 }
 
