@@ -140,6 +140,7 @@ class QemuTarget(Target):
                                            'value': self.rmem_tx_queue_name,
                                            'name': 'tx_queue_name'}
                     mr_dict['properties'].append(tx_queue_properties)
+                
 
                 elif hasattr(mr, 'qemu_properties'):
                     if type(mr.qemu_properties) == list:
