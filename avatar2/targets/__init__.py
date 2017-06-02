@@ -8,4 +8,10 @@ from .panda_target import *
 # some targets only operate in python2
 import sys
 if sys.version_info < (3, 0):
-    from .angr_target import *
+    import imp
+    try:
+        imp.find_module('angr')
+        from .angr_target import *
+    except ImportError:
+        pass
+
