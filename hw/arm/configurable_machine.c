@@ -37,6 +37,7 @@ static QDict * load_configuration(const char * filename)
     off_t filesize = lseek(file, 0, SEEK_END);
     char * filedata = NULL;
     ssize_t err;
+    Error * qerr = NULL;
     QObject * obj;
 
     lseek(file, 0, SEEK_SET);
@@ -61,7 +62,7 @@ static QDict * load_configuration(const char * filename)
 
     close(file);
 
-    obj = qobject_from_json(filedata);
+    obj = qobject_from_json(filedata, &qerr);
     if (!obj || qobject_type(obj) != QTYPE_QDICT)
     {
         fprintf(stderr, "Error parsing JSON configuration file\n");
