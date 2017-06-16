@@ -41,7 +41,7 @@ class Avatar(Thread):
         self.targets = {}
         self.transitions = {}
         self.status = {}
-        self.memoryRanges = intervaltree.IntervalTree()
+        self.mem_ranges = intervaltree.IntervalTree()
 
         self.output_directory = (tempfile.mkdtemp(suffix="_avatar")
                                   if output_directory is None
@@ -75,7 +75,7 @@ class Avatar(Thread):
                 t.stop()
         for t in self.targets.values():
             t.shutdown()
-        for range in self.memoryRanges:
+        for range in self.mem_ranges:
             if isinstance(range.data.forwarded_to, AvatarPeripheral):
                 range.data.forwarded_to.shutdown()
 
@@ -92,19 +92,18 @@ class Avatar(Thread):
         plugin.load_plugin(self)
         self.loaded_plugins += [name]
 
-    def add_target(self, name, backend, *args, **kwargs):
+    def add_target(self, backend, *args, **kwargs):
         """
         Adds a new target to the analyses
 
-        :ivar name:    name of the target 
         :ivar backend: the desired backend. Implemented for now: qemu, gdb
         :kwargs:       those argument will be passed to the target-object itself
         :return:       The created TargetObject
         """
+        target = backend(self, *args, **kwargs)
+        self.targets[target.name] = target.name
 
-        self.targets[name] = backend(name, self, *args, **kwargs)
-
-        return self.targets[name]
+        return target
 
     def get_target(self, name):
         """
@@ -155,7 +154,7 @@ class Avatar(Thread):
         m = MemoryRange(address, size, name=name, permissions=permissions, 
                         file=file, forwarded=forwarded, 
                         forwarded_to=forwarded_to, **kwargs)
-        self.memoryRanges[address:address+size] = m
+        self.mem_ranges[address:address + size] = m
         return m
 
 
@@ -168,7 +167,7 @@ class Avatar(Thread):
         :param address: the address of the range
         :returns:       the memory range
         """
-        ranges = self.memoryRanges[address]
+        ranges = self.mem_ranges[address]
         if len(ranges) > 1:
             raise Exception("More than one memory range specified at 0x%x, \
                          not supported yet!" % address)
@@ -242,8 +241,8 @@ class Avatar(Thread):
         except:
             mem = -1
             success = False
-        message.origin._remote_memory_protocol.sendResponse(message.id, mem, 
-                                                            success)
+        message.origin._remote_memory_protocol.send_response(message.id, mem,
+                                                             success)
         return (message.id, mem, success)
 
     @watch('RemoteMemoryWrite')
@@ -257,8 +256,8 @@ class Avatar(Thread):
         success = range.forwarded_to.write_memory(message.address, message.size,
                                                   message.value)
 
-        message.origin._remote_memory_protocol.sendResponse(message.id, 0, 
-                                                            success)
+        message.origin._remote_memory_protocol.send_response(message.id, 0,
+                                                             success)
         return (message.id, 0, success)
 
     def run(self):

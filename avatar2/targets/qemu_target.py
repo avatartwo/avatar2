@@ -1,13 +1,10 @@
-from subprocess import Popen, PIPE
 import json
-import intervaltree
+from subprocess import Popen
 
-from avatar2.targets import Target
 from avatar2.protocols.gdb import GDBProtocol
 from avatar2.protocols.qmp import QMPProtocol
 from avatar2.protocols.remote_memory import RemoteMemoryProtocol
-
-import logging
+from avatar2.targets import Target
 
 
 class QemuTarget(Target):
@@ -16,13 +13,15 @@ class QemuTarget(Target):
 
     QEMU_CONFIG_FILE = "conf.json"
 
-    def __init__(self, name, avatar, executable="qemu-system-",
+    def __init__(self, avatar,
+                 executable="qemu-system-",
                  cpu_model=None, firmware=None,
                  gdb_executable='gdb', gdb_port=3333,
                  additional_args=[], gdb_additional_args=[],
                  qmp_port=3334,
-                 entry_address=0x00):
-        super(QemuTarget, self).__init__(name, avatar)
+                 entry_address=0x00,
+                 **kwargs):
+        super(QemuTarget, self).__init__(avatar, **kwargs)
 
         # Qemu parameters
         self.executable = executable
@@ -42,8 +41,8 @@ class QemuTarget(Target):
         self._entry_address = entry_address
         self._memory_mapping = avatar.memoryRanges
 
-        self.rmem_rx_queue_name = '/%s_rx_queue' % name
-        self.rmem_tx_queue_name = '/%s_tx_queue' % name
+        self.rmem_rx_queue_name = '/%s_rx_queue'.format(self.name)
+        self.rmem_tx_queue_name = '/%s_tx_queue'.format(self.name)
 
     def assemble_cmd_line(self):
         executable_name = [self.executable + self._arch.qemu_name]
@@ -52,28 +51,27 @@ class QemuTarget(Target):
                   (self.avatar.output_directory, self.QEMU_CONFIG_FILE)]
         gdb_option = ["-gdb", "tcp::" + str(self.gdb_port)]
         stop_on_startup = ["-S"]
-        nographic = ["-nographic"] #, "-monitor", "/dev/null"] 
-        qmp = ['-qmp','tcp:127.0.0.1:%d,server,nowait' % self.qmp_port]
+        nographic = ["-nographic"]  # , "-monitor", "/dev/null"]
+        qmp = ['-qmp', 'tcp:127.0.0.1:%d,server,nowait' % self.qmp_port]
 
         return executable_name + machine + kernel + gdb_option \
-            + stop_on_startup + self.additional_args + nographic + qmp
+               + stop_on_startup + self.additional_args + nographic + qmp
 
     def shutdown(self):
         if self._process is not None:
             self._process.kill()
             self._process = None
         super(QemuTarget, self).shutdown()
-        
-
 
     def _serialize_memory_mapping(self):
         ret = []
         for (start, end, mr) in self._memory_mapping:
-            mr_dict = {}
-            mr_dict['name'] = mr.name
-            mr_dict['address'] = mr.address
-            mr_dict['size'] = mr.size
-            mr_dict['permissions'] = mr.permissions
+            mr_dict = {
+                'name': mr.name,
+                'address': mr.address,
+                'size': mr.size,
+                'permissions': mr.permissions
+            }
             if hasattr(mr, 'qemu_name'):
                 mr_dict['qemu_name'] = mr.qemu_name
                 mr_dict['properties'] = []
@@ -84,18 +82,17 @@ class QemuTarget(Target):
                                        'name': 'size'}
                     mr_dict['properties'].append(size_properties)
                     address_properties = {'type': 'uint64',
-                                       'value': mr.address,
-                                       'name': 'address'}
+                                          'value': mr.address,
+                                          'name': 'address'}
                     mr_dict['properties'].append(address_properties)
                     rx_queue_properties = {'type': 'string',
-                                       'value': self.rmem_rx_queue_name,
-                                       'name': 'rx_queue_name'}
+                                           'value': self.rmem_rx_queue_name,
+                                           'name': 'rx_queue_name'}
                     mr_dict['properties'].append(rx_queue_properties)
                     tx_queue_properties = {'type': 'string',
-                                       'value': self.rmem_tx_queue_name,
-                                       'name': 'tx_queue_name'}
+                                           'value': self.rmem_tx_queue_name,
+                                           'name': 'tx_queue_name'}
                     mr_dict['properties'].append(tx_queue_properties)
-                
 
                 elif hasattr(mr, 'qemu_properties'):
                     mr_dict['properties'].append(mr.qemu_properties)
@@ -120,8 +117,8 @@ class QemuTarget(Target):
             self.log.warning("The memory mapping of QEMU is empty.")
         return conf_dict
 
-    #def add_memory_range(self, mr, **kwargs):
-        #self._memory_mapping[mr.address: mr.address + mr.size] = mr
+        # def add_memory_range(self, mr, **kwargs):
+        # self._memory_mapping[mr.address: mr.address + mr.size] = mr
         # TODO: add qemu specific properties to the memory region object
 
     def init(self):
@@ -136,9 +133,9 @@ class QemuTarget(Target):
             json.dump(conf_dict, conf_file)
 
         with open("%s/%s_out.txt" % (self.avatar.output_directory, self.name)
-                  ,"wb") as out,\
-             open("%s/%s_err.txt" % (self.avatar.output_directory, self.name)
-                  ,"wb") as err:
+                , "wb") as out, \
+                open("%s/%s_err.txt" % (self.avatar.output_directory, self.name)
+                    , "wb") as err:
             self._process = Popen(cmd_line, stdout=out, stderr=err)
         self.log.debug("QEMU command line: %s" % ' '.join(cmd_line))
         self.log.info("QEMU process running")
@@ -149,10 +146,9 @@ class QemuTarget(Target):
                           avatar_queue=self.avatar.queue, origin=self)
         qmp = QMPProtocol(self.qmp_port, origin=self)  # TODO: Implement QMP
 
-
         if 'avatar-rmemory' in [i[2].qemu_name for i in
                                 self._memory_mapping.iter() if
-                                hasattr(i[2],'qemu_name')]:
+                                hasattr(i[2], 'qemu_name')]:
             rmp = RemoteMemoryProtocol(self.rmem_tx_queue_name,
                                        self.rmem_rx_queue_name,
                                        self.avatar.queue, self)

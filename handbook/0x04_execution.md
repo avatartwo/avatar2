@@ -116,13 +116,13 @@ openocd_conf = 'nucleo-l152re.cfg'
 avatar = Avatar(output_directory='/tmp/myavatar')
 
 # Add first target
-qemu = avatar.add_target("qemu", QemuTarget, 
+qemu = avatar.add_target(QemuTarget, 
                           gdb_executable="arm-none-eabi-gdb",
                           firmware=sample, cpu_model="cortex-m3"
                           executable="targets/qemu/arm-softmmu/qemu-system-")
 
 # Add the second target
-nucleo = avatar.add_target("nucleo", OpenOCDTarget, 
+nucleo = avatar.add_target(OpenOCDTarget, 
                            gdb_executable="arm-none-eabi-gdb", 
                            openocd_script=openocd_conf)
 
