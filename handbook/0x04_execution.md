@@ -44,7 +44,7 @@ Let's see how target execution can look like in an Avatar² script:
 
 ```python
 # Get a target which we initialized before
-qemu = avatar.targets['qemu1']
+qemu = avatar.targets['QemuTarget0']
 
 # Set a breakpoint
 bkpt = qemu.set_breakpoint(0x800e34)
@@ -118,11 +118,11 @@ avatar = Avatar(output_directory='/tmp/myavatar')
 # Add first target
 qemu = avatar.add_target(QemuTarget, 
                           gdb_executable="arm-none-eabi-gdb",
-                          firmware=sample, cpu_model="cortex-m3"
+                          firmware=sample, cpu_model="cortex-m3",
                           executable="targets/qemu/arm-softmmu/qemu-system-")
 
 # Add the second target
-nucleo = avatar.add_target(OpenOCDTarget, 
+nucleo = avatar.add_target(OpenOCDTarget,
                            gdb_executable="arm-none-eabi-gdb", 
                            openocd_script=openocd_conf)
 

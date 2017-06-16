@@ -80,7 +80,7 @@ class DummyTarget(Target):
         self.avatar.queue.put(UpdateStateMessage(self, TargetStates.STOPPED))
         # We fetch from Avatar the list of memory ranges that are
         # configured to be forwarded
-        for mem_range in self.avatar.memoryRanges:
+        for mem_range in self.avatar.memory_ranges:
             mem_range = mem_range.data
             if mem_range.forwarded:
                 self.mranges.append((mem_range.address, mem_range.address + mem_range.size))

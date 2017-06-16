@@ -41,7 +41,7 @@ class Avatar(Thread):
         self.targets = {}
         self.transitions = {}
         self.status = {}
-        self.mem_ranges = intervaltree.IntervalTree()
+        self.memory_ranges = intervaltree.IntervalTree()
 
         self.output_directory = (tempfile.mkdtemp(suffix="_avatar")
                                   if output_directory is None
@@ -75,7 +75,7 @@ class Avatar(Thread):
                 t.stop()
         for t in self.targets.values():
             t.shutdown()
-        for range in self.mem_ranges:
+        for range in self.memory_ranges:
             if isinstance(range.data.forwarded_to, AvatarPeripheral):
                 range.data.forwarded_to.shutdown()
 
@@ -154,7 +154,7 @@ class Avatar(Thread):
         m = MemoryRange(address, size, name=name, permissions=permissions, 
                         file=file, forwarded=forwarded, 
                         forwarded_to=forwarded_to, **kwargs)
-        self.mem_ranges[address:address + size] = m
+        self.memory_ranges[address:address + size] = m
         return m
 
 
@@ -167,7 +167,7 @@ class Avatar(Thread):
         :param address: the address of the range
         :returns:       the memory range
         """
-        ranges = self.mem_ranges[address]
+        ranges = self.memory_ranges[address]
         if len(ranges) > 1:
             raise Exception("More than one memory range specified at 0x%x, \
                          not supported yet!" % address)
