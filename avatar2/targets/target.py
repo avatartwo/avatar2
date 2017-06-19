@@ -77,8 +77,8 @@ class Target(object):
         self.state = TargetStates.CREATED
         self._no_state_update_pending = Event()
 
-        self.log = logging.getLogger('%s.targets.%s' % (avatar.log.name, name))
-        log_file = logging.FileHandler('%s/%s.log' % (avatar.output_directory, name))
+        self.log = logging.getLogger('%s.targets.%s' % (avatar.log.name, self.name))
+        log_file = logging.FileHandler('%s/%s.log' % (avatar.output_directory, self.name))
         formatter = logging.Formatter('%(asctime)s | %(name)s.%(levelname)s | %(message)s')
         log_file.setFormatter(formatter)
         self.log.addHandler(log_file)
