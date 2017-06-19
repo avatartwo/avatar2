@@ -13,6 +13,9 @@ $ cd avatar2
 $ sudo pip install .
 ```
 Afterwards, the different target endpoints can be built, such as QEmu or PANDA.
+For doing so, we are providing build-scripts for Ubuntu 16.04 - while other
+distributions are not officially supported (yet), the scripts are known to
+work with slight modifications on other distributions as well.
 ```
 $ cd targets
 $ ./build_*.sh
