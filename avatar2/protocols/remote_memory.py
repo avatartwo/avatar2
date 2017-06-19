@@ -1,16 +1,13 @@
 import logging
 
 from enum import Enum
-from os import O_CREAT, O_WRONLY, O_RDONLY
+from os import O_WRONLY, O_RDONLY
 from threading import Thread, Event
 from ctypes import Structure, c_uint32, c_uint64
 
 from posix_ipc import MessageQueue, ExistentialError
 
 from avatar2.message import RemoteMemoryReadMessage, RemoteMemoryWriteMessage
-
-
-
 
 
 class operation(Enum):
@@ -105,7 +102,8 @@ class RemoteMemoryProtocol(object):
 
     """
 
-    def __init__(self, rx_queue_name, tx_queue_name, avatar_queue, origin=None):
+    def __init__(self, rx_queue_name, tx_queue_name,
+                 avatar_queue, origin=None):
         self._rx_queue = None
         self._tx_queue = None
         self._rx_listener = None
@@ -115,7 +113,7 @@ class RemoteMemoryProtocol(object):
         self._avatar_queue = avatar_queue
         self._origin = origin
 
-        self.log = logging.getLogger('%s.%s' % 
+        self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
                                     ) if origin else \
                                      logging.getLogger(self.__class__.__name__)
@@ -128,14 +126,14 @@ class RemoteMemoryProtocol(object):
         """
         try:
             self._rx_queue = MessageQueue(self.rx_queue_name, flags=O_RDONLY,
-                                          read = True, write = False)
+                                          read=True, write=False)
         except Exception as e:
             self.log.error("Unable to create rx_queue: %s" % e)
             return False
 
         try:
             self._tx_queue = MessageQueue(self.tx_queue_name, flags=O_WRONLY,
-                                          read = False, write = True)
+                                          read=False, write=True)
         except Exception as e:
             self.log.error("Unable to create tx_queue: %s" % e)
             self._rx_queue.close()
@@ -171,7 +169,7 @@ class RemoteMemoryProtocol(object):
                 self.log.warning("Tried to close/unlink non existent tx_queue")
 
 
-    def sendResponse(self, id, value, success):
+    def send_response(self, id, value, success):
         response = RemoteMemoryResp(id, value, success)
         try:
             self._tx_queue.send(response)
