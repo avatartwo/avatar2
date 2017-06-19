@@ -112,7 +112,7 @@ avatar = Avatar(arch=archs.x86.X86_64)
 gdbserver = subprocess.Popen('gdbserver --once 127.0.0.1:%d a.out' % GDB_PORT, shell=True)
 
 # Create the corresponding target, using the GDBTarget backend
-target = avatar.add_target("gdb", GDBTarget, gdb_port=GDB_PORT)
+target = avatar.add_target(GDBTarget, gdb_port=GDB_PORT)
 
 # Initialize the target. 
 # This usually connects the target to the endpoint
