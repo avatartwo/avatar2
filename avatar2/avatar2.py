@@ -101,7 +101,7 @@ class Avatar(Thread):
         :return:       The created TargetObject
         """
         target = backend(self, *args, **kwargs)
-        self.targets[target.name] = target.name
+        self.targets[target.name] = target
 
         return target
 
