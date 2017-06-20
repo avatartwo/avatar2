@@ -45,6 +45,22 @@ class TargetStates(Enum):
     SYNCING = 0x10
     EXITED = 0x20
 
+class TargetRegs(object):
+    def __init__(self, target):
+        self.target = target
+        self.__dict__.update(self.target._arch.registers)
+
+    def __getattribute__(self, name):
+        if name == 'target' or name == '__dict__':
+            return super(TargetRegs, self).__getattribute__(name)
+        elif name in self.target._arch.registers:
+            return self.target.read_register(name)
+
+    def __setattr__(self, name, value):
+        if name == 'target':
+            return super(TargetRegs, self).__setattr__(name, value)
+        elif name in self.target._arch.registers:
+            return self.target.write_register(name, value)
 
 class Target(object):
     """The Target object is one of Avatars core concept, as Avatar orchestrate 
@@ -82,6 +98,11 @@ class Target(object):
         formatter = logging.Formatter('%(asctime)s | %(name)s.%(levelname)s | %(message)s')
         log_file.setFormatter(formatter)
         self.log.addHandler(log_file)
+
+
+
+        self.regs = TargetRegs(self)
+
 
     def init(self):
         """
