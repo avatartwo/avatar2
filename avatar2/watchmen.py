@@ -8,6 +8,7 @@ watched_types = {
     'RemoteMemoryRead',
     'RemoteMemoryWrite',
     'AvatarGetStatus',
+    'AddTarget',
 }
 
 BEFORE = 'before'

@@ -92,6 +92,7 @@ class Avatar(Thread):
         plugin.load_plugin(self)
         self.loaded_plugins += [name]
 
+    @watch('AddTarget')
     def add_target(self, backend, *args, **kwargs):
         """
         Adds a new target to the analyses
