@@ -64,7 +64,20 @@ qemu.step()
 
 ## Controlling the Target Registers
 
-Avatar can  inspect and modify the register state of a target in a very easy manner:
+Avatar can inspect and modify the register state of a target in a very easy
+manner:
+
+```python
+
+# Get the content of a register
+r0 = qemu.regs.r0
+
+# Set the content of a register
+qemu.regs.r0 = 0x41414141
+```
+
+Under the hood, this will call the functions `read_register` and
+`write_register`, which of course can also be just directly called.
 
 ```python
 
