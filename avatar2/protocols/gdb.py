@@ -262,6 +262,8 @@ class GDBProtocol(object):
             ret = None
         return ret, response
 
+
+
     def remote_connect(self, ip='127.0.0.1', port=3333):
         """
         connect to a remote gdb server
@@ -278,6 +280,15 @@ class GDBProtocol(object):
                 "Unable to set GDB/MI to async, received response: %s" %
                 resp)
             raise Exception("GDBProtocol was unable to switch to asynch")
+
+        req = ['-gdb-set', 'architecture', self._arch.gdb_name]
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+        if not ret:
+            self.log.critical(
+                "Unable to set architecture, received response: %s" %
+                resp)
+            raise Exception(("GDBProtocol was unable to set the architecture\n"
+                             "Did you select the right gdb_executable?"))
 
         req = ['-target-select', 'remote', '%s:%d' % (ip, int(port))]
         ret, resp = self._sync_request(req, GDB_PROT_CONN)
@@ -301,6 +312,15 @@ class GDBProtocol(object):
         :param parity: parity of the serial link (default no parity)
         :returns: True on successful connection
         """
+
+        req = ['-gdb-set', 'architecture', self._arch.gdb_name]
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+        if not ret:
+            self.log.critical(
+                "Unable to set architecture, received response: %s" %
+                resp)
+            raise Exception(("GDBProtocol was unable to set the architecture\n"
+                             "Did you select the right gdb_executable?"))
 
         if parity not in ['none', 'even', 'odd']:
             self.log.critical("Parity must be none, even or odd")

@@ -2,6 +2,7 @@ from capstone import CS_ARCH_X86, CS_MODE_32
 
 class X86(object):
     qemu_name = 'i386'
+    gdb_name = 'i386'
     registers = {'eax': 0,
                  'ecx': 1,
                  'edx': 2,
@@ -26,6 +27,7 @@ class X86(object):
 
 class X86_64(object):
     qemu_name = 'x86_64'
+    gdb_name = 'i386:x86-64'
     registers = {'rax': 0,
                  'rbx': 1,
                  'rcx': 2,
