@@ -1,5 +1,6 @@
 import json
 from subprocess import Popen
+from os.path import isfile, exists
 
 from avatar2.protocols.gdb import GDBProtocol
 from avatar2.protocols.qmp import QMPProtocol
@@ -45,7 +46,15 @@ class QemuTarget(Target):
         self.rmem_tx_queue_name = '/%s_tx_queue'.format(self.name)
 
     def assemble_cmd_line(self):
-        executable_name = [self.executable + self._arch.qemu_name]
+        if isfile(self.executable + self._arch.qemu_name):
+            executable_name = [self.executable + self._arch.qemu_name]
+        elif isfile(self.executable):
+            executable_name = [self.executable]
+        else:
+            raise Exception("Executable for %s not found: %s" %(self.name,
+                                                                self.executable)
+                           )
+
         machine = ["-machine", "configurable"]
         kernel = ["-kernel", "%s/%s" %
                   (self.avatar.output_directory, self.QEMU_CONFIG_FILE)]
