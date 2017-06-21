@@ -28,3 +28,6 @@ we recommend checking out the
 github.
 Additionally, a documentation of the API is provided 
 [here](https://avatartwo.github.io/avatar2-docs/).
+
+For further support or follow-up questions, feel free to contact us via IRC
+in #avatar2 on freenode.
