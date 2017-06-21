@@ -77,7 +77,9 @@ class GDBResponseListener(Thread):
         self.log.debug("Received Message: %s", msg)
 
         if msg.startswith('thread'):
-            pass  # Thread group handling is not implemented yet
+            if msg ==  'thread-group-exited':
+                avatar_msg = UpdateStateMessage(
+                    self._origin, TargetStates.EXITED)
         elif msg.startswith('tsv'):
             pass  # likewise tracing
         elif msg.startswith('library'):
