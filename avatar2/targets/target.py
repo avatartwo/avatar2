@@ -156,7 +156,10 @@ class Target(object):
         Steps one instruction
         """
         self._no_state_update_pending.clear()
-        return self._exec_protocol.step()
+        ret = self._exec_protocol.step()
+        self.wait()
+        return ret
+
 
     @action_valid_decorator_factory(TargetStates.STOPPED, '_memory_protocol')
     def write_memory(self, address, size, value, num_words=1, raw=False):
