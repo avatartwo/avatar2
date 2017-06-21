@@ -13,9 +13,9 @@ from avatar2.protocols.openocd import OpenOCDProtocol
 
 class OpenOCDTarget(Target):
     def __init__(self, avatar, executable="openocd",
-                 openocd_script=None, additional_args=[],
+                 openocd_script=None, additional_args=None,
                  telnet_port=4444,
-                 gdb_executable='gdb', gdb_additional_args=[], gdb_port=3333,
+                 gdb_executable='gdb', gdb_additional_args=None, gdb_port=3333,
                  **kwargs
                  ):
 
@@ -23,10 +23,10 @@ class OpenOCDTarget(Target):
 
         self.executable = executable
         self.openocd_script = openocd_script
-        self.additional_args = additional_args
+        self.additional_args = additional_args if additional_args else []
         self.telnet_port = telnet_port
         self.gdb_executable = gdb_executable
-        self.gdb_additional_args = gdb_additional_args
+        self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
         self.gdb_port = gdb_port
 
     def init(self):

@@ -1,5 +1,6 @@
 from capstone import CS_ARCH_X86, CS_MODE_32
 
+
 class X86(object):
     qemu_name = 'i386'
     gdb_name = 'i386'
@@ -24,7 +25,6 @@ class X86(object):
     capstone_mode = CS_MODE_32
 
 
-
 class X86_64(object):
     qemu_name = 'x86_64'
     gdb_name = 'i386:x86-64'
@@ -47,11 +47,11 @@ class X86_64(object):
                  'rip': 16,
                  'pc': 16,
                  'eflags': 17,
-                 'cs' : 18,
-                 'ss' : 19,
-                 'ds' : 20,
-                 'es' : 21,
-                 'fs' : 22,
-                 'gs' : 23,
-                }
+                 'cs': 18,
+                 'ss': 19,
+                 'ds': 20,
+                 'es': 21,
+                 'fs': 22,
+                 'gs': 23,
+                 }
     unemulated_instructions = []

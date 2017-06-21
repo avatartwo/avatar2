@@ -6,18 +6,17 @@ from capstone import *
 def forward_instructions(self, from_target, to_target,
                          memory_region, instructions=None,
                          read_from_file=True):
-    if instructions == None:
+    if instructions is None:
         instructions = self.arch.unemulated_instructions
 
-    if memory_region.forwarded == True:
+    if memory_region.forwarded:
         raise Exception("Cannot forward instructions from forwarded" +
                         " memory region")
 
-    if read_from_file == True and memory_region.file == None:
+    if read_from_file and not memory_region.file:
         raise Exception("No file specified for this memory region")
 
-    content = bytes()
-    if read_from_file == True:
+    if read_from_file:
         with open(memory_region.file, 'rb') as f:
             content = f.read()
     else:
@@ -29,9 +28,9 @@ def forward_instructions(self, from_target, to_target,
             self.log.debug("%s instruction found at %x. " +
                            "Adding transition.")
             self.add_transition(addr, from_target, to_target,
-                                synch_regs=True)
+                                sync_regs=True)
             self.add_transition(addr + size, to_target, from_target,
-                                synch_regs=True)
+                                sync_regs=True)
 
 
 def load_plugin(avatar):

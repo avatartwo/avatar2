@@ -18,7 +18,7 @@ class QemuTarget(Target):
                  executable="qemu-system-",
                  cpu_model=None, firmware=None,
                  gdb_executable='gdb', gdb_port=3333,
-                 additional_args=[], gdb_additional_args=[],
+                 additional_args=None, gdb_additional_args=None,
                  qmp_port=3334,
                  entry_address=0x00,
                  **kwargs):
@@ -29,12 +29,12 @@ class QemuTarget(Target):
         self.fw = firmware
         self.cpu_model = cpu_model
         self.entry_address = entry_address
-        self.additional_args = additional_args
+        self.additional_args = additional_args if additional_args else []
 
         # gdb parameters
         self.gdb_executable = gdb_executable
         self.gdb_port = gdb_port
-        self.gdb_additional_args = gdb_additional_args
+        self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
 
         self.qmp_port = qmp_port
 
@@ -51,9 +51,9 @@ class QemuTarget(Target):
         elif isfile(self.executable):
             executable_name = [self.executable]
         else:
-            raise Exception("Executable for %s not found: %s" %(self.name,
-                                                                self.executable)
-                           )
+            raise Exception("Executable for %s not found: %s" % (self.name,
+                                                                 self.executable)
+                            )
 
         machine = ["-machine", "configurable"]
         kernel = ["-kernel", "%s/%s" %

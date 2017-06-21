@@ -1,4 +1,5 @@
 import sys
+
 if sys.version_info < (3, 0):
     import Queue as queue
 else:
@@ -9,10 +10,8 @@ import intervaltree
 import logging
 import signal
 
-
 from os import path, makedirs
 from threading import Thread, Event
-
 
 from .archs.arm import ARM
 from .memory_range import MemoryRange
@@ -44,10 +43,10 @@ class Avatar(Thread):
         self.memory_ranges = intervaltree.IntervalTree()
 
         self.output_directory = (tempfile.mkdtemp(suffix="_avatar")
-                                  if output_directory is None
-                                  else output_directory)
+                                 if output_directory is None
+                                 else output_directory)
         if not path.exists(self.output_directory):
-                makedirs(self.output_directory)
+            makedirs(self.output_directory)
 
         self._close = Event()
         self.queue = queue.Queue()
@@ -55,15 +54,14 @@ class Avatar(Thread):
 
         self.log = logging.getLogger('avatar')
         format = '%(asctime)s | %(name)s.%(levelname)s | %(message)s'
-        logging.basicConfig(filename='%s/avatar.log' % self.output_directory, 
+        logging.basicConfig(filename='%s/avatar.log' % self.output_directory,
                             level=logging.INFO, format=format)
-        self.log.info("Initialized Avatar. Output directory is %s" % 
+        self.log.info("Initialized Avatar. Output directory is %s" %
                       self.output_directory)
 
         signal.signal(signal.SIGINT, self.sigint_wrapper)
         self.sigint_handler = self.shutdown
         self.loaded_plugins = []
-
 
     def shutdown(self):
         """
@@ -84,7 +82,6 @@ class Avatar(Thread):
     def sigint_wrapper(self, signal, frame):
         self.log.info("Avatar Received SIGINT")
         self.sigint_handler()
-
 
     def load_plugin(self, name):
         plugin = __import__("avatar2.plugins.%s" % name,
@@ -130,14 +127,13 @@ class Avatar(Thread):
         for t in self.get_targets():
             t[1].init()
 
-    
-
-    def add_memory_range(self, address, size, name='', permissions='rwx', 
-                         file=None, forwarded=False, forwarded_to=None, 
+    def add_memory_range(self, address, size, name='', permissions='rwx',
+                         file=None, forwarded=False, forwarded_to=None,
                          emulate=None, **kwargs):
         """
         Adds a memory range to avatar
 
+        :param emulate:      Emulation function that will take name, address and size if set
         :param address:      Base-Address of the Range
         :param size:         Size of the range
         :param file:         A file backing this range, if applicable
@@ -150,14 +146,13 @@ class Avatar(Thread):
             forwarded_to = python_peripheral
             kwargs.update({'python_peripheral': python_peripheral})
 
-        if forwarded == True:
+        if forwarded:
             kwargs.update({'qemu_name': 'avatar-rmemory'})
-        m = MemoryRange(address, size, name=name, permissions=permissions, 
-                        file=file, forwarded=forwarded, 
+        m = MemoryRange(address, size, name=name, permissions=permissions,
+                        file=file, forwarded=forwarded,
                         forwarded_to=forwarded_to, **kwargs)
         self.memory_ranges[address:address + size] = m
         return m
-
 
     def get_memory_range(self, address):
         """
@@ -173,55 +168,51 @@ class Avatar(Thread):
             raise Exception("More than one memory range specified at 0x%x, \
                          not supported yet!" % address)
         elif len(ranges) == 0:
-            raise Exception("No Memory range specified at 0x%x" % 
+            raise Exception("No Memory range specified at 0x%x" %
                             address)
         return ranges.pop().data
 
-
-
     @watch('StateTransfer')
     def transfer_state(self, from_target, to_target,
-                       synch_regs=True, synched_ranges=[]):
+                       sync_regs=True, synced_ranges=[]):
         """
         Transfers the state from one target to another one
 
         :param from_target:     the source target
         :param to_target:       the destination target
-        :param synch_regs:      Whether registers should be synched
-        :param synched_ranges:  The memory ranges whose contents should be 
+        :param sync_regs:      Whether registers should be synced
+        :param synced_ranges:  The memory ranges whose contents should be
                                 transfered
         :type from_target:      Target()
         :type to_target:        Target()
-        :type synch_regs:       bool
-        :type synched_ranges:   list
+        :type sync_regs:       bool
+        :type synced_ranges:   list
         """
-        
 
         if from_target.state != TargetStates.STOPPED or \
-           to_target.state != TargetStates.STOPPED:
+                        to_target.state != TargetStates.STOPPED:
             raise Exception("Targets must be stopped for State Transfer, \
-                             but target_states are (%s, %s)" % 
-                             (from_target.state, to_target.state))
+                             but target_states are (%s, %s)" %
+                            (from_target.state, to_target.state))
 
-        if synch_regs:
+        if sync_regs:
             for r in self.arch.registers:
                 to_target.write_register(r, from_target.read_register(r))
             self.log.info('Synchronized Registers')
 
-        for range in synched_ranges:
+        for range in synced_ranges:
             m = from_target.read_memory(range.address, 1, range.size, raw=True)
             to_target.write_memory(range.address, 1, m, raw=True)
             self.log.info('Synchronized Memory Range: %s' % range.name)
 
-
     @watch('UpdateState')
-    def _handle_updateStateMessage(self, message):
-        self.log.info("Received state update of target %s to %s" % 
-                       (message.origin.name, message.state))
+    def _handle_update_state_message(self, message):
+        self.log.info("Received state update of target %s to %s" %
+                      (message.origin.name, message.state))
         message.origin.update_state(message.state)
 
     @watch('BreakpointHit')
-    def _handle_breakpointHitMessage(self, message):
+    def _handle_breakpoint_hit_message(self, message):
         self.log.info("Breakpoint hit for Target: %s" % message.origin.name)
         message.origin.update_state(TargetStates.STOPPED)
 
@@ -229,13 +220,12 @@ class Avatar(Thread):
     def _handle_remote_memory_read_message(self, message):
         range = self.get_memory_range(message.address)
 
-        if range.forwarded != True:
+        if not range.forwarded:
             raise Exception("Forward request for non forwarded range received!")
-        if range.forwarded_to == None:
+        if range.forwarded_to is None:
             raise Exception("Forward request for non existing target received.\
                             (Address = 0x%x)" % message.address)
 
-        
         try:
             mem = range.forwarded_to.read_memory(message.address, message.size)
             success = True
@@ -248,22 +238,22 @@ class Avatar(Thread):
 
     @watch('RemoteMemoryWrite')
     def _handle_remote_memory_write_msg(self, message):
-        range = self.get_memory_range(message.address)
-        if range.forwarded != True:
+        mem_range = self.get_memory_range(message.address)
+        if not mem_range.forwarded:
             raise Exception("Forward request for non forwarded range received!")
-        if range.forwarded_to == None:
+        if mem_range.forwarded_to is None:
             raise Exception("Forward request for non existing target received!")
 
-        success = range.forwarded_to.write_memory(message.address, message.size,
-                                                  message.value)
+        success = mem_range.forwarded_to.write_memory(message.address, message.size,
+                                                      message.value)
 
         message.origin._remote_memory_protocol.send_response(message.id, 0,
                                                              success)
-        return (message.id, 0, success)
+        return message.id, 0, success
 
     def run(self):
         """
-        The code of the Thread managing the asynchronous messages received.
+        The code of the Thread managing the asyncronous messages received.
         Default behavior: wait for the priority queue to hold a message and call
         the _async_handler method to process it.
         """
@@ -280,9 +270,9 @@ class Avatar(Thread):
             self.log.debug("Avatar received %s" % message)
 
             if isinstance(message, UpdateStateMessage):
-                self._handle_updateStateMessage(message)
+                self._handle_update_state_message(message)
             elif isinstance(message, BreakpointHitMessage):
-                self._handle_breakpointHitMessage(message)
+                self._handle_breakpoint_hit_message(message)
             elif isinstance(message, RemoteMemoryReadMessage):
                 self._handle_remote_memory_read_message(message)
             elif isinstance(message, RemoteMemoryWriteMessage):
@@ -290,11 +280,9 @@ class Avatar(Thread):
             else:
                 raise Exception("Unknown Avatar Message received")
 
-
-
     def stop(self):
         """
-        Stop the thread which manages the asynchronous messages.
+        Stop the thread which manages the asyncronous messages.
         """
         self._close.set()
         self.join()
@@ -302,5 +290,3 @@ class Avatar(Thread):
     @watch('AvatarGetStatus')
     def get_status(self):
         return self.status
-
-

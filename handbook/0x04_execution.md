@@ -158,7 +158,7 @@ nucleo.cont()
 nucleo.wait()
 
 # Transfer the state over to qemu
-avatar.transfer_state(nucleo, qemu, synch_regs=True, synched_ranges=[ram])
+avatar.transfer_state(nucleo, qemu, sync_regs=True, synced_ranges=[ram])
 
 # Continue execution on qemu
 qemu.cont()

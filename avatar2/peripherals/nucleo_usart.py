@@ -3,23 +3,21 @@ import socket
 from threading import Thread, Lock, Event
 from .avatar_peripheral import AvatarPeripheral
 
-
 SR_RXNE = 0x20
 SR_TXE = 0x80
-SR_TC  = 0x40
+SR_TC = 0x40
 
 
 class NucleoRTC(AvatarPeripheral):
-
     def nop_read(self, size):
         return 0x00
 
     def __init__(self, name, address, size, **kwargs):
-            AvatarPeripheral.__init__(self, name, address, size)
-            self.read_handler[0:size] = self.nop_read
+        AvatarPeripheral.__init__(self, name, address, size)
+        self.read_handler[0:size] = self.nop_read
+
 
 class NucleoTIM(AvatarPeripheral):
-
     def nop_read(self, size):
         return 0x00
 
@@ -27,14 +25,12 @@ class NucleoTIM(AvatarPeripheral):
         return True
 
     def __init__(self, name, address, size, **kwargs):
-            AvatarPeripheral.__init__(self, name, address, size)
-            self.read_handler[0:size] = self.nop_read
-            self.write_handler[0:size] = self.nop_write
-
+        AvatarPeripheral.__init__(self, name, address, size)
+        self.read_handler[0:size] = self.nop_read
+        self.write_handler[0:size] = self.nop_write
 
 
 class NucleoUSART(AvatarPeripheral, Thread):
-
     def read_status_register(self, size):
         self.lock.acquire(True)
         ret = self.status_register
@@ -49,13 +45,12 @@ class NucleoUSART(AvatarPeripheral, Thread):
             self.status_register &= ~SR_RXNE
         self.lock.release()
         return ord(ret)
-        
 
     def write_data_register(self, size, value):
         if self.connected:
             self.conn.send(bytes((chr(value))))
         return True
-        
+
     def nop_read(self, size):
         return 0x00
 
@@ -84,7 +79,7 @@ class NucleoUSART(AvatarPeripheral, Thread):
         self.start()
         self.sock = None
         self.conn = None
-    
+
     def shutdown(self):
         self._close.set()
 
@@ -93,7 +88,6 @@ class NucleoUSART(AvatarPeripheral, Thread):
 
         if self.sock:
             self.sock.close()
-
 
     def run(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -104,7 +98,7 @@ class NucleoUSART(AvatarPeripheral, Thread):
 
         while not self._close.is_set():
             self.sock.listen(1)
-            
+
             try:
                 self.conn, addr = self.sock.accept()
                 self.conn.settimeout(0.1)
@@ -119,7 +113,7 @@ class NucleoUSART(AvatarPeripheral, Thread):
                     continue
                 else:
                     # Something terrible happened
-                    raise(e)
+                    raise (e)
 
             while not self._close.is_set():
                 try:
@@ -133,4 +127,3 @@ class NucleoUSART(AvatarPeripheral, Thread):
                 self.status_register |= SR_RXNE
                 self.lock.release()
             self.connected = False
-

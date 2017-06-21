@@ -1,5 +1,6 @@
 from intervaltree import IntervalTree
 
+
 class AvatarPeripheral(object):
     def __init__(self, name, address, size, **kwargs):
         self.name = name
@@ -15,30 +16,26 @@ class AvatarPeripheral(object):
         """
         pass
 
-
     def write_memory(self, address, size, value):
-        offset = address-self.address
-        intervals = self.write_handler[offset:offset+size-1] 
+        offset = address - self.address
+        intervals = self.write_handler[offset:offset + size - 1]
         if intervals == set():
             raise Exception("No write handler for peripheral %s at offset %d \
-                            (0x%x)" % (self.name, address-self.address,
-                                        address))
+                            (0x%x)" % (self.name, address - self.address,
+                                       address))
         if len(intervals) > 1:
             raise Exception("Multiple write handler for peripheral %s\
-                            at offset %d" % (self.name, self.address-address))
+                            at offset %d" % (self.name, self.address - address))
         return intervals.pop().data(size, value)
 
-
     def read_memory(self, address, size):
-        offset = address-self.address
-        intervals = self.read_handler[offset:offset+size-1] 
+        offset = address - self.address
+        intervals = self.read_handler[offset:offset + size - 1]
         if intervals == set():
             raise Exception("No read handler for peripheral %s at offset %d \
-                            (0x%x)" % (self.name, address-self.address,
-                                        address))
+                            (0x%x)" % (self.name, address - self.address,
+                                       address))
         if len(intervals) > 1:
             raise Exception("Multiple read handler for peripheral %s\
-                            at offset %d" % (self.name, self.address-address))
+                            at offset %d" % (self.name, self.address - address))
         return intervals.pop().data(size)
-
-

@@ -24,7 +24,7 @@ For now, avatar² supports to hook the following events:
 
 | event-name        | trigger                                          | additional vars                                    |
 |-------------------|--------------------------------------------------|----------------------------------------------------|
-| StateTransfer     | Transfering the state from one target to another | from_target, to_target, synch_regs, synched_ranges |
+| StateTransfer     | Transfering the state from one target to another | from_target, to_target, sync_regs, synced_ranges |
 | BreakpointHit     | A breakpoint is reached                          | BreakpointMessage                                  |
 | UpdateState       | A target changes its state                       | UpdateStateMessage                                 |
 | RemoteMemoryRead  | A forwarded memory read is happening             | RemoteMemoryReadMessage                            |

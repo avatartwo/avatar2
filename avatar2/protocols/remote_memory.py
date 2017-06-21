@@ -10,7 +10,7 @@ from posix_ipc import MessageQueue, ExistentialError
 from avatar2.message import RemoteMemoryReadMessage, RemoteMemoryWriteMessage
 
 
-class operation(Enum):
+class Operation(Enum):
     READ = 0
     WRITE = 1
 
@@ -43,10 +43,10 @@ class RemoteMemoryRequestListener(Thread):
         self._closed = Event()
         self._close.clear()
         self._closed.clear()
-        self.log = logging.getLogger('%s.%s' % 
+        self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
-                                    ) if origin else \
-                                     logging.getLogger(self.__class__.__name__)
+                                     ) if origin else \
+            logging.getLogger(self.__class__.__name__)
 
     def run(self):
         while True:
@@ -61,14 +61,14 @@ class RemoteMemoryRequestListener(Thread):
 
             req_struct = RemoteMemoryReq.from_buffer_copy(request[0])
 
-            if operation(req_struct.operation) == operation.READ:
+            if Operation(req_struct.operation) == Operation.READ:
                 self.log.debug("Received RemoteMemoryRequest. Read from %x" %
                                req_struct.address)
                 MemoryForwardMsg = RemoteMemoryReadMessage(self._origin,
                                                            req_struct.id,
                                                            req_struct.address,
                                                            req_struct.size)
-            elif operation(req_struct.operation) == operation.WRITE:
+            elif Operation(req_struct.operation) == Operation.WRITE:
                 self.log.debug("Received RemoteMemoryRequest. Write to %x" %
                                req_struct.address)
                 MemoryForwardMsg = RemoteMemoryWriteMessage(self._origin,
@@ -115,8 +115,8 @@ class RemoteMemoryProtocol(object):
 
         self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
-                                    ) if origin else \
-                                     logging.getLogger(self.__class__.__name__)
+                                     ) if origin else \
+            logging.getLogger(self.__class__.__name__)
 
     def connect(self):
         """
@@ -145,7 +145,6 @@ class RemoteMemoryProtocol(object):
         self.log.info("Successfully connected rmp")
         return True
 
-
     def __del__(self):
         self.shutdown()
 
@@ -167,7 +166,6 @@ class RemoteMemoryProtocol(object):
                 self._tx_queue = None
             except ExistentialError:
                 self.log.warning("Tried to close/unlink non existent tx_queue")
-
 
     def send_response(self, id, value, success):
         response = RemoteMemoryResp(id, value, success)

@@ -2,6 +2,7 @@ from types import MethodType
 
 from capstone import *
 
+
 def disassemble(self, addr=None, insns=1,
                 arch=None, mode=None):
     """
@@ -20,7 +21,7 @@ def disassemble(self, addr=None, insns=1,
     arch = self._arch.capstone_arch if not arch else arch
     mode = self._arch.capstone_mode if not mode else mode
     addr = self.regs.pc if not addr else addr
-    
+
     ret = []
     md = Cs(arch, mode)
 
@@ -28,15 +29,16 @@ def disassemble(self, addr=None, insns=1,
     while disassembled < insns:
         code_len = 0x1000 - addr % 0x1000
         code = self.read_memory(addr, code_len, raw=True)
-    
+
         for ins in md.disasm(code, addr):
             ret.append(ins)
             disassembled += 1
             if disassembled >= insns:
                 break
-        
+
         addr += code_len
     return ret
+
 
 def disassemble_pretty(self, addr=None, insns=1,
                        arch=None, mode=None):
@@ -46,14 +48,11 @@ def disassemble_pretty(self, addr=None, insns=1,
 
     ret = ""
     disas = self.disassemble(addr, insns, arch, mode)
-    
 
     for i in disas:
-        ret += "0x%x:\t%s\t%s\n" %(i.address, i.mnemonic, i.op_str)
+        ret += "0x%x:\t%s\t%s\n" % (i.address, i.mnemonic, i.op_str)
 
     return ret
-
-    
 
 
 def target_added_callback(avatar, *args, **kwargs):
@@ -64,7 +63,7 @@ def target_added_callback(avatar, *args, **kwargs):
 
 def load_plugin(avatar):
     avatar.watchmen.add_watchman('AddTarget', when='after',
-                               callback=target_added_callback)
+                                 callback=target_added_callback)
     for target in avatar.targets.values():
         target.disassemble = MethodType(disassemble, target)
         target.disassemble_pretty = MethodType(disassemble_pretty, target)
