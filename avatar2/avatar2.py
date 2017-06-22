@@ -18,8 +18,8 @@ from .archs.arm import ARM
 from .memory_range import MemoryRange
 from .message import *
 from .peripherals import AvatarPeripheral
-from .targets.target import TargetStates
-from .watchmen import Watchmen, BEFORE, AFTER, watch
+from .targets.target import TargetStates #TargetStates
+from .watchmen import watch, Watchmen
 
 
 class Avatar(Thread):
@@ -32,14 +32,13 @@ class Avatar(Thread):
 
     """
 
-    def __init__(self, arch=ARM, endness='little', output_directory=None):
+    def __init__(self, arch=ARM, output_directory=None):
         super(Avatar, self).__init__()
 
-        self.arch = arch
-        self.endness = endness
         self.watchmen = Watchmen(self)
+        self.arch = arch
+        self.arch.init(self)
         self.targets = {}
-        self.transitions = {}
         self.status = {}
         self.memory_ranges = intervaltree.IntervalTree()
 
