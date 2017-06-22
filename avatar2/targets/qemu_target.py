@@ -138,7 +138,7 @@ class QemuTarget(Target):
 
         if self.cpu_model is None:
             if hasattr(self._arch, 'cpu_model'):
-                self.cpu_model = avatar.arch.cpu_model
+                self.cpu_model = self.avatar.arch.cpu_model
             else:
                 self.log.warning('No cpu_model specified - are you sure?')
 
