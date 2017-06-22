@@ -4,6 +4,7 @@ from threading import Event
 
 from enum import Enum
 
+from ..watchmen import watch
 
 def action_valid_decorator_factory(state, protocol):
     """

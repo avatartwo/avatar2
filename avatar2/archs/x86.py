@@ -1,6 +1,8 @@
-from capstone import CS_ARCH_X86, CS_MODE_32
+from capstone import *
 
-class X86(object):
+from .architecture import Architecture
+
+class X86(Architecture):
     qemu_name = 'i386'
     gdb_name = 'i386'
     registers = {'eax': 0,
@@ -25,7 +27,7 @@ class X86(object):
 
 
 
-class X86_64(object):
+class X86_64(Architecture):
     qemu_name = 'x86_64'
     gdb_name = 'i386:x86-64'
     registers = {'rax': 0,
