@@ -4,7 +4,7 @@ from avatar2.targets import action_valid_decorator_factory
 
 
 class PandaTarget(QemuTarget):
-    def init(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
         # self._monitor_protocol = self._exec_protocol
 
