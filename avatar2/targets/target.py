@@ -153,7 +153,9 @@ class Target(object):
         Stops the execution of the target 
         """
         self._no_state_update_pending.clear()
-        return self._exec_protocol.stop()
+        ret = self._exec_protocol.stop()
+        self.wait()
+        return ret
 
     @watch('TargetStep')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
