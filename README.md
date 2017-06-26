@@ -30,7 +30,8 @@ Additionally, a documentation of the API is provided
 [here](https://avatartwo.github.io/avatar2-docs/).
 
 For further support or follow-up questions, feel free to contact us via IRC
-in #avatar2 on freenode, or to send a mail to our mailing list
-(avatar2 [at] lists.eurecom.fr). 
-Additionally, you can subscribe to our mailing list 
+in #avatar2 on freenode, or to send a mail to avatar2 [at] lists.eurecom.fr, 
+our public mailing list.
+
+Additionally, you can subscribe to the list 
 [here](https://lists.eurecom.fr/sympa/subscribe/avatar2).
