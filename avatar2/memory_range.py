@@ -11,14 +11,17 @@ class MemoryRange(object):
     :ivar forwarded:    Enable or disable forwarding for this range
     :ivar forwarded_to: List of targets this range should be forwarded to
     """
+    mem_range_count = 0
 
-    def __init__(self, address, size, name='', permissions='rwx',
+    def __init__(self, address, size, name=None, permissions='rwx',
                  file=None, forwarded=False, forwarded_to=None, **kwargs):
         self.address = address
         self.size = size
-        self.name = name
+        self.name = name if name else "mem{}[{}-{}]".format(MemoryRange.mem_range_count, hex(address), hex(size))
         self.permissions = permissions
         self.file = file
         self.forwarded = forwarded
         self.forwarded_to = forwarded_to
         self.__dict__.update(kwargs)
+
+        MemoryRange.mem_range_count += 1
