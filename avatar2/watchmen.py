@@ -1,6 +1,7 @@
 from threading import Thread
 from functools import wraps
 
+
 class WatchedTypes(object):
     watched_types = [
         'StateTransfer',
@@ -91,18 +92,18 @@ class AsyncReaction(Thread):
 
 class WatchedEvent(object):
     # noinspection PyUnusedLocal
-    def __init__(self, watch_type, when, callback, async, *args, **kwargs):
+    def __init__(self, watch_type, when, callback, is_async, *args, **kwargs):
         self._callback = callback
         self.type = watch_type
         self.when = when
-        self.async = async
+        self.is_async = is_async
 
     def react(self, avatar, *args, **kwargs):
         if self._callback is None:
             raise Exception("No callback defined for watchmen of type %s" %
                             self.type)
         else:
-            if self.async:
+            if self.is_async:
                 thread = AsyncReaction(avatar, self._callback, *args, **kwargs)
                 thread.start()
             else:

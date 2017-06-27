@@ -4,7 +4,7 @@ from avatar2.protocols.gdb import GDBProtocol
 
 class GDBTarget(Target):
     def __init__(self, avatar,
-                 gdb_executable='gdb', gdb_additional_args=[], gdb_port=3333,
+                 gdb_executable='gdb', gdb_additional_args=None, gdb_port=3333,
                  gdb_serial_device='/dev/ttyACM0',
                  gdb_serial_baud_rate=38400,
                  gdb_serial_parity='none',
@@ -15,7 +15,7 @@ class GDBTarget(Target):
         super(GDBTarget, self).__init__(avatar, **kwargs)
 
         self.gdb_executable = gdb_executable
-        self.gdb_additional_args = gdb_additional_args
+        self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
         self.gdb_port = gdb_port
         self.gdb_serial_device = gdb_serial_device
         self.gdb_serial_baud_rate = gdb_serial_baud_rate

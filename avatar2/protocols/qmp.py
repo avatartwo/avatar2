@@ -1,4 +1,5 @@
 import sys
+
 if sys.version_info < (3, 0):
     import Queue as queue
 else:
@@ -11,16 +12,14 @@ import re
 
 
 class QMPProtocol(object):
-    
     def __init__(self, port, origin=None):
-                 
-        self.port = port
-        self.log = logging.getLogger('%s.%s' % 
-                                     (origin.log.name, self.__class__.__name__)
-                                    ) if origin else \
-                                     logging.getLogger(self.__class__.__name__)
-        self.id = 0
 
+        self.port = port
+        self.log = logging.getLogger('%s.%s' %
+                                     (origin.log.name, self.__class__.__name__)
+                                     ) if origin else \
+            logging.getLogger(self.__class__.__name__)
+        self.id = 0
 
     def __del__(self):
         self.shutdown()
@@ -30,7 +29,6 @@ class QMPProtocol(object):
         self._telnet.read_until('\r\n'.encode('ascii'))
         self.execute_command('qmp_capabilities')
         return True
-
 
     def execute_command(self, cmd, args=None):
         command = {}
@@ -55,7 +53,6 @@ class QMPProtocol(object):
         if 'return' in resp:
             return resp['return']
         raise Exception("Response contained neither an error nor an return")
-        
 
     def reset(self):
         """
@@ -68,9 +65,9 @@ class QMPProtocol(object):
         """
         returns: True on success, else False
         """
-        #self._communicator.stop()
+        # self._communicator.stop()
         pass
-    
+
     def get_registers(self):
         """
         Gets the current register state based on the hmp info registers
@@ -79,7 +76,6 @@ class QMPProtocol(object):
         returns: A dictionary with the registers
         """
         regs_s = self.execute_command("human-monitor-command",
-                                    {"command-line":"info registers"})
+                                      {"command-line": "info registers"})
         regs_r = re.findall('(...)=([0-9a-f]{8})', regs_s)
-        return dict([(r.lower(), int(v,16)) for r,v in regs_r])
-
+        return dict([(r.lower(), int(v, 16)) for r, v in regs_r])

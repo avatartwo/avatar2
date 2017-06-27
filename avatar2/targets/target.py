@@ -6,6 +6,7 @@ from enum import Enum
 
 from ..watchmen import watch
 
+
 def action_valid_decorator_factory(state, protocol):
     """
     This decorator factory  is used to generate decorators which  verify that
@@ -46,6 +47,7 @@ class TargetStates(Enum):
     SYNCING = 0x10
     EXITED = 0x20
 
+
 class TargetRegs(object):
     def __init__(self, target):
         self.target = target
@@ -62,6 +64,7 @@ class TargetRegs(object):
             return super(TargetRegs, self).__setattr__(name, value)
         elif name in self.target._arch.registers:
             return self.target.write_register(name, value)
+
 
 class Target(object):
     """The Target object is one of Avatars core concept, as Avatar orchestrate 
@@ -100,10 +103,7 @@ class Target(object):
         log_file.setFormatter(formatter)
         self.log.addHandler(log_file)
 
-
-
         self.regs = TargetRegs(self)
-
 
     @watch('TargetInit')
     def init(self):
@@ -167,7 +167,6 @@ class Target(object):
         ret = self._exec_protocol.step()
         self.wait()
         return ret
-
 
     @watch('TargetWriteMemory')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_memory_protocol')
