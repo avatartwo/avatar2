@@ -144,10 +144,10 @@ qemu.gdb_port = 1234
 nucleo.gdb_port = 1235
 
 # Specify first memory range
-rom  = avatar.add_memory_range(0x08000000, 0x1000000, 'rom', 
+rom  = avatar.add_memory_range(0x08000000, 0x1000000, name='rom', 
                                    file=sample)
 # Specify second memory range
-ram  = avatar.add_memory_range(0x20000000, 0x14000, 'ram')
+ram  = avatar.add_memory_range(0x20000000, 0x14000, name='ram')
 
 # Initialize Targets
 avatar.init_targets()
