@@ -37,13 +37,13 @@ avatar.load_plugin('orchestrator')
 avatar.start_target = target1
 
 # Add transition from target_1 to target_2 as soon target_1 hits 0x8000b504
-avatar.add_transition(0x800B504, target_1, target_2, synch_regs=True, 
-                      synched_ranges=[ram])
+avatar.add_transition(0x800B504, target_1, target_2, sync_regs=True, 
+                      synced_ranges=[ram])
 
 # Add a 2nd transition from target_1 to target_2 at 0x800b570 and 
 # mark it as the end for the automated orchestration
-avatar.add_transition(0x800B570, target_2, target_1, synch_regs=True,
-                      synched_ranges=[ram], stop=True)
+avatar.add_transition(0x800B570, target_2, target_1, sync_regs=True,
+                      synced_ranges=[ram], stop=True)
 
 # Begin the orchestration
 avatar.start_orchestration()
