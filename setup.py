@@ -8,7 +8,8 @@ setup(
               'avatar2/targets',
               'avatar2/protocols',
               'avatar2/peripherals',
-              'avatar2/plugins'
+              'avatar2/plugins',
+              'avatar2/plugins/arm'
               ],
     install_requires=[
         'pygdbmi>=0.7.3.1',

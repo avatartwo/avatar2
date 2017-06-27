@@ -4,6 +4,7 @@ from threading import Event
 
 from enum import Enum
 
+from ..watchmen import watch
 
 def action_valid_decorator_factory(state, protocol):
     """
@@ -45,7 +46,6 @@ class TargetStates(Enum):
     SYNCING = 0x10
     EXITED = 0x20
 
-
 class TargetRegs(object):
     def __init__(self, target):
         self.target = target
@@ -62,7 +62,6 @@ class TargetRegs(object):
             return super(TargetRegs, self).__setattr__(name, value)
         elif name in self.target._arch.registers:
             return self.target.write_register(name, value)
-
 
 class Target(object):
     """The Target object is one of Avatars core concept, as Avatar orchestrate 
@@ -101,14 +100,19 @@ class Target(object):
         log_file.setFormatter(formatter)
         self.log.addHandler(log_file)
 
+
+
         self.regs = TargetRegs(self)
 
+
+    @watch('TargetInit')
     def init(self):
         """
         Initializes the target to start the analyses
         """
         pass
 
+    @watch('TargetShutdown')
     def shutdown(self):
         """
         Shutdowns the target
@@ -132,6 +136,7 @@ class Target(object):
             self._remote_memory_protocol.shutdown()
             self._remote_memory_protocol = None
 
+    @watch('TargetCont')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
     def cont(self):
         """
@@ -141,14 +146,18 @@ class Target(object):
         self._no_state_update_pending.clear()
         return self._exec_protocol.cont()
 
+    @watch('TargetStop')
     @action_valid_decorator_factory(TargetStates.RUNNING, '_exec_protocol')
     def stop(self):
         """
         Stops the execution of the target 
         """
         self._no_state_update_pending.clear()
-        return self._exec_protocol.stop()
+        ret = self._exec_protocol.stop()
+        self.wait()
+        return ret
 
+    @watch('TargetStep')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
     def step(self):
         """
@@ -159,6 +168,8 @@ class Target(object):
         self.wait()
         return ret
 
+
+    @watch('TargetWriteMemory')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_memory_protocol')
     def write_memory(self, address, size, value, num_words=1, raw=False):
         """
@@ -178,6 +189,7 @@ class Target(object):
         return self._memory_protocol.write_memory(address, size, value,
                                                   num_words, raw)
 
+    @watch('TargetReadMemory')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_memory_protocol')
     def read_memory(self, address, size, words=1, raw=False):
         """
@@ -191,6 +203,7 @@ class Target(object):
         """
         return self._memory_protocol.read_memory(address, size, words, raw)
 
+    @watch('TargetRegisterWrite')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_register_protocol')
     def write_register(self, register, value):
         """
@@ -201,6 +214,7 @@ class Target(object):
         """
         return self._register_protocol.write_register(register, value)
 
+    @watch('TargetRegisterRead')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_register_protocol')
     def read_register(self, register):
         """
@@ -211,6 +225,7 @@ class Target(object):
         """
         return self._register_protocol.read_register(register)
 
+    @watch('TargetSetBreakpoint')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
     def set_breakpoint(self, line, hardware=False, temporary=False, regex=False,
                        condition=None, ignore_count=0, thread=0):
@@ -230,6 +245,7 @@ class Target(object):
                                                   ignore_count=ignore_count,
                                                   thread=thread)
 
+    @watch('TargetSetWatchPoint')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
     def set_watchpoint(self, variable, write=True, read=False):
         """Inserts a watchpoint
@@ -242,6 +258,7 @@ class Target(object):
                                                   write=write,
                                                   read=read)
 
+    @watch('TargetRemovebreakpoint')
     @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
     def remove_breakpoint(self, bkptno):
         """Deletes a breakpoint"""
@@ -252,6 +269,7 @@ class Target(object):
         self.state = state
         self._no_state_update_pending.set()
 
+    @watch('TargetWait')
     def wait(self):
         while True:
             self._no_state_update_pending.wait(.1)

@@ -23,11 +23,17 @@ $ ./build_*.sh
 
 # Getting started
 For discovering the power of avatar² and getting a feeling of its usage,
-we recommend checking out the 
+we recommend highly checking out the 
 [handbook](https://github.com/avatartwo/avatar2/tree/master/handbook) here on
 github.
 Additionally, a documentation of the API is provided 
-[here](https://avatartwo.github.io/avatar2-docs/).
+[here](https://avatartwo.github.io/avatar2-docs/) and some exemplary
+avatar²-scripts can be found 
+[here](https://github.com/avatartwo/avatar2-examples).
 
 For further support or follow-up questions, feel free to contact us via IRC
-in #avatar2 on freenode.
+in #avatar2 on freenode, or to send a mail to avatar2 [at] lists.eurecom.fr, 
+our public mailing list.
+
+Additionally, you can subscribe to the list 
+[here](https://lists.eurecom.fr/sympa/subscribe/avatar2).

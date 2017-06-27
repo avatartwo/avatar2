@@ -45,6 +45,7 @@ class QemuTarget(Target):
         self.rmem_rx_queue_name = '/%s_rx_queue'.format(self.name)
         self.rmem_tx_queue_name = '/%s_tx_queue'.format(self.name)
 
+
     def assemble_cmd_line(self):
         if isfile(self.executable + self._arch.qemu_name):
             executable_name = [self.executable + self._arch.qemu_name]
@@ -134,6 +135,13 @@ class QemuTarget(Target):
         """
         Spawns a Qemu process and connects to it
         """
+
+        if self.cpu_model is None:
+            if hasattr(self._arch, 'cpu_model'):
+                self.cpu_model = self.avatar.arch.cpu_model
+            else:
+                self.log.warning('No cpu_model specified - are you sure?')
+
         cmd_line = self.assemble_cmd_line()
 
         with open("%s/%s" % (self.avatar.output_directory,

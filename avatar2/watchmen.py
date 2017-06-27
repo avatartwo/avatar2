@@ -1,15 +1,47 @@
 from threading import Thread
 from functools import wraps
 
-watched_types = {
-    'StateTransfer',
-    'BreakpointHit',
-    'UpdateState',
-    'RemoteMemoryRead',
-    'RemoteMemoryWrite',
-    'AvatarGetStatus',
-    'AddTarget',
-}
+class WatchedTypes(object):
+    watched_types = [
+        'StateTransfer',
+        'BreakpointHit',
+        'UpdateState',
+        'RemoteMemoryRead',
+        'RemoteMemoryWrite',
+        'AvatarGetStatus',
+        'AddTarget',
+        'TargetInit',
+        'TargetShutdown',
+        'TargetCont',
+        'TargetStop',
+        'TargetStep',
+        'TargetWriteMemory',
+        'TargetReadMemory',
+        'TargetRegisterWrite',
+        'TargetRegisterRead',
+        'TargetSetBreakpoint',
+        'TargetSetWatchPoint',
+        'TargetRemovebreakpoint',
+        'TargetWait'
+    ]
+
+    def __init__(self):
+        self.watched_types = []
+        for type in WatchedTypes.watched_types:
+            setattr(self, type, type)
+            self.watched_types.append(type)
+
+    def __iter__(self):
+        for type in self.watched_types:
+            yield type
+
+    def _add(self, type):
+        if type not in self.watched_types:
+            self.watched_types.append(type)
+            setattr(self, type, type)
+            return True
+        return False
+
 
 BEFORE = 'before'
 AFTER = 'after'
@@ -23,10 +55,21 @@ def watch(watched_type):
     def decorator(func):
         @wraps(func)
         def watchtrigger(self, *args, **kwargs):
-            self.watchmen.t(watched_type, BEFORE, *args, **kwargs)
+            # To avoid circular dependencies, we import here ...
+            from .avatar2 import Avatar
+            from .targets.target import Target
+
+            cb_kwargs = dict(kwargs)
+            if isinstance(self, Avatar):
+                avatar = self
+            elif isinstance(self, Target):
+                avatar = self.avatar
+                cb_kwargs['watched_target'] = self
+
+            avatar.watchmen.t(watched_type, BEFORE, *args, **cb_kwargs)
             ret = func(self, *args, **kwargs)
-            kwargs.update({'watched_return': ret})
-            self.watchmen.t(watched_type, AFTER, *args, **kwargs)
+            cb_kwargs.update({'watched_return': ret})
+            avatar.watchmen.t(watched_type, AFTER, *args, **cb_kwargs)
             return ret
 
         return watchtrigger
@@ -73,15 +116,15 @@ class Watchmen(object):
     def __init__(self, avatar):
         self._watched_events = {}
         self._avatar = avatar
-        self.watched_types = watched_types
+        self.watched_types = WatchedTypes()
 
         for e in self.watched_types:
             self._watched_events[e] = []
 
     def add_watch_types(self, watched_types):
-        self.watched_types.update(watched_types)
-        for e in watched_types:
-            self._watched_events[e] = []
+        for type in watched_types:
+            if self.watched_types._add(type):
+                self._watched_events[type] = []
 
     def add_watchman(self, watch_type, when=BEFORE, callback=None, async=False, *args, **kwargs):
 
