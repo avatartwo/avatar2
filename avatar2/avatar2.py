@@ -126,7 +126,7 @@ class Avatar(Thread):
         for t in self.get_targets():
             t[1].init()
 
-    def add_memory_range(self, address, size, name='', permissions='rwx',
+    def add_memory_range(self, address, size, name=None, permissions='rwx',
                          file=None, forwarded=False, forwarded_to=None,
                          emulate=None, **kwargs):
         """
