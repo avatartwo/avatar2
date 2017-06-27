@@ -252,7 +252,7 @@ class Avatar(Thread):
 
     def run(self):
         """
-        The code of the Thread managing the asyncronous messages received.
+        The code of the Thread managing the asynchronous messages received.
         Default behavior: wait for the priority queue to hold a message and call
         the _async_handler method to process it.
         """
@@ -261,7 +261,6 @@ class Avatar(Thread):
             if self._close.is_set():
                 break
 
-            message = None
             try:
                 message = self.queue.get(timeout=0.5)
             except:
@@ -281,7 +280,7 @@ class Avatar(Thread):
 
     def stop(self):
         """
-        Stop the thread which manages the asyncronous messages.
+        Stop the thread which manages the asynchronous messages.
         """
         self._close.set()
         self.join()

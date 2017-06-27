@@ -23,8 +23,8 @@ GDB_PROT_RUN = 'running'
 class GDBResponseListener(Thread):
     """
     This class creates objects waiting for responses from the gdb-process
-    Depending whether a syncronous or asyncronous message is received,
-    it is either put in a syncronous dictionary or parsed/lifted
+    Depending whether a synchronous or asynchronous message is received,
+    it is either put in a synchronous dictionary or parsed/lifted
     to an AvatarMessage and added to the Queue of the according target
     """
 
@@ -50,7 +50,7 @@ class GDBResponseListener(Thread):
             logging.getLogger(self.__class__.__name__)
 
     def get_token(self):
-        """Gets a token for a syncronous request
+        """Gets a token for a synchronous request
         :returns: An (integer) token
         """
         self._token += 1

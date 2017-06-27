@@ -100,3 +100,6 @@ ENV/
 
 # Vim swap files
 *.swp
+
+# Pycharm/IntelliJ files
+.idea
