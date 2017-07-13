@@ -18,6 +18,7 @@ class Operation(Enum):
 class RemoteMemoryReq(Structure):
     _fields_ = [
         ('id', c_uint64),
+        ('pc', c_uint64),
         ('address', c_uint64),
         ('value', c_uint64),
         ('size', c_uint32),
@@ -62,17 +63,21 @@ class RemoteMemoryRequestListener(Thread):
             req_struct = RemoteMemoryReq.from_buffer_copy(request[0])
 
             if Operation(req_struct.operation) == Operation.READ:
-                self.log.debug("Received RemoteMemoryRequest. Read from %x" %
-                               req_struct.address)
+                self.log.debug(("Received RemoteMemoryRequest."
+                                "Read from 0x%x at 0x%x") %
+                                (req_struct.address, req_struct.pc))
                 MemoryForwardMsg = RemoteMemoryReadMessage(self._origin,
                                                            req_struct.id,
+                                                           req_struct.pc,
                                                            req_struct.address,
                                                            req_struct.size)
             elif Operation(req_struct.operation) == Operation.WRITE:
-                self.log.debug("Received RemoteMemoryRequest. Write to %x" %
-                               req_struct.address)
+                self.log.debug(("Received RemoteMemoryRequest."
+                                "Write to 0x%x at 0x%x") %
+                                (req_struct.address, req_struct.pc))
                 MemoryForwardMsg = RemoteMemoryWriteMessage(self._origin,
                                                             req_struct.id,
+                                                            req_struct.pc,
                                                             req_struct.address,
                                                             req_struct.value,
                                                             req_struct.size)

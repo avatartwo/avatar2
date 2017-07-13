@@ -25,17 +25,19 @@ class BreakpointHitMessage(AvatarMessage):
 
 
 class RemoteMemoryReadMessage(AvatarMessage):
-    def __init__(self, origin, id, address, size):
+    def __init__(self, origin, id, pc, address, size):
         super(self.__class__, self).__init__(origin)
         self.id = id
+        self.pc = pc
         self.address = address
         self.size = size
 
 
 class RemoteMemoryWriteMessage(AvatarMessage):
-    def __init__(self, origin, id, address, value, size):
+    def __init__(self, origin, id, pc, address, value, size):
         super(self.__class__, self).__init__(origin)
         self.id = id
+        self.pc = pc
         self.address = address
         self.value = value
         self.size = size
