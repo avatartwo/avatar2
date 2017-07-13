@@ -13,6 +13,7 @@ class X86(Architecture):
 
     qemu_name = 'i386'
     gdb_name = 'i386'
+    angr_name = 'X86'
     registers = {'eax': 0,
                  'ecx': 1,
                  'edx': 2,
