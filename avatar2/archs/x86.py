@@ -22,6 +22,7 @@ class X86(Architecture):
                  'es': 13,
                  'fs': 14,
                  'gs': 15, }
+    sr_name = 'eflags'
     unemulated_instructions = []
     capstone_arch = CS_ARCH_X86
     capstone_mode = CS_MODE_32

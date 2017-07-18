@@ -49,21 +49,35 @@ class TargetStates(Enum):
 
 
 class TargetRegs(object):
-    def __init__(self, target):
-        self.target = target
-        self.__dict__.update(self.target._arch.registers)
+    def __init__(self, target, register_dict):
+        self._target = target
+        self.__dict__.update(register_dict)
 
     def __getattribute__(self, name):
-        if name == 'target' or name == '__dict__':
+        if name == '_get_names' or name == '__dict__':
             return super(TargetRegs, self).__getattribute__(name)
-        elif name in self.target._arch.registers:
-            return self.target.read_register(name)
+        elif name in self._get_names():
+            return self._target.read_register(name)
+        else:
+            return super(TargetRegs, self).__getattribute__(name)
 
     def __setattr__(self, name, value):
-        if name == 'target':
+        if name == '_target':
             return super(TargetRegs, self).__setattr__(name, value)
-        elif name in self.target._arch.registers:
-            return self.target.write_register(name, value)
+        elif name in self._get_names():
+            return self._target.write_register(name, value)
+        else:
+            return super(TargetRegs, self).__setattr__(name, value)
+
+    def _update(self, reg_dict):
+        self.__dict__.update(reg_dict)
+
+    def _get_nr_from_name(self, reg_name):
+        return self.__dict__[reg_name]
+
+    def _get_names(self):
+        names = set(self.__dict__) ^ set(['_target'])
+        return names
 
 
 class Target(object):
@@ -103,7 +117,7 @@ class Target(object):
         log_file.setFormatter(formatter)
         self.log.addHandler(log_file)
 
-        self.regs = TargetRegs(self)
+        self.regs = TargetRegs(self, self._arch.registers)
 
     @watch('TargetInit')
     def init(self):

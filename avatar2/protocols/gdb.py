@@ -207,6 +207,7 @@ class GDBProtocol(object):
             origin=None):
         self._async_message_handler = async_message_handler
         self._arch = arch
+        self._register_mapping = dict(arch.registers)
         self._gdbmi = pygdbmi.gdbcontroller.GdbController(
             gdb_path=gdb_executable,
             gdb_args=[
@@ -219,6 +220,7 @@ class GDBProtocol(object):
             self, self._gdbmi, avatar_queue, origin)
         self._communicator.start()
         self._avatar_queue = avatar_queue
+        self._origin = origin
         self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
@@ -294,6 +296,8 @@ class GDBProtocol(object):
         if not ret:
             self.log.critical("GDBProtocol was unable to connect to remote target")
             raise Exception("GDBProtocol was unable to connect")
+        
+        self.update_target_regs()
 
         return ret
 
@@ -347,6 +351,9 @@ class GDBProtocol(object):
         self.log.debug(
             "Attempted to connect to target. Received response: %s" %
             resp)
+
+        self.update_target_regs()
+
         return ret
 
     def remote_disconnect(self):
@@ -372,6 +379,17 @@ class GDBProtocol(object):
         self.log.debug(
             "Attempted to obtain register names. Received response: %s" % resp)
         return resp['payload']['register-names'] if ret else None
+
+    def update_target_regs(self):
+        """
+        This function will try to update the TargetRegs based on the list of
+        registers known to gdb.
+        """
+        if hasattr(self._origin, 'regs'):
+            regs = self.get_register_names()
+            regs_dict = dict([(r,i) for i, r in enumerate(regs) if r != ''])
+            self._origin.regs._update(regs_dict)
+
 
     def set_breakpoint(self, line,
                        hardware=False,
@@ -542,7 +560,11 @@ class GDBProtocol(object):
                 return mem
 
     def read_register(self, reg):
-        return self.read_register_from_nr(self._arch.registers[reg])
+        reg_nr = (
+            self._origin.regs._get_nr_from_name(reg) 
+            if hasattr(self._origin, 'regs')
+            else self._arch.registers[reg])
+        return self.read_register_from_nr(reg_nr)
 
     def read_register_from_nr(self, reg_num):
         """Gets the value of a single register

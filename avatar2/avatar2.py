@@ -195,7 +195,19 @@ class Avatar(Thread):
                             (from_target.state, to_target.state))
 
         if sync_regs:
-            for r in self.arch.registers:
+            # Test if we can take registers from TargetRegs-objects
+            regs = (
+                to_target.regs._get_names() & from_target.regs._get_names()
+                if hasattr(to_target, 'regs') and hasattr(from_target, 'regs')
+                else self.arch.registers)
+           
+            # The status register can cause a mode-switch, let's update it first
+            if self.arch.sr_name in regs:
+                regs = ([self.arch.sr_name]
+                        + [r for r in regs if r != self.arch.sr_name] )
+
+            # Sync the registers!
+            for r in regs:
                 to_target.write_register(r, from_target.read_register(r))
             self.log.info('Synchronized Registers')
 
