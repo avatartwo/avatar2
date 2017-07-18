@@ -2152,6 +2152,7 @@ enum arm_features {
     ARM_FEATURE_M_SECURITY, /* M profile Security Extension */
     ARM_FEATURE_M_MAIN, /* M profile Main Extension */
     ARM_FEATURE_V8_1M, /* M profile extras only in v8.1M and later */
+    ARM_FEATURE_CONFIGURABLE, /* created with avatar */
 };
 
 static inline int arm_feature(CPUARMState *env, int feature)
