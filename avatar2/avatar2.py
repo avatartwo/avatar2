@@ -68,9 +68,6 @@ class Avatar(Thread):
         in order to cleanly exit all spawned processes and threads
         """
         for t in self.targets.values():
-            if t.state == TargetStates.RUNNING:
-                t.stop()
-        for t in self.targets.values():
             t.shutdown()
         for range in self.memory_ranges:
             if isinstance(range.data.forwarded_to, AvatarPeripheral):

@@ -76,9 +76,9 @@ class NucleoUSART(AvatarPeripheral, Thread):
 
         self.lock = Lock()
         self._close = Event()
-        self.start()
         self.sock = None
         self.conn = None
+        self.start()
 
     def shutdown(self):
         self._close.set()
