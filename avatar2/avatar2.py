@@ -259,7 +259,7 @@ class Avatar(Thread):
         return (message.id, mem, success)
 
     @watch('RemoteMemoryWrite')
-    def _handle_remote_memory_write_msg(self, message):
+    def _handle_remote_memory_write_message(self, message):
         mem_range = self.get_memory_range(message.address)
         if not mem_range.forwarded:
             raise Exception("Forward request for non forwarded range received!")
@@ -272,6 +272,13 @@ class Avatar(Thread):
         message.origin.protocols.remote_memory.send_response(message.id, 0,
                                                              success)
         return message.id, 0, success
+
+    @watch('RemoteInterruptMessage')
+    def _handle_remote_interrupt_message, message):
+        if message.transition_type == 0:
+        message.origin._interrupt_protocol.inject_interrupt(
+            message.interrupt_num)
+        
 
     def run(self):
         """

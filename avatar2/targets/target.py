@@ -13,7 +13,7 @@ def action_valid_decorator_factory(state, protocol):
     requested actions on a target, such as step(), stop(), read_register(), 
     write_register() and so on are actually executable.
 
-    :param state: The required state of the Target
+    :param state: A mask specifying the required state of the Target
     :type state:  An entry of the Enum TargetStates
     :param protocol: The protocol required to execute the action.
     :type protocol: str
@@ -206,7 +206,16 @@ class Target(object):
 
         self.status = {}
         self._arch = avatar.arch
+<<<<<<< HEAD
         self.protocols = TargetProtocolStore()
+=======
+        self._exec_protocol = None
+        self._memory_protocol = None
+        self._register_protocol = None
+        self._interrupt_protocol = None
+        self._monitor_protocol = None
+        self._remote_memory_protocol = None
+>>>>>>> towards interrupt-injection
 
         self.state = TargetStates.CREATED
         self._no_state_update_pending = Event()
@@ -370,6 +379,19 @@ class Target(object):
     def wait(self, state=TargetStates.STOPPED):
         while self.state != state:
             pass
+
+    @watch('EnableInterruptForwarding')
+    @action_valid_decorator_factory(TargetStates.RUNNING, '_interrupt_protocol')
+    def enable_interrupt_forwarding(self):
+        pass
+
+    @watch('InjectInterrupt')
+    @action_valid_decorator_factory(TargetStates.RUNNING|TargetStates.STOPPED,
+                                    '_interrupt_protocol')
+
+    def inject_interrupt(self, interrupt_number):
+        self._interrupt_protocol.inject_interrupt(interrupt_number)
+
 
     def get_status(self):
         """
