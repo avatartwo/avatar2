@@ -105,7 +105,10 @@ class QemuTarget(Target):
                     mr_dict['properties'].append(tx_queue_properties)
 
                 elif hasattr(mr, 'qemu_properties'):
-                    mr_dict['properties'].append(mr.qemu_properties)
+                    if type(mr.qemu_properties) == list:
+                        mr_dict['properties'] += mr.qemu_properties
+                    else:
+                        mr_dict['properties'].append(mr.qemu_properties)
             elif hasattr(mr, 'file') and mr.file is not None:
                 mr_dict['file'] = mr.file
             ret.append(mr_dict)
