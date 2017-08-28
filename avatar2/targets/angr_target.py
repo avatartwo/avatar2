@@ -1,19 +1,18 @@
 from threading import Event, Thread
 from types import MethodType
 
-from simuvex import s_options as o
+from angr import sim_options as o
 
 
 import logging
 import Queue as queue
 
 import angr
-from cle.memory import Clemory
-from simuvex.storage.paged_memory import BasePage, SimPagedMemory
-from simuvex.storage.memory_object import SimMemoryObject
+from angr.storage.paged_memory import BasePage, SimPagedMemory
+from angr.storage.memory_object import SimMemoryObject
 
 
-from simuvex.plugins.symbolic_memory import SimSymbolicMemory
+from angr.state_plugins.symbolic_memory import SimSymbolicMemory
 from claripy import BVV
 
 from avatar2.targets import Target, TargetStates
@@ -221,9 +220,9 @@ class AngrTarget(Target):
     def init(self):
 
         # If no base addr is specified, try to figure it out via memory ranges
-        #for (start, end, mr) in self._memory_mapping:
-            #if hasattr(mr, 'file') and mr.file == self.binary:
-                #self.base_addr = start
+        for (start, end, mr) in self.avatar.memory_ranges:
+            if hasattr(mr, 'file') and mr.file == self.binary:
+                self.base_addr = start
 
         load_options = {}
         load_options['main_opts'] = {'backend': 'blob', 
@@ -234,6 +233,7 @@ class AngrTarget(Target):
         load_options['auto_load_libs'] = False,
         load_options['page_size'] = 0x1000 # change me once angr is ready!
 
+        print self.base_addr
 
         # Angr needs a "main-binary" to execute. If the user did not specify
         # one, we will create one on the fly based on avatar's memory_ranges
