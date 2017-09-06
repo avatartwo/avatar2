@@ -21,6 +21,38 @@ from .peripherals import AvatarPeripheral
 from .targets.target import TargetStates #TargetStates
 from .watchmen import watch, Watchmen
 
+class AvatarFastQueueProcessor(Thread):
+
+    def __init__(self, avatar):
+        super(AvatarFastQueueProcessor, self).__init__()
+        self.avatar = avatar
+        self._close = Event()
+        self.start()
+
+    def run(self):
+        self._close.clear()
+        while True:
+            if self._close.is_set():
+                break
+
+
+            try:
+                message = self.avatar.fast_queue.get(timeout=0.5)
+            except:
+                continue
+
+            if isinstance(message, UpdateStateMessage):
+                message.origin.update_state(message.state)
+                self.avatar.queue.put(message)
+            else:
+                raise Exception("Unknown Avatar Fast Message received")
+
+    def stop(self):
+        """
+        Stop the thread which manages the asynchronous messages.
+        """
+        self._close.set()
+        self.join()
 
 class Avatar(Thread):
     """The Avatar-object is the main interface of avatar.
@@ -54,6 +86,7 @@ class Avatar(Thread):
                                  else output_directory)
         if not path.exists(self.output_directory):
             makedirs(self.output_directory)
+
 
         self.log = logging.getLogger('avatar')
         format = '%(asctime)s | %(name)s.%(levelname)s | %(message)s'
