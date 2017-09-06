@@ -42,10 +42,10 @@ class RemoteMemoryWriteMessage(AvatarMessage):
         self.value = value
         self.size = size
 
-from .targets.target import TargetStates
-
 class RemoteInterruptMessage(AvatarMessage):
     def __init__(self, origin, transition_type, interrupt_num):
         super(self.__class__, self).__init__(origin)
         self.transition_type = transition_type
         self.interrupt_num = interrupt_num
+
+from .targets.target import TargetStates

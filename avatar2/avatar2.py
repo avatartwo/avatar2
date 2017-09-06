@@ -270,7 +270,6 @@ class Avatar(Thread):
     @watch('BreakpointHit')
     def _handle_breakpoint_hit_message(self, message):
         self.log.info("Breakpoint hit for Target: %s" % message.origin.name)
-        self._handle_update_state_message(message)
 
     @watch('RemoteMemoryRead')
     def _handle_remote_memory_read_message(self, message):
@@ -371,7 +370,7 @@ class AvatarFastQueueProcessor(Thread):
                 break
 
             try:
-                message = self.avatar.fast_queue.get(timeout=0.1)
+                message = self.avatar.fast_queue.get(timeout=0.5)
             except queue.Empty as e:
                 continue
 
