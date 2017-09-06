@@ -158,7 +158,10 @@ class Target(object):
         :returns: True on success
         """
         self._no_state_update_pending.clear()
-        return self._exec_protocol.cont()
+        ret = self._exec_protocol.cont()
+        self.wait(TargetStates.RUNNING)
+        return ret
+
 
     @watch('TargetStop')
     @action_valid_decorator_factory(TargetStates.RUNNING, '_exec_protocol')
@@ -283,10 +286,10 @@ class Target(object):
         self._no_state_update_pending.set()
 
     @watch('TargetWait')
-    def wait(self):
+    def wait(self, state=TargetStates.STOPPED):
         while True:
             self._no_state_update_pending.wait(.1)
-            if self.state == TargetStates.STOPPED and \
+            if self.state == state and \
                     self._no_state_update_pending.is_set():
                 break
 

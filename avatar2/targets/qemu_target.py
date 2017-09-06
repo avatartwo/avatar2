@@ -160,7 +160,7 @@ class QemuTarget(Target):
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
                           arch=self.avatar.arch,
                           additional_args=self.gdb_additional_args,
-                          avatar_queue=self.avatar.queue, origin=self)
+                          avatar=self.avatar, origin=self)
         qmp = QMPProtocol(self.qmp_port, origin=self)  # TODO: Implement QMP
 
         if 'avatar-rmemory' in [i[2].qemu_name for i in

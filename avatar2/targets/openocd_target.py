@@ -41,7 +41,7 @@ class OpenOCDTarget(Target):
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
                           arch=self._arch,
                           additional_args=self.gdb_additional_args,
-                          avatar_queue=self.avatar.queue, origin=self)
+                          avatar=self.avatar, origin=self)
 
         time.sleep(.1)  # give openocd time to start. Find a better solution?
 

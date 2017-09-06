@@ -27,7 +27,7 @@ class GDBTarget(Target):
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
                           arch=self._arch,
                           additional_args=self.gdb_additional_args,
-                          avatar_queue=self.avatar.queue, origin=self)
+                          avatar=self.avatar, origin=self)
 
         if not self._serial:
             if gdb.remote_connect(port=self.gdb_port):

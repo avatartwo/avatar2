@@ -49,6 +49,9 @@ class Avatar(Thread):
 
         self._close = Event()
         self.queue = queue.Queue()
+        self.fast_queue = queue.Queue()
+        self.fast_queue_listener = AvatarFastQueueProcessor(self)
+        self.daemon = True
         self.start()
 
         self.log = logging.getLogger('avatar')
@@ -217,12 +220,10 @@ class Avatar(Thread):
     def _handle_update_state_message(self, message):
         self.log.info("Received state update of target %s to %s" %
                       (message.origin.name, message.state))
-        message.origin.update_state(message.state)
 
     @watch('BreakpointHit')
     def _handle_breakpoint_hit_message(self, message):
         self.log.info("Breakpoint hit for Target: %s" % message.origin.name)
-        message.origin.update_state(TargetStates.STOPPED)
 
     @watch('RemoteMemoryRead')
     def _handle_remote_memory_read_message(self, message):
@@ -297,3 +298,42 @@ class Avatar(Thread):
     @watch('AvatarGetStatus')
     def get_status(self):
         return self.status
+
+class AvatarFastQueueProcessor(Thread):
+    """
+    The avatar fast queue handles events which require immediate action, 
+    i.e. TargetStateUpdates. 
+    After processing, they get passed to the main avatar queue for further
+    handling.
+    """
+
+    def __init__(self, avatar):
+        super(AvatarFastQueueProcessor, self).__init__()
+        self.avatar = avatar
+        self._close = Event()
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        self._close.clear()
+        while True:
+            if self._close.is_set():
+                break
+
+            try:
+                message = self.avatar.fast_queue.get(timeout=0.5)
+            except queue.Empty as e:
+                continue
+
+            if isinstance(message, UpdateStateMessage):
+                message.origin.update_state(message.state)
+                self.avatar.queue.put(message)
+            else:
+                raise Exception("Unknown Avatar Fast Message received")
+
+    def stop(self):
+        """
+        Stop the thread which manages the asynchronous messages.
+        """
+        self._close.set()
+        self.join()

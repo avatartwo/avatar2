@@ -28,12 +28,15 @@ class GDBResponseListener(Thread):
     to an AvatarMessage and added to the Queue of the according target
     """
 
-    def __init__(self, gdb_protocol, gdb_controller, avatar_queue, origin=None):
+    def __init__(self, gdb_protocol, gdb_controller, avatar_queue,
+                 avatar_fast_queue,  origin=None):
         super(GDBResponseListener, self).__init__()
         self._protocol = gdb_protocol
         self._token = -1
         self._async_responses = queue.Queue() if avatar_queue is None \
             else avatar_queue
+        self._async_fast_responses = queue.Queue() if avatar_fast_queue is None\
+            else avatar_fast_queue
         self._sync_responses = {}
         self._gdb_controller = gdb_controller
         self._gdb = gdb_protocol
@@ -180,7 +183,10 @@ class GDBResponseListener(Thread):
                         if self._gdb._async_message_handler is not None:
                             self._gdb._async_message_handler(avatar_msg)
                         else:
-                            self._async_responses.put(avatar_msg)
+                            if isinstance(avatar_msg, UpdateStateMessage):
+                                self._async_fast_responses.put(avatar_msg)
+                            else:
+                                self._async_responses.put(avatar_msg)
         self._closed.set()
 
     def stop(self):
@@ -194,7 +200,8 @@ class GDBProtocol(object):
     :ivar gdb_executable: the path to the gdb which should be executed
     :ivar arch:     the architecture
     :ivar additional_args: additional arguments for gdb
-    :ivar avatar_queue : The queue serving as message sink for async messages
+    :ivar avatar:   the avatar object
+    :ivar origin:   the target utilizing this protocol
     """
 
     def __init__(
@@ -203,7 +210,7 @@ class GDBProtocol(object):
             arch=ARM,
             additional_args=[],
             async_message_handler=None,
-            avatar_queue=None,
+            avatar=None,
             origin=None):
         self._async_message_handler = async_message_handler
         self._arch = arch
@@ -216,10 +223,13 @@ class GDBProtocol(object):
                          '--interpreter=mi2'] +
                      additional_args,
             verbose=False)  # set to True for debugging
+        queue = avatar.queue if avatar is not None else None
+        fast_queue = avatar.fast_queue if avatar is not None else None
+
         self._communicator = GDBResponseListener(
-            self, self._gdbmi, avatar_queue, origin)
+            self, self._gdbmi, queue, fast_queue, origin)
+        self._communicator.daemon = True
         self._communicator.start()
-        self._avatar_queue = avatar_queue
         self._origin = origin
         self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
