@@ -261,7 +261,6 @@ class GDBProtocol(object):
             verbose=verbose)  # set to True for debugging
         queue = avatar.queue if avatar is not None else None
         fast_queue = avatar.fast_queue if avatar is not None else None
-
         self._communicator = GDBResponseListener(
             self, self._gdbmi, queue, fast_queue, origin)
         self._communicator.daemon = True

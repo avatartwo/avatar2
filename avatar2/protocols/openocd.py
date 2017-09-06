@@ -68,10 +68,10 @@ class OpenOCDProtocol(object):
 
 
     def execute_command(self, command, recv_response=False):
-        self._telnet.write(command.encode('ascii'))
+        self._telnet.write((command + "\n").encode('ascii'))
         resp = ''
 
-        if recv_response== True:
+        if recv_response:
             resp = self._telnet.read_until(END_OF_MSG)
         return resp
 

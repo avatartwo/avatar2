@@ -206,16 +206,7 @@ class Target(object):
 
         self.status = {}
         self._arch = avatar.arch
-<<<<<<< HEAD
         self.protocols = TargetProtocolStore()
-=======
-        self._exec_protocol = None
-        self._memory_protocol = None
-        self._register_protocol = None
-        self._interrupt_protocol = None
-        self._monitor_protocol = None
-        self._remote_memory_protocol = None
->>>>>>> towards interrupt-injection
 
         self.state = TargetStates.CREATED
         self._no_state_update_pending = Event()
@@ -385,8 +376,8 @@ class Target(object):
     def enable_interrupt_forwarding(self):
         pass
 
-    @watch('InjectInterrupt')
-    @action_valid_decorator_factory(TargetStates.RUNNING|TargetStates.STOPPED,
+    @watch('TargetInjectInterrupt')
+    @action_valid_decorator_factory(TargetStates.RUNNING,
                                     '_interrupt_protocol')
 
     def inject_interrupt(self, interrupt_number):

@@ -273,11 +273,11 @@ class Avatar(Thread):
                                                              success)
         return message.id, 0, success
 
-    @watch('RemoteInterruptMessage')
-    def _handle_remote_interrupt_message, message):
-        if message.transition_type == 0:
-        message.origin._interrupt_protocol.inject_interrupt(
-            message.interrupt_num)
+    @watch('RemoteInterrupt')
+    def _handle_remote_interrupt_message(self, message):
+        if message.transition_type == 1 and message.interrupt_num != 0 and message.interrupt_num != 62:
+            self.interrupt_sink._interrupt_protocol.inject_interrupt(
+                message.interrupt_num)
         
 
     def run(self):

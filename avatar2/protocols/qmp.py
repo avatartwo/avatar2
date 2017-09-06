@@ -40,6 +40,7 @@ class QMPProtocol(object):
 
         while True:
             resp = self._telnet.read_until('\r\n'.encode('ascii'))
+            self.log.info(resp)
             resp = json.loads(resp.decode('ascii'))
             if 'event' in resp:
                 continue
@@ -82,5 +83,6 @@ class QMPProtocol(object):
 
 
     def inject_interrupt(self, interrupt_number, cpu_number=0):
+        self.log.info("Injecting interrupt %d" % interrupt_number)
         self.execute_command('avatar-arm-irq', {'num_irq': interrupt_number,
                                                 'num_cpu': cpu_number})
