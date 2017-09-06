@@ -78,6 +78,7 @@ class NucleoUSART(AvatarPeripheral, Thread):
         self._close = Event()
         self.sock = None
         self.conn = None
+        self.daemon = True
         self.start()
 
     def shutdown(self):

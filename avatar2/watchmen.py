@@ -105,6 +105,7 @@ class WatchedEvent(object):
         else:
             if self.is_async:
                 thread = AsyncReaction(avatar, self._callback, *args, **kwargs)
+                self.daemon = True
                 thread.start()
             else:
                 self._callback(avatar, *args, **kwargs)

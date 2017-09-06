@@ -218,6 +218,7 @@ class GDBProtocol(object):
             verbose=False)  # set to True for debugging
         self._communicator = GDBResponseListener(
             self, self._gdbmi, avatar_queue, origin)
+        self._communicator.daemon = True
         self._communicator.start()
         self._avatar_queue = avatar_queue
         self._origin = origin

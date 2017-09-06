@@ -5,6 +5,7 @@ if sys.version_info < (3, 0):
 else:
     import queue
 
+import atexit
 import tempfile
 import intervaltree
 import logging
@@ -34,6 +35,11 @@ class Avatar(Thread):
     def __init__(self, arch=ARM, output_directory=None):
         super(Avatar, self).__init__()
 
+        self.shutdowned = False
+        signal.signal(signal.SIGINT, self.sigint_wrapper)
+        self.sigint_handler = self.shutdown
+        atexit.register(self.shutdown)
+
         self.watchmen = Watchmen(self)
         self.arch = arch
         self.arch.init(self)
@@ -49,6 +55,7 @@ class Avatar(Thread):
 
         self._close = Event()
         self.queue = queue.Queue()
+        self.daemon = True
         self.start()
 
         self.log = logging.getLogger('avatar')
@@ -58,8 +65,6 @@ class Avatar(Thread):
         self.log.info("Initialized Avatar. Output directory is %s" %
                       self.output_directory)
 
-        signal.signal(signal.SIGINT, self.sigint_wrapper)
-        self.sigint_handler = self.shutdown
         self.loaded_plugins = []
 
     def shutdown(self):
@@ -67,13 +72,14 @@ class Avatar(Thread):
         Shuts down all targets and Avatar. Should be called at end of script
         in order to cleanly exit all spawned processes and threads
         """
+        if self.shutdowned is True:
+            return
         for t in self.targets.values():
             t.shutdown()
         for range in self.memory_ranges:
             if isinstance(range.data.forwarded_to, AvatarPeripheral):
                 range.data.forwarded_to.shutdown()
-
-        self.stop()
+        self.shutdowned = True
 
     def sigint_wrapper(self, signal, frame):
         self.log.info("Avatar Received SIGINT")

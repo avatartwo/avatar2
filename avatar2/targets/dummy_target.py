@@ -122,6 +122,7 @@ class DummyTarget(Target):
         if self.state != TargetStates.RUNNING:
             self.avatar.queue.put(UpdateStateMessage(self, TargetStates.RUNNING))
             self.thread = _TargetThread(self)
+            self.thread.daemon = True
             self.thread.start()
 
     def get_status(self):

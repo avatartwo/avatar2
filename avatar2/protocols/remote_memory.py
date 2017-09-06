@@ -146,6 +146,7 @@ class RemoteMemoryProtocol(object):
         self._rx_listener = RemoteMemoryRequestListener(self._rx_queue,
                                                         self._avatar_queue,
                                                         self._origin)
+        self._rx_listener.daemon = True
         self._rx_listener.start()
         self.log.info("Successfully connected rmp")
         return True

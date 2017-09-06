@@ -1,4 +1,4 @@
-
+from os.path import abspath
 
 class MemoryRange(object):
     """
@@ -24,7 +24,7 @@ class MemoryRange(object):
             if name is not None else
             "mem_range_0x{:08x}_0x{:08x}".format(address, address+size))
         self.permissions = permissions
-        self.file = file
+        self.file = abspath(file) if file is not None else None
         self.forwarded = forwarded
         self.forwarded_to = forwarded_to
         self.__dict__.update(kwargs)
