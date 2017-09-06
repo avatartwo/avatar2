@@ -35,7 +35,6 @@ class Avatar(Thread):
     def __init__(self, arch=ARM, output_directory=None):
         super(Avatar, self).__init__()
 
-        
         self.shutdowned = False
         signal.signal(signal.SIGINT, self.sigint_wrapper)
         self.sigint_handler = self.shutdown
@@ -55,6 +54,7 @@ class Avatar(Thread):
                                  else output_directory)
         if not path.exists(self.output_directory):
             makedirs(self.output_directory)
+
         self.log = logging.getLogger('avatar')
         format = '%(asctime)s | %(name)s.%(levelname)s | %(message)s'
         logging.basicConfig(filename='%s/avatar.log' % self.output_directory,

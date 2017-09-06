@@ -63,9 +63,6 @@ class OpenOCDProtocol(object):
                                      ) if origin else \
             logging.getLogger(self.__class__.__name__)
 
-    def __del__(self):
-        self.shutdown()
-
 
     def execute_command(self, command, recv_response=False):
         self._telnet.write((command + "\n").encode('ascii'))
