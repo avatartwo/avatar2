@@ -27,6 +27,7 @@ class AvatarFastQueueProcessor(Thread):
         super(AvatarFastQueueProcessor, self).__init__()
         self.avatar = avatar
         self._close = Event()
+        self.daemon = True
         self.start()
 
     def run(self):

@@ -156,6 +156,7 @@ class CoreSightProtocol(object):
             openocd.execute_command('mww %d 0xffffffff' % ITM_TER)
             #openocd.execute_command('resume')
             # todo setup the magic
+            self._communicator.daemon=True
             self._communicator.start()
         except:
             self.log.exception()
