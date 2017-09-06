@@ -81,7 +81,7 @@ class CoreSightResponseListener(Thread):
 
                 try:
                     byte = fifo.read(1)
-                    if ord(byte) == 0x0E: #fetch exception packets
+                    if byte and ord(byte) == 0x0E: #fetch exception packets
                         packet = fifo.read(2)
                         self.dispatch_exception_packet(packet)
                 except:
@@ -136,8 +136,7 @@ class CoreSightProtocol(object):
         try:
             self.log.info("Starting CoreSight Protocol")
             if not isinstance(self._origin._monitor_protocol, OpenOCDProtocol):
-                raise Exception(("CoreSightProtocol requires OpenOCDProtocol ")
-                                ("to be present."))
+                raise Exception("CoreSightProtocol requires OpenOCDProtocol to be present.")
 
             openocd = self._origin._monitor_protocol
             openocd.reset()
@@ -145,8 +144,12 @@ class CoreSightProtocol(object):
                                     self.fifo_name)
 
             #these are magic coresight writes, lets document them one day
-            openocd.execute_command('setbits %d 0x1000000' % COREDEBUG_DEMCR)
-
+            openocd.execute_command("set data(0) 0")
+            #openocd.execute_command("mem2array data 32 %d 1" % COREDEBUG_DEMCR)
+            #openocd.execute_command("set data(0) [expr $data(0) | 0x1000000]")
+            #openocd.execute_command("array2mem data 32 %d 1" % COREDEBUG_DEMCR)
+            ## openocd.execute_command('setbits %d 0x1000000' % COREDEBUG_DEMCR)
+            openocd.execute_command('mww %d 0x10000000' % COREDEBUG_DEMCR)
             openocd.execute_command('mww %d 0x40010000' % DWT_CTRL)
             openocd.execute_command('mww %d 0xC5ACCE55' % ITM_LAR)
             openocd.execute_command('mww %d 0x0000000d' % ITM_TCR)
