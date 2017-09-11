@@ -4,6 +4,7 @@ import telnetlib
 import logging
 import distutils
 import binascii
+from struct import pack, unpack
 
 from os.path import abspath
 if sys.version_info < (3, 0):
@@ -130,7 +131,8 @@ class OpenOCDProtocol(object):
         :param raw:       Whether the read memory should be returned unprocessed
         :return:          The read memory
         """
-        raw = b''
+        num2fmt = {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}
+        raw_mem = b''
         words = []
         for i in range(0, num_words, wordsize):
             read_addr = hex(address + i)
@@ -139,16 +141,23 @@ class OpenOCDProtocol(object):
                 # Parse some shit
                 # TODO: Fix execute_command
                 val = int(resp.splitlines()[1])
-                if raw:
-                    raw += binascii.unhexlify(hex(val)[2:])
-                elif num_words == 1:
-                    return val
-                else:
-                    words.append(val)
+                raw_mem += binascii.unhexlify(hex(val)[2:].zfill(wordsize * 2))
             else:
                 self.log.error("Could not read from address %s" % read_addr)
                 return None
-        return words
+        # OCD flips the endianness
+        raw_mem = "".join(reversed(raw_mem))
+        if raw:
+            return raw_mem
+        else:
+            # Todo: Endianness support
+            fmt = '<%d%s' % (num_words, num2fmt[wordsize])
+            mem = list(unpack(fmt, raw_mem))
+            if num_words == 1:
+                return mem[0]
+            else:
+                return mem
+
 
     def reset(self):
         """
