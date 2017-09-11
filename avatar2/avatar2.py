@@ -312,7 +312,6 @@ class Avatar(Thread):
         if message.transition_type == 1 and message.interrupt_num != 0 and message.interrupt_num != 62:
             self.interrupt_sink._interrupt_protocol.inject_interrupt(
                 message.interrupt_num)
-        
 
     def run(self):
         """

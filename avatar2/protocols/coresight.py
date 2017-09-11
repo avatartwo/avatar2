@@ -72,18 +72,38 @@ class CoreSightResponseListener(Thread):
         msg = RemoteInterruptMessage(self._origin, transition_type, int_num)
         self._avatar_queue.put(msg)
 
+    def read_fifo(self, fifo, num):
+        num_left = num
+        data = ""
+        while not self._close.is_set() and num_left > 0:
+            try:
+                data += fifo.read(numleft)
+                num_left -= len(data)
+            except:
+                continue
+        return data
+
     def run(self):
+        pktsize = 3
         try:
             fifo = open(self.fifo_name, 'rb')
-            while 1:
+            data = ""
+            while not self._close.is_set():
                 if self._close.is_set():
                     break
 
                 try:
-                    byte = fifo.read(1)
-                    if byte and ord(byte) == 0x0E: #fetch exception packets
-                        packet = fifo.read(2)
+
+                    data += self.read_fifo(fifo, pktsize - len(data))
+                    if self._close.is_set():
+                        break
+                    if data[0] and ord(data[0]) == 0x0E: #fetch exception packets
+                        packet = data[1:]
                         self.dispatch_exception_packet(packet)
+                    # the first byte didn't match, rotate it out
+                    else:
+                        data = data[1:]
+
                 except:
                     self.log.exception("")
                     # Add some parsing here

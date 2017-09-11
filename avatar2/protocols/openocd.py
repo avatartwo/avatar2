@@ -3,6 +3,7 @@ import subprocess
 import telnetlib
 import logging
 import distutils
+import binascii
 
 from os.path import abspath
 if sys.version_info < (3, 0):
@@ -63,14 +64,19 @@ class OpenOCDProtocol(object):
                                      ) if origin else \
             logging.getLogger(self.__class__.__name__)
 
-
     def execute_command(self, command, recv_response=False):
-        self._telnet.write((command + "\n").encode('ascii'))
-        resp = ''
+        try:
+            self.log.debug("Executing command %s" % command)
+            self._telnet.write((command + "\n").encode('ascii'))
+            resp = ''
 
-        if recv_response:
-            resp = self._telnet.read_until(END_OF_MSG)
-        return resp
+            if recv_response:
+                resp = self._telnet.read_until(END_OF_MSG)
+                self.log.debug("Got response %s" % resp)
+            return resp
+        except Exception, e:
+            self.log.exception("Error executing OpenOCD command:")
+            raise e
 
     def connect(self):
         """
@@ -85,6 +91,64 @@ class OpenOCDProtocol(object):
         else:
             self.log.error('Failed to connect to OpenOCD')
             return False
+
+    def write_memory(self, address, wordsize, val, num_words=1, raw=False):
+        """Writes memory
+
+        :param address:   Address to write to
+        :param wordsize:  the size of the write (1, 2, 4 or 8)
+        :param val:       the written value
+        :type val:        int if num_words == 1 and raw == False
+                          list if num_words > 1 and raw == False
+                          str or byte if raw == True
+        :param num_words: The amount of words to read
+        :param raw:       Specifies whether to write in raw or word mode
+        :returns:         True on success else False
+        """
+        if isinstance(val, str) and len(val) != num_words:
+            self.log.debug("Setting num_words = %d" % (len(val) / wordsize))
+            num_words = len(val) / wordsize
+        for i in range(0, num_words, wordsize):
+            if raw:
+                write_val = '0x' + binascii.hexlify(val[i:i+wordsize])
+            elif isinstance(val, int):
+                write_val = hex(val)
+            else:
+                # A list of ints
+                write_val = hex(val[i])
+            write_addr = hex(address + i)
+            self.execute_command('mww %s %s' % (write_addr, write_val), recv_response=True)
+            # TODO: error handling
+        return True
+
+    def read_memory(self, address, wordsize=4, num_words=1, raw=False):
+        """reads memory
+
+        :param address:   Address to write to
+        :param wordsize:  the size of a read word (1, 2, 4 or 8)
+        :param num_words: the amount of read words
+        :param raw:       Whether the read memory should be returned unprocessed
+        :return:          The read memory
+        """
+        raw = b''
+        words = []
+        for i in range(0, num_words, wordsize):
+            read_addr = hex(address + i)
+            resp = self.execute_command('mrw %s' % read_addr, recv_response=True)
+            if resp:
+                # Parse some shit
+                # TODO: Fix execute_command
+                val = int(resp.splitlines()[1])
+                if raw:
+                    raw += binascii.unhexlify(hex(val)[2:])
+                elif num_words == 1:
+                    return val
+                else:
+                    words.append(val)
+            else:
+                self.log.error("Could not read from address %s" % read_addr)
+                return None
+        return words
 
     def reset(self):
         """
