@@ -4,6 +4,7 @@ import telnetlib
 import logging
 import distutils
 import binascii
+from threading import Thread, Lock, Event
 from struct import pack, unpack
 
 from os.path import abspath
@@ -15,7 +16,7 @@ else:
 END_OF_MSG = b'\r\n\r>'
 
 
-class OpenOCDProtocol(object):
+class OpenOCDProtocol(Thread):
     """
     This class implements the openocd protocol.
     Although OpenOCD itself is very powerful, it is only used as monitor
@@ -31,8 +32,8 @@ class OpenOCDProtocol(object):
     :param gdb_port:           the port used for openocds gdb-server
     """
 
-    def __init__(self, openocd_script, openocd_executable="openocd",
-                 additional_args=[], telnet_port=4444, gdb_port=3333,
+    def __init__(self, avatar, openocd_script, openocd_executable="openocd",
+                 additional_args=[], host='127.0.0.1', telnet_port=4444, gdb_port=3333,
                  origin=None, output_directory='/tmp'):
         if isinstance(openocd_script, str):
             self.openocd_files = [openocd_script]
@@ -41,9 +42,16 @@ class OpenOCDProtocol(object):
         else:
             raise TypeError("Wrong type for OpenOCD configuration files")
 
-        self._telnet = None
         self._telnet_port = telnet_port
-        
+        self._host = host
+        self.in_queue = queue.Queue()
+        self.out_queue = queue.Queue()
+        self.avatar = avatar
+        self.telnet = None
+        self._close = Event()
+        self.buf = ""
+        self.cmd_lock = Lock()
+
         executable_path = distutils.spawn.find_executable(openocd_executable)
 
         self._cmd_line = [executable_path ,
@@ -64,34 +72,101 @@ class OpenOCDProtocol(object):
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
             logging.getLogger(self.__class__.__name__)
-
-    def execute_command(self, command, recv_response=False):
-        try:
-            self.log.debug("Executing command %s" % command)
-            self._telnet.write((command + "\n").encode('ascii'))
-            resp = ''
-
-            if recv_response:
-                resp = self._telnet.read_until(END_OF_MSG)
-                self.log.debug("Got response %s" % resp)
-            return resp
-        except Exception, e:
-            self.log.exception("Error executing OpenOCD command:")
-            raise e
+        Thread.__init__(self)
 
     def connect(self):
         """
         Connects to OpenOCDs telnet-server for all subsequent communication
         returns: True on success, else False
         """
-
-        self._telnet = telnetlib.Telnet('127.0.0.1', self._telnet_port)
-        resp = self._telnet.read_until(END_OF_MSG)
+        from time import sleep
+        sleep(1)
+        self.log.debug("Connecting to OpenOCD on %s:%s" % (self._host, self._telnet_port))
+        self.telnet = telnetlib.Telnet(self._host, self._telnet_port)
+        resp = self.telnet.read_until(END_OF_MSG)
         if 'Open On-Chip Debugger' in str(resp):
+            self.start()
             return True
         else:
             self.log.error('Failed to connect to OpenOCD')
             return False
+
+    def reset(self):
+        """
+        Resets the target
+        returns: True on success, else False
+        """
+        resp = self.execute_command('reset halt', recv_response=True)
+        if not 'Not halted' in str(resp):
+            self.log.debug("Target reset complete")
+            return True
+        else:
+            self.log.error('Failed to reset the target with OpenOCD')
+            return False
+
+    def shutdown(self):
+        """
+        Shuts down OpenOCD
+        returns: True on success, else False
+        """
+        self._close.set()
+        if self.telnet:
+            self.telnet.close()
+        if self._openocd is not None:
+            self._openocd.terminate()
+            self._openocd = None
+
+    def execute_command(self, cmd, recv_response=False, wait_for_re=None):
+        try:
+            self.cmd_lock.acquire()
+            self.in_queue.put(cmd)
+            while not self.avatar._close.is_set() and not self._close.is_set():
+                new_line = self.out_queue.get()
+                """
+                if cmd in new_line:
+                    # Kill the echo
+                    if not recv_response:
+                        return
+                    else:
+                        continue
+                """
+                if not recv_response:
+                    return
+                else:
+                    return new_line
+        except Exception, e:
+            self.log.exception("Exception thrown executing command")
+            raise e
+        finally:
+            self.cmd_lock.release()
+
+    def run(self):
+        self.log.debug("Starting OpenOCDSocketListener")
+        while not self.avatar._close.is_set() and not self._close.is_set():
+            if not self.in_queue.empty():
+                cmd = self.in_queue.get()
+                self.telnet.write((cmd + '\n').encode('ascii'))
+            try:
+                line = self.read_response()
+            except EOFError:
+                self.log.warning("OpenOCD Connection closed!")
+                self.shutdown()
+                break
+            if line:
+                if "WARNING" in line:
+                    self.log.warning(line)
+                else:
+                    self.log.debug(line)
+                    self.out_queue.put(line)
+
+    def read_response(self):
+        self.buf += self.telnet.read_eager()
+        if END_OF_MSG in self.buf:
+            idx = self.buf.index(END_OF_MSG) + len(END_OF_MSG)
+            resp = self.buf[:idx]
+            self.buf = self.buf[idx:]
+            return resp
+        return None
 
     def write_memory(self, address, wordsize, val, num_words=1, raw=False):
         """Writes memory
@@ -112,14 +187,14 @@ class OpenOCDProtocol(object):
         for i in range(0, num_words, wordsize):
             if raw:
                 write_val = '0x' + binascii.hexlify(val[i:i+wordsize])
-            elif isinstance(val, int):
-                write_val = hex(val)
+            elif isinstance(val, int) or isinstance(val, long):
+                write_val = hex(val).rstrip("L")
             else:
                 # A list of ints
-                write_val = hex(val[i])
-            write_addr = hex(address + i)
+                write_val = hex(val[i]).rstrip("L")
+            write_addr = hex(address + i).rstrip("L")
             self.execute_command('mww %s %s' % (write_addr, write_val), recv_response=True)
-            # TODO: error handling
+
         return True
 
     def read_memory(self, address, wordsize=4, num_words=1, raw=False):
@@ -135,11 +210,9 @@ class OpenOCDProtocol(object):
         raw_mem = b''
         words = []
         for i in range(0, num_words, wordsize):
-            read_addr = hex(address + i)
+            read_addr = hex(address + i).rstrip('L')
             resp = self.execute_command('mrw %s' % read_addr, recv_response=True)
             if resp:
-                # Parse some shit
-                # TODO: Fix execute_command
                 val = int(resp.splitlines()[1])
                 raw_mem += binascii.unhexlify(hex(val)[2:].zfill(wordsize * 2))
             else:
@@ -148,6 +221,7 @@ class OpenOCDProtocol(object):
         # OCD flips the endianness
         raw_mem = "".join(reversed(raw_mem))
         if raw:
+            self.log.debug("Read %s from %#08x" % (repr(raw), address))
             return raw_mem
         else:
             # Todo: Endianness support
@@ -158,27 +232,3 @@ class OpenOCDProtocol(object):
             else:
                 return mem
 
-
-    def reset(self):
-        """
-        Resets the target
-        returns: True on success, else False
-        """
-        self._telnet.write('reset halt\n'.encode('ascii'))
-        resp = self._telnet.read_until(END_OF_MSG)
-        if 'target state: halted' in str(resp):
-            return True
-        else:
-            self.log.error('Failed to reset the target with OpenOCD')
-            return False
-
-    def shutdown(self):
-        """
-        Shuts down OpenOCD
-        returns: True on success, else False
-        """
-        if self._telnet:
-            self._telnet.close()
-        if self._openocd is not None:
-            self._openocd.terminate()
-            self._openocd = None

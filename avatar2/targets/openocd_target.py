@@ -23,6 +23,7 @@ class OpenOCDTarget(Target):
 
         self.executable = (executable if executable is not None
                            else self._arch.get_oocd_executable())
+        self.avatar = avatar
         self.openocd_script = openocd_script
         self.additional_args = additional_args if additional_args else []
         self.telnet_port = telnet_port
@@ -33,7 +34,7 @@ class OpenOCDTarget(Target):
         self.gdb_port = gdb_port
 
     def init(self):
-        openocd = OpenOCDProtocol(self.openocd_script,
+        openocd = OpenOCDProtocol(self.avatar, self.openocd_script,
                                   openocd_executable=self.executable,
                                   additional_args=self.additional_args,
                                   telnet_port=self.telnet_port,
