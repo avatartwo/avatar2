@@ -267,7 +267,7 @@ class Target(object):
         return self.protocols.execution.step()
 
     @watch('TargetWriteMemory')
-    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
+    #@action_valid_decorator_factory(TargetStates.STOPPED, '_memory_protocol')
     def write_memory(self, address, size, value, num_words=1, raw=False):
         """
         Writing to memory of the target
@@ -287,7 +287,7 @@ class Target(object):
                                                   num_words, raw)
 
     @watch('TargetReadMemory')
-    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
+    #@action_valid_decorator_factory(TargetStates.STOPPED, '_memory_protocol')
     def read_memory(self, address, size, words=1, raw=False):
         """
         Reading from memory of the target
