@@ -4,8 +4,10 @@ from struct import pack, unpack
 from codecs import encode
 import logging
 import os
+import re
+from bitstring import BitStream, ReadError
+from binascii import unhexlify
 import pygdbmi.gdbcontroller
-from os import mkfifo
 from openocd import OpenOCDProtocol
 if sys.version_info < (3, 0):
     import Queue as queue
@@ -39,101 +41,25 @@ ETM_FFLR         = 0xe004102c
 
 
 
+class CoreSightProtocol(Thread):
 
-class CoreSightResponseListener(Thread):
-    """
-    """
-
-    def __init__(self, coresight_protocol, fifo_name,  avatar_queue, origin=None):
-        super(CoreSightResponseListener, self).__init__()
-        self._protocol = coresight_protocol
-        self._token = -1
-        self._avatar_queue = queue.Queue() if avatar_queue is None \
-            else avatar_queue
-        self._coresight = coresight_protocol
-        self.fifo_name = fifo_name
+    def __init__(self, avatar, origin):
+        self.avatar = avatar
+        self._avatar_queue = avatar.queue
+        self._origin = origin
+        self.trace_queue = None
+        self.trace_buffer = BitStream()
         self._close = Event()
         self._closed = Event()
         self._close.clear()
         self._closed.clear()
         self._sync_responses_cv = Condition()
         self._last_exec_token = 0
-        self._origin = origin
         self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
             logging.getLogger(self.__class__.__name__)
-
-
-    def dispatch_exception_packet(self, packet):
-        int_num = ((ord(packet[1]) & 0x01) << 8) | ord(packet[0])
-        transition_type = (ord(packet[1]) & 0x30) >> 4
-
-        msg = RemoteInterruptMessage(self._origin, transition_type, int_num)
-        self._avatar_queue.put(msg)
-
-    def read_fifo(self, fifo, num):
-        num_left = num
-        data = ""
-        while not self._close.is_set() and num_left > 0:
-            try:
-                data += fifo.read(numleft)
-                num_left -= len(data)
-            except:
-                continue
-        return data
-
-    def run(self):
-        pktsize = 3
-        try:
-            fifo = open(self.fifo_name, 'rb')
-            data = ""
-            while not self._close.is_set():
-                if self._close.is_set():
-                    break
-
-                try:
-
-                    data += self.read_fifo(fifo, pktsize - len(data))
-                    if self._close.is_set():
-                        break
-                    if data[0] and ord(data[0]) == 0x0E: #fetch exception packets
-                        packet = data[1:]
-                        self.dispatch_exception_packet(packet)
-                    # the first byte didn't match, rotate it out
-                    else:
-                        data = data[1:]
-
-                except:
-                    self.log.exception("")
-                    # Add some parsing here
-            self._closed.set()
-        except:
-            self.log.exception("")
-    def stop(self):
-        """Stops the listening thread. Useful for teardown of the target"""
-        self._close.set()
-        self._closed.wait()
-
-
-class CoreSightProtocol(object):
-    """
-    """
-
-    def __init__(
-            self,
-            avatar_queue=None,
-            origin=None,
-            fifo_name=None):
-        self._communicator = CoreSightResponseListener(self, fifo_name,
-                                                       avatar_queue, origin)
-        self._avatar_queue = avatar_queue
-        self._origin = origin
-        self.fifo_name = fifo_name
-        self.log = logging.getLogger('%s.%s' %
-                                     (origin.log.name, self.__class__.__name__)
-                                     ) if origin else \
-            logging.getLogger(self.__class__.__name__)
+        Thread.__init__(self)
 
     def __del__(self):
         self.shutdown()
@@ -142,41 +68,97 @@ class CoreSightProtocol(object):
         if self._communicator is not None:
             self._communicator.stop()
             self._communicator = None
-        if self._gdbmi is not None:
-            self._gdbmi.exit()
-            self._gdbmi = None
 
     def connect(self):
         if not isinstance(self._origin._monitor_protocol, OpenOCDProtocol):
             raise Exception(("CoreSightProtocol requires OpenOCDProtocol ")
                             ("to be present."))
 
+    def has_bits_to_read(self, b, n):
+        return b.len - b.pos > n
 
     def enable_interrupts(self):
         try:
             self.log.info("Starting CoreSight Protocol")
             if not isinstance(self._origin._monitor_protocol, OpenOCDProtocol):
                 raise Exception("CoreSightProtocol requires OpenOCDProtocol to be present.")
-
             openocd = self._origin._monitor_protocol
+            self.log.debug("Resetting target")
             openocd.reset()
-            openocd.execute_command('tpiu config internal %s uart off 32000000' %
-                                    self.fifo_name)
-
-            #these are magic coresight writes, lets document them one day
-            openocd.execute_command("set data(0) 0")
-            #openocd.execute_command("mem2array data 32 %d 1" % COREDEBUG_DEMCR)
-            #openocd.execute_command("set data(0) [expr $data(0) | 0x1000000]")
-            #openocd.execute_command("array2mem data 32 %d 1" % COREDEBUG_DEMCR)
-            ## openocd.execute_command('setbits %d 0x1000000' % COREDEBUG_DEMCR)
-            openocd.execute_command('mww %d 0x10000000' % COREDEBUG_DEMCR)
-            openocd.execute_command('mww %d 0x40010000' % DWT_CTRL)
-            openocd.execute_command('mww %d 0xC5ACCE55' % ITM_LAR)
-            openocd.execute_command('mww %d 0x0000000d' % ITM_TCR)
-            openocd.execute_command('mww %d 0xffffffff' % ITM_TER)
-            #openocd.execute_command('resume')
-            # todo setup the magic
-            self._communicator.daemon=True
-            self._communicator.start()
+            # Enable TCL tracing
+            if not openocd.trace_enabled.is_set():
+                openocd.enable_trace()
+                if not openocd.trace_enabled.is_set():
+                    self.log.error("Can't get trace events without tcl_trace! aborting...")
+                    return False
+            self.trace_queue = openocd.trace_queue
+            # Enable the TPIO output to the FIFO
+            self.log.debug("Enabling TPIU output events")
+            openocd.execute_command('tpiu config internal - uart off 32000000')
+            # Enable the DWT to get interrupts
+            self.log.debug("Enabling exceptions in DWT")
+            openocd.execute_command("setbits $COREDEBUG_DEMCR 0x1000000") # Enable access to trace regs - set TRCENA to 1
+            openocd.execute_command("mww $DWT_CTRL 0x40010000")  # exc trace only
+            self.log.debug("Enabling ITM passthrough of DWT events")
+            # Enable the ITM to pass DWT output to the TPIU
+            openocd.execute_command("mww $ITM_LAR 0xC5ACCE55")
+            openocd.execute_command("mww $ITM_TCR 0x0000000d")  # TraceBusID 1, enable dwt/itm/sync
+            openocd.execute_command("mww $ITM_TER 0xffffffff")  # Enable all stimulus ports
+            # Run our little daemon thingy
+            self.log.debug("Starting interrupt handling thread")
+            self.daemon=True
+            self.start()
         except:
-            self.log.exception()
+            self.log.exception("Error starting Coresight")
+
+    def dispatch_exception_packet(self, packet):
+        int_num = ((ord(packet[1]) & 0x01) << 8) | ord(packet[0])
+        transition_type = (ord(packet[1]) & 0x30) >> 4
+
+        msg = RemoteInterruptMessage(self._origin, transition_type, int_num)
+        self._avatar_queue.put(msg)
+
+    def run(self):
+        DWT_PKTSIZE_BITS = 24
+        trace_re = re.compile("type target_trace data ([0-9a-f]+)")
+        self.log.debug("Starting interrupt thread")
+        try:
+            while not self._close.is_set():
+                if self._close.is_set():
+                    break
+                # OpenOCD gives us target_trace events packed with many, many packets.
+                # Get them out, then do them packet-at-a-time
+                if not self.has_bits_to_read(self.trace_buffer, DWT_PKTSIZE_BITS):
+                    # get some more data
+                    if self.trace_queue.empty():
+                        # make sure we can see the shutdown flag
+                        continue
+                    new_data = self.trace_queue.get()
+                    m = trace_re.match(new_data)
+                    if m:
+                        self.trace_buffer.append("0x" + m.group(1))
+                    else:
+                        raise ValueError("Got a really weird trace packet " + new_data)
+                if not self.has_bits_to_read(self.trace_buffer, DWT_PKTSIZE_BITS):
+                    continue
+                try:
+                    pkt = self.trace_buffer.peek(DWT_PKTSIZE_BITS).bytes
+                except ReadError:
+                    self.log.error("Fuck you length is " + repr(len(self.trace_buffer)) + " " + repr(DWT_PKTSIZE_BITS))
+                if ord(pkt[0]) == 0x0E:  # exception packets
+                    pkt = pkt[1:]
+                    self.dispatch_exception_packet(pkt)
+                    # eat the bytes
+                    self.trace_buffer.read(DWT_PKTSIZE_BITS)
+                # the first byte didn't match, rotate it out
+                else:
+                    self.trace_buffer.read(8)
+        except:
+            self.log.exception("Error processing trace")
+        self._closed.set()
+        self.log.debug("Interrupt thread exiting...")
+
+    def stop(self):
+        """Stops the listening thread. Useful for teardown of the target"""
+        self._close.set()
+        self._closed.wait()
