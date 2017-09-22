@@ -175,8 +175,8 @@ class GDBResponseListener(Thread):
                     self._sync_responses_cv.release()
                 else:
                     avatar_msg = self.parse_async_response(response)
-                    self.log.debug("Parsed an avatar_msg %s", avatar_msg)
                     if avatar_msg is not None:
+                        self.log.debug("Parsed an avatar_msg %s", avatar_msg)
                         if self._gdb._async_message_handler is not None:
                             self._gdb._async_message_handler(avatar_msg)
                         else:
