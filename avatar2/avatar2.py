@@ -277,10 +277,10 @@ class Avatar(Thread):
                 continue
             self.log.debug("Avatar received %s" % message)
 
-            if isinstance(message, UpdateStateMessage):
-                self._handle_update_state_message(message)
-            elif isinstance(message, BreakpointHitMessage):
+            if isinstance(message, BreakpointHitMessage):
                 self._handle_breakpoint_hit_message(message)
+            elif isinstance(message, UpdateStateMessage):
+                self._handle_update_state_message(message)
             elif isinstance(message, RemoteMemoryReadMessage):
                 self._handle_remote_memory_read_message(message)
             elif isinstance(message, RemoteMemoryWriteMessage):
@@ -321,7 +321,7 @@ class AvatarFastQueueProcessor(Thread):
                 break
 
             try:
-                message = self.avatar.fast_queue.get(timeout=0.5)
+                message = self.avatar.fast_queue.get(timeout=0.1)
             except queue.Empty as e:
                 continue
 
