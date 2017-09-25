@@ -128,14 +128,14 @@ class Watchmen(object):
             if self.watched_types._add(type):
                 self._watched_events[type] = []
 
-    def add_watchman(self, watch_type, when=BEFORE, callback=None, async=False, *args, **kwargs):
+    def add_watchman(self, watch_type, when=BEFORE, callback=None, is_async=False, *args, **kwargs):
 
         if watch_type not in self.watched_types:
             raise Exception("Requested event_type does not exist")
         if when not in (BEFORE, AFTER):
             raise Exception("Watchman has to be invoked \'before\' or \'after\'!")
 
-        w = WatchedEvent(watch_type, when, callback, async, *args, **kwargs)
+        w = WatchedEvent(watch_type, when, callback, is_async, *args, **kwargs)
         self._watched_events[watch_type].append(w)
         return w
 

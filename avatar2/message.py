@@ -1,6 +1,6 @@
-class AvatarMessage(object):
-    """This class provides constants to create and parse the avatar message-dict"""
 
+
+class AvatarMessage(object):
     def __init__(self, origin):
         self.origin = origin
 
@@ -13,13 +13,13 @@ class AvatarMessage(object):
 
 class UpdateStateMessage(AvatarMessage):
     def __init__(self, origin, new_state):
-        super(self.__class__, self).__init__(origin)
+        super(UpdateStateMessage, self).__init__(origin)
         self.state = new_state
 
 
-class BreakpointHitMessage(AvatarMessage):
+class BreakpointHitMessage(UpdateStateMessage):
     def __init__(self, origin, breakpoint_number, address):
-        super(self.__class__, self).__init__(origin)
+        super(self.__class__, self).__init__(origin, TargetStates.STOPPED)
         self.breakpoint_number = breakpoint_number
         self.address = address
 
@@ -41,3 +41,5 @@ class RemoteMemoryWriteMessage(AvatarMessage):
         self.address = address
         self.value = value
         self.size = size
+
+from .targets.target import TargetStates
