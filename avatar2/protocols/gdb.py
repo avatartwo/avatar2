@@ -169,7 +169,7 @@ class GDBResponseListener(Thread):
 
             try:
                 responses = self._gdb_controller.get_gdb_response(
-                    timeout_sec=0.5
+                    timeout_sec=0.0
                 )
             except:
                 continue
@@ -266,7 +266,7 @@ class GDBProtocol(object):
         req = str(token) + ' '.join(request)
         self.log.debug("Sending request: %s" % req)
 
-        self._gdbmi.write(req, read_response=False)
+        self._gdbmi.write(req, read_response=False, timeout_sec=0)
         try:
             response = self._communicator.get_sync_response(token)
             ret = True if response['message'] == rexpect else False
