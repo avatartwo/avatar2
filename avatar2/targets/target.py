@@ -288,7 +288,7 @@ class Target(object):
     @watch('TargetWait')
     def wait(self, state=TargetStates.STOPPED):
         while True:
-            self._no_state_update_pending.wait(.1)
+            self._no_state_update_pending.wait()
             if self.state == state and \
                     self._no_state_update_pending.is_set():
                 break

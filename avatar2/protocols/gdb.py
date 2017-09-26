@@ -100,8 +100,12 @@ class GDBResponseListener(Thread):
                 avatar_msg = UpdateStateMessage(
                     self._origin, TargetStates.STOPPED)
             elif payload.get('reason') == 'signal-received':
-                avatar_msg = UpdateStateMessage(
-                    self._origin, TargetStates.STOPPED)
+                if payload.get('signal-name') == 'SIGSEGV':
+                    avatar_msg = UpdateStateMessage(
+                        self._origin, TargetStates.EXITED)
+                else:
+                    avatar_msg = UpdateStateMessage(
+                        self._origin, TargetStates.STOPPED)
             elif payload.get('reason') == 'watchpoint-trigger':
                 avatar_msg = UpdateStateMessage(
                     self._origin, TargetStates.STOPPED)
