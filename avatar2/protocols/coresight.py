@@ -8,7 +8,7 @@ import re
 from bitstring import BitStream, ReadError
 from binascii import unhexlify
 import pygdbmi.gdbcontroller
-from openocd import OpenOCDProtocol
+from .openocd import OpenOCDProtocol
 if sys.version_info < (3, 0):
     import Queue as queue
     # __class__ = instance.__class__

@@ -13,7 +13,7 @@ if sys.version_info < (3, 0):
 else:
     import queue
 
-END_OF_MSG = b'\x1a'
+END_OF_MSG = u'\x1a'
 
 
 class OpenOCDProtocol(Thread):
@@ -50,7 +50,7 @@ class OpenOCDProtocol(Thread):
         self.avatar = avatar
         self.telnet = None
         self._close = Event()
-        self.buf = ""
+        self.buf = u""
         self.cmd_lock = Lock()
 
         executable_path = distutils.spawn.find_executable(openocd_executable)
@@ -83,9 +83,9 @@ class OpenOCDProtocol(Thread):
         try:
             self.telnet = telnetlib.Telnet(self._host, self._tcl_port)
             # mic check
-            self.telnet.write("ocd_echo\x1a")
+            self.telnet.write("ocd_echo\x1a".encode('ascii'))
             self.log.debug("Connected to OpenOCD.  Saying hello...")
-            stuff = self.telnet.read_until('\x1a')
+            stuff = self.telnet.read_until('\x1a'.encode('ascii'))
             self.log.debug("Got a hello back.  Starting background thread...")
             self.start()
             return True
@@ -141,7 +141,7 @@ class OpenOCDProtocol(Thread):
             self.cmd_lock.acquire()
             self.in_queue.put(cmd)
             return self.out_queue.get()
-        except Exception, e:
+        except Exception as e:
             self.log.exception("Exception thrown executing command")
             raise e
         finally:
@@ -154,7 +154,7 @@ class OpenOCDProtocol(Thread):
                 if not self.in_queue.empty():
                     cmd = self.in_queue.get()
                     self.log.debug("Executing command %s" % cmd)
-                    self.telnet.write((cmd + END_OF_MSG))
+                    self.telnet.write((cmd + END_OF_MSG).encode('ascii'))
                 try:
                     line = self.read_response()
                 except EOFError:
@@ -168,12 +168,12 @@ class OpenOCDProtocol(Thread):
                     else:
                         self.log.debug(line)
                         self.out_queue.put(line)
-        except Exception, e:
+        except Exception as e:
             self.log.exception("OpenOCD Background thread died with an exception")
         self.log.debug("OpenOCD Background thread exiting")
 
     def read_response(self):
-        self.buf += self.telnet.read_eager()
+        self.buf += self.telnet.read_eager().decode('ascii')
         if END_OF_MSG in self.buf:
             resp, self.buf = self.buf.split(END_OF_MSG, 1)
             return resp
@@ -191,7 +191,7 @@ class OpenOCDProtocol(Thread):
         :param num_words: The amount of words to read
         :param raw:       Specifies whether to write in raw or word mode
         :returns:         True on success else False
-        """
+        #"""
         if isinstance(val, str) and len(val) != num_words:
             self.log.debug("Setting num_words = %d" % (len(val) / wordsize))
             num_words = len(val) / wordsize
@@ -230,7 +230,7 @@ class OpenOCDProtocol(Thread):
                 self.log.error("Could not read from address %s" % read_addr)
                 return None
         # OCD flips the endianness
-        raw_mem = "".join(reversed(raw_mem))
+        raw_mem = raw_mem[::-1]
         if raw:
             self.log.debug("Read %s from %#08x" % (repr(raw), address))
             return raw_mem
