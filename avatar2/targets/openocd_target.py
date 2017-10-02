@@ -36,24 +36,23 @@ class OpenOCDTarget(Target):
         self.gdb_port = gdb_port
 
     def init(self):
-        openocd = OpenOCDProtocol(self.avatar, self.openocd_script,
+        openocd = OpenOCDProtocol(self.avatar, self, self.openocd_script,
                                   openocd_executable=self.executable,
                                   additional_args=self.additional_args,
                                   tcl_port=self.tcl_port,
                                   gdb_port=self.gdb_port,
-                                  origin=self,
                                   output_directory=self.avatar.output_directory)
-
+        """
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
                           arch=self._arch,
                           additional_args=self.gdb_additional_args,
                           avatar=self.avatar, origin=self)
-
+        """
         time.sleep(.1)  # give openocd time to start. Find a better solution?
         self.log.debug("Connecting to OpenOCD telnet port")
         ocd_connected = openocd.connect()
-        self.log.debug("Connecting to OpenOCD GDB port")
-        gdb_connected = gdb.remote_connect(port=self.gdb_port)
+        #self.log.debug("Connecting to OpenOCD GDB port")
+        #gdb_connected = gdb.remote_connect(port=self.gdb_port)
         script_has_reset = False
         if self.openocd_script:
             with open(self.openocd_script) as f:
@@ -61,11 +60,11 @@ class OpenOCDTarget(Target):
             if "reset halt" in script:
                 self.log.debug("Not resetting target, script may have done it already")
                 script_has_reset = True
-        if ocd_connected and gdb_connected:
+        if ocd_connected:
             self.log.info("Successfully connected to OpenOCD target!")
         else:
             self.log.error("Failed to connect to OpenOCD target!")
-        if ocd_connected and gdb_connected and not script_has_reset:
+        if ocd_connected and not script_has_reset:
             self.log.debug("Resetting target...")
             openocd.reset()
 
