@@ -19,6 +19,8 @@ from avatar2.archs.arm import ARM
 from avatar2.targets import TargetStates
 from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMessage, RemoteInterruptMessage
 
+# ARM System Control Block
+SCB_CPUID = 0xe000ed00
 
 # CoreSight Constant Addresses
 RCC_APB2ENR      = 0x40021018
@@ -63,6 +65,13 @@ class CoreSightProtocol(Thread):
 
     def __del__(self):
         self.shutdown()
+
+    def cpuid(self):
+        c = self._origin.read_memory(SCB_CPUID, 4, 1)
+        print("CPUID: %#08x" % c)
+        if c == 0xF:
+            print("Found ARM Cortex CPUID")
+
 
     def shutdown(self):
         if self._communicator is not None:
