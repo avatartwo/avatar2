@@ -24,7 +24,7 @@ class ARM_CORTEX_M3(ARM):
     gdb_name = 'arm'
 
     capstone_arch = CS_ARCH_ARM
-    capstone_mode = CS_MODE_LITTLE_ENDIAN | CS_MODE_THUMB
+    capstone_mode = CS_MODE_LITTLE_ENDIAN | CS_MODE_THUMB | CS_MODE_MCLASS
 
     @staticmethod
     def register_write_cb(avatar, *args, **kwargs):
@@ -44,6 +44,8 @@ class ARM_CORTEX_M3(ARM):
     def init(avatar):
         avatar.watchmen.add('TargetRegisterWrite', 'after',
                             ARM_CORTEX_M3.register_write_cb)
+
+ARMV7M = ARM_CORTEX_M3
 
 
 class ARMBE(ARM):
