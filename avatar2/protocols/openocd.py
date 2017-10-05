@@ -16,7 +16,7 @@ else:
 from avatar2.targets import TargetStates
 from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMessage
 
-END_OF_MSG = b'\x1a'
+END_OF_MSG = u'\x1a'
 
 
 class OpenOCDProtocol(Thread):
@@ -300,7 +300,10 @@ class OpenOCDProtocol(Thread):
         :param raw:       Whether the read memory should be returned unprocessed
         :return:          The read memory
         """
-        print "nucleo.read_memory(%s, %s, %s, %s)" % (repr(address), repr(wordsize), repr(num_words), repr(raw))
+        print("nucleo.read_memory(%s, %s, %s, %s)" % (repr(address),
+                                                      repr(wordsize),
+                                                      repr(num_words),
+                                                      repr(raw)))
         num2fmt = {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}
         raw_mem = b''
         words = []

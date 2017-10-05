@@ -9,6 +9,7 @@ from bitstring import BitStream, ReadError
 from binascii import unhexlify
 import pygdbmi.gdbcontroller
 from .openocd import OpenOCDProtocol
+
 if sys.version_info < (3, 0):
     import Queue as queue
     # __class__ = instance.__class__
@@ -18,6 +19,7 @@ else:
 from avatar2.archs.arm import ARM
 from avatar2.targets import TargetStates
 from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMessage, RemoteInterruptMessage
+from avatar2.protocols.openocd import OpenOCDProtocol
 
 # ARM System Control Block
 SCB_CPUID = 0xe000ed00
