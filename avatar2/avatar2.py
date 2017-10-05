@@ -35,6 +35,7 @@ class Avatar(Thread):
     def __init__(self, arch=ARM, output_directory=None):
         super(Avatar, self).__init__()
 
+        
         self.shutdowned = False
         signal.signal(signal.SIGINT, self.sigint_wrapper)
         self.sigint_handler = self.shutdown
@@ -46,20 +47,14 @@ class Avatar(Thread):
         self.targets = {}
         self.status = {}
         self.memory_ranges = intervaltree.IntervalTree()
+        self.loaded_plugins = []
 
+        # Setup output-dir and logging
         self.output_directory = (tempfile.mkdtemp(suffix="_avatar")
                                  if output_directory is None
                                  else output_directory)
         if not path.exists(self.output_directory):
             makedirs(self.output_directory)
-
-        self._close = Event()
-        self.queue = queue.Queue()
-        self.fast_queue = queue.Queue()
-        self.fast_queue_listener = AvatarFastQueueProcessor(self)
-        self.daemon = True
-        self.start()
-
         self.log = logging.getLogger('avatar')
         format = '%(asctime)s | %(name)s.%(levelname)s | %(message)s'
         logging.basicConfig(filename='%s/avatar.log' % self.output_directory,
@@ -67,7 +62,19 @@ class Avatar(Thread):
         self.log.info("Initialized Avatar. Output directory is %s" %
                       self.output_directory)
 
-        self.loaded_plugins = []
+        # Setup the avatarqueues and register default handler
+        self._close = Event()
+        self.queue = queue.Queue()
+        self.fast_queue = queue.Queue()
+        self.fast_queue_listener = AvatarFastQueueProcessor(self)
+        self.message_handlers = { 
+            BreakpointHitMessage: self._handle_breakpoint_hit_message,
+            UpdateStateMessage: self._handle_update_state_message,
+            RemoteMemoryReadMessage: self._handle_remote_memory_read_message,
+            RemoteMemoryWriteMessage: self._handle_remote_memory_write_msg
+        }
+        self.daemon = True
+        self.start()
 
     def shutdown(self):
         """
@@ -282,16 +289,12 @@ class Avatar(Thread):
                 continue
             self.log.debug("Avatar received %s" % message)
 
-            if isinstance(message, BreakpointHitMessage):
-                self._handle_breakpoint_hit_message(message)
-            elif isinstance(message, UpdateStateMessage):
-                self._handle_update_state_message(message)
-            elif isinstance(message, RemoteMemoryReadMessage):
-                self._handle_remote_memory_read_message(message)
-            elif isinstance(message, RemoteMemoryWriteMessage):
-                self._handle_remote_memory_write_msg(message)
+            handler = self.message_handlers.get(message.__class__, None)
+            if handler is None:
+                raise Exception("No handler for Avatar-message %s registered" %
+                                message)
             else:
-                raise Exception("Unknown Avatar Message received")
+                handler(message)
 
     def stop(self):
         """
