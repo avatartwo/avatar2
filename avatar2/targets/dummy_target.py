@@ -70,7 +70,7 @@ class DummyTarget(Target):
         # we need a memory protocol. However, here we set the protocol to
         # ourself (its a dirty trick) and later implement the sendResponse 
         # method
-        self._remote_memory_protocol = self
+        self.protocols.remote_memory = self
 
     # This is called by Avatar to initialize the target
     def init(self):

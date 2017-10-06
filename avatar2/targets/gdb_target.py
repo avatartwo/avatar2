@@ -42,10 +42,6 @@ class GDBTarget(Target):
             else:
                 self.log.warning("Connecting failed")
 
-        self._exec_protocol = gdb
-        self._memory_protocol = gdb
-        self._register_protocol = gdb
-        self._signal_protocol = gdb
-        self._monitor_protocol = None
+        self.protocols.set_all(gdb)
 
         self.wait()

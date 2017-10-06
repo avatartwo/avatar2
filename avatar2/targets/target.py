@@ -22,7 +22,7 @@ def action_valid_decorator_factory(state, protocol):
     def decorator(func):
         @wraps(func)
         def check(self, *args, **kwargs):
-            if getattr(self, protocol) is None:
+            if getattr(self.protocols, protocol) is None:
                 raise Exception(
                     "%s() requested but %s is undefined." %
                     (func.__name__, protocol))
@@ -79,6 +79,64 @@ class TargetRegs(object):
         names = set(self.__dict__) ^ set(['_target'])
         return names
 
+class TargetProtocolStore(object):
+    """This class stores the various protocols associated to one target"""
+
+    DEFAULT_PROTOCOLS = ['memory', 'registers', 'execution']
+
+    def __init__(self, additional_protocols=None):
+        self.protocols = set(TargetProtocolStore.DEFAULT_PROTOCOLS)
+        self.protocols |= additional_protocols if additional_protocols else set()
+        self.unique_protocols = {} #Stores protocol references and their count
+        for p in self.protocols:
+            setattr(self, p, None)
+
+    def set_all(self, instance, only_defaults=False):
+        """
+        Sets an instantiated protocol object for either all protocols in this
+        store, or only the default ones
+        :param instance: the protocol instance
+        """
+        protocols = (TargetProtocolStore.DEFAULT_PROTOCOLS if only_defaults
+                     else self.protocols
+                    )
+        for p in protocols:
+            setattr(self, p, instance)
+
+    def shutdown(self):
+        """Shutsdown all the associated protocols"""
+        for p in self.protocols:
+            setattr(self, p, None)
+
+    def __setattr__(self, name, value):
+        if name == 'protocols' or name == 'unique_protocols':
+            return super(TargetProtocolStore, self).__setattr__(name, value)
+
+        # Check whether the protocol is already an attribute
+        if hasattr(self, name) is False:
+            self.protocols.add(name)
+            saved_val = None
+        else:
+            saved_val = getattr(self, name)
+
+        if value is not None and self.unique_protocols.get(value, None) is None:
+            self.unique_protocols[value] = 0
+
+        if value is None and saved_val is not None:
+            self.unique_protocols[saved_val] -= 1
+        elif value is not None and saved_val is None:
+            self.unique_protocols[value] += 1
+        elif value is not None and saved_val is not None:
+            self.unique_protocols[value] += 1
+            self.unique_protocols[saved_val] -= 1
+     
+        # if there is no reference left, let's shut the prot down
+        if saved_val is not None and self.unique_protocols[saved_val] == 0:
+            getattr(self, name).shutdown()
+
+        return super(TargetProtocolStore, self).__setattr__(name, value)
+
+
 
 class Target(object):
     """The Target object is one of Avatars core concept, as Avatar orchestrate 
@@ -101,12 +159,7 @@ class Target(object):
 
         self.status = {}
         self._arch = avatar.arch
-        self._exec_protocol = None
-        self._memory_protocol = None
-        self._register_protocol = None
-        self._signal_protocol = None
-        self._monitor_protocol = None
-        self._remote_memory_protocol = None
+        self.protocols = TargetProtocolStore()
 
         self.state = TargetStates.CREATED
         self._no_state_update_pending = Event()
@@ -131,62 +184,45 @@ class Target(object):
         """
         Shutdowns the target
         """
-        if self._exec_protocol:
-            self._exec_protocol.shutdown()
-            self._exec_protocol = None
-        if self._memory_protocol:
-            self._memory_protocol.shutdown()
-            self._memory_protocol = None
-        if self._register_protocol:
-            self._register_protocol.shutdown()
-            self._register_protocol = None
-        if self._signal_protocol:
-            self._signal_protocol.shutdown()
-            self._signal_protocol = None
-        if self._monitor_protocol:
-            self._monitor_protocol.shutdown()
-            self._monitor_protocol = None
-        if self._remote_memory_protocol:
-            self._remote_memory_protocol.shutdown()
-            self._remote_memory_protocol = None
+        self.protocols.shutdown()
 
     @watch('TargetCont')
-    @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
     def cont(self):
         """
         Continues the execution of the target
         :returns: True on success
         """
         self._no_state_update_pending.clear()
-        ret = self._exec_protocol.cont()
+        ret = self.protocols.execution.cont()
         self.wait(TargetStates.RUNNING)
         return ret
 
 
     @watch('TargetStop')
-    @action_valid_decorator_factory(TargetStates.RUNNING, '_exec_protocol')
+    @action_valid_decorator_factory(TargetStates.RUNNING, 'execution')
     def stop(self):
         """
         Stops the execution of the target 
         """
         self._no_state_update_pending.clear()
-        ret = self._exec_protocol.stop()
+        ret = self.protocols.execution.stop()
         self.wait()
         return ret
 
     @watch('TargetStep')
-    @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
     def step(self):
         """
         Steps one instruction
         """
         self._no_state_update_pending.clear()
-        ret = self._exec_protocol.step()
+        ret = self.protocols.execution.step()
         self.wait()
         return ret
 
     @watch('TargetWriteMemory')
-    @action_valid_decorator_factory(TargetStates.STOPPED, '_memory_protocol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
     def write_memory(self, address, size, value, num_words=1, raw=False):
         """
         Writing to memory of the target
@@ -202,11 +238,11 @@ class Target(object):
         :param raw:       Specifies whether to write in raw or word mode
         :returns:         True on success else False
         """
-        return self._memory_protocol.write_memory(address, size, value,
+        return self.protocols.memory.write_memory(address, size, value,
                                                   num_words, raw)
 
     @watch('TargetReadMemory')
-    @action_valid_decorator_factory(TargetStates.STOPPED, '_memory_protocol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
     def read_memory(self, address, size, words=1, raw=False):
         """
         Reading from memory of the target
@@ -217,10 +253,10 @@ class Target(object):
         :param raw:         Whether the read memory is returned unprocessed
         :return:          The read memory
         """
-        return self._memory_protocol.read_memory(address, size, words, raw)
+        return self.protocols.memory.read_memory(address, size, words, raw)
 
     @watch('TargetRegisterWrite')
-    @action_valid_decorator_factory(TargetStates.STOPPED, '_register_protocol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
     def write_register(self, register, value):
         """
         Writing a register to the target
@@ -228,10 +264,10 @@ class Target(object):
         :param register:     The name of the register
         :param value:        The actual value written to the register
         """
-        return self._register_protocol.write_register(register, value)
+        return self.protocols.registers.write_register(register, value)
 
     @watch('TargetRegisterRead')
-    @action_valid_decorator_factory(TargetStates.STOPPED, '_register_protocol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
     def read_register(self, register):
         """
         Reading a register from the target
@@ -239,10 +275,10 @@ class Target(object):
         :param register:     The name of the register
         :return:             The actual value read from the register
         """
-        return self._register_protocol.read_register(register)
+        return self.protocols.registers.read_register(register)
 
     @watch('TargetSetBreakpoint')
-    @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
     def set_breakpoint(self, line, hardware=False, temporary=False, regex=False,
                        condition=None, ignore_count=0, thread=0):
         """Inserts a breakpoint
@@ -254,7 +290,7 @@ class Target(object):
         :param int ignore_count: Amount of times the bp should be ignored
         :param int thread:    Threadno in which this breakpoints should be added
         """
-        return self._exec_protocol.set_breakpoint(line, hardware=hardware,
+        return self.protocols.execution.set_breakpoint(line, hardware=hardware,
                                                   temporary=temporary,
                                                   regex=regex,
                                                   condition=condition,
@@ -262,7 +298,7 @@ class Target(object):
                                                   thread=thread)
 
     @watch('TargetSetWatchPoint')
-    @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
     def set_watchpoint(self, variable, write=True, read=False):
         """Inserts a watchpoint
 
@@ -270,15 +306,15 @@ class Target(object):
         :param bool write:    Write watchpoint
         :param bool read:     Read watchpoint
         """
-        return self._exec_protocol.set_watchpoint(variable,
+        return self.protocols.execution.set_watchpoint(variable,
                                                   write=write,
                                                   read=read)
 
     @watch('TargetRemovebreakpoint')
-    @action_valid_decorator_factory(TargetStates.STOPPED, '_exec_protocol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
     def remove_breakpoint(self, bkptno):
         """Deletes a breakpoint"""
-        return self._exec_protocol.remove_breakpoint(bkptno)
+        return self.protocols.execution.remove_breakpoint(bkptno)
 
     def update_state(self, state):
         self.log.info("State changed to to %s" % TargetStates(state))

@@ -51,10 +51,7 @@ class OpenOCDTarget(Target):
         else:
             self.log.warning("Connecting failed")
 
-        self._exec_protocol = gdb
-        self._memory_protocol = gdb
-        self._register_protocol = gdb
-        self._signal_protocol = gdb
-        self._monitor_protocol = openocd
+        self.protocols.set_all(gdb)
+        self.protocols.monitor = openocd
 
         self.wait()

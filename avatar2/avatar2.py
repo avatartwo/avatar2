@@ -253,7 +253,7 @@ class Avatar(Thread):
         except:
             mem = -1
             success = False
-        message.origin._remote_memory_protocol.send_response(message.id, mem,
+        message.origin.protocols.remote_memory.send_response(message.id, mem,
                                                              success)
         return (message.id, mem, success)
 
@@ -268,7 +268,7 @@ class Avatar(Thread):
         success = mem_range.forwarded_to.write_memory(message.address, message.size,
                                                       message.value)
 
-        message.origin._remote_memory_protocol.send_response(message.id, 0,
+        message.origin.protocols.remote_memory.send_response(message.id, 0,
                                                              success)
         return message.id, 0, success
 
