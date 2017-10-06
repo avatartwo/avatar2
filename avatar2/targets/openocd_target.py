@@ -68,8 +68,6 @@ class OpenOCDTarget(Target):
             self.log.debug("Resetting target...")
             openocd.reset()
 
-        self.protocols.set_all(gdb)
-        self.protocols.memory = openocd
-        self.protocols.monitor = openocd
+        self.protocols.set_all(openocd)
 
         self.wait()
