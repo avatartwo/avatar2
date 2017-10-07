@@ -28,8 +28,8 @@ def add_protocols(self, **kwargs):
 
 def enable_interrupt_forwarding(self, from_target, to_target):
     self.message_handlers.update(
-        {RemoteInterruptEnterMessage: handle_remote_interrupt_enter_message,
-         RemoteInterruptExitMessage: handle_remote_interrupt_exit_message}    
+        {RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
+         RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message}    
     )
 
     from_target.protocols.interrupts.enable_interrupts()
@@ -37,14 +37,16 @@ def enable_interrupt_forwarding(self, from_target, to_target):
 
 
 @watch('RemoteInterruptEnter')
-def handle_remote_interrupt_enter_message(self, message):
+def _handle_remote_interrupt_enter_message(self, message):
+    print "AAAA"
     if message.transition_type == 1 and \
        message.interrupt_num != 0 and message.interrupt_num != 62:
         self.interrupt_sink._interrupt_protocol.inject_interrupt(
             message.interrupt_num)
 
 @watch('RemoteInterruptExit')
-def handle_remote_interrupt_exit_message(self, message):
+def _handle_remote_interrupt_exit_message(self, message):
+    print "BBBB"
     # TODO Implement stub and so on
     from_target.protocols.send_interrupt_exit_response(message.id,
                                                        message.success)
@@ -58,6 +60,8 @@ def load_plugin(avatar):
     avatar.v7m_irq_rx_queue_name = '/avatar_v7m_irq_rx_queue'
     avatar.v7m_irq_tx_queue_name = '/avatar_v7m_irq_tx_queue'
     avatar.enable_interrupts = MethodType(enable_interrupt_forwarding, avatar)
+    avatar._handle_remote_interrupt_enter_message = MethodType(_handle_remote_interrupt_enter_message, avatar)
+    avatar._handle_remote_interrupt_exit_message = MethodType(_handle_remote_interrupt_exit_message, avatar)
 
     avatar.watchmen.add_watchman('TargetInit', when=AFTER,
                                  callback=add_protocols)
