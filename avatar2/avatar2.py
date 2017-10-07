@@ -105,7 +105,7 @@ class Avatar(Thread):
             BreakpointHitMessage: self._handle_breakpoint_hit_message,
             UpdateStateMessage: self._handle_update_state_message,
             RemoteMemoryReadMessage: self._handle_remote_memory_read_message,
-            RemoteMemoryWriteMessage: self._handle_remote_memory_write_msg
+            RemoteMemoryWriteMessage: self._handle_remote_memory_write_message
         }
         self.daemon = True
         self.start()
@@ -306,12 +306,6 @@ class Avatar(Thread):
         message.origin.protocols.remote_memory.send_response(message.id, 0,
                                                              success)
         return message.id, 0, success
-
-    @watch('RemoteInterrupt')
-    def _handle_remote_interrupt_message(self, message):
-        if message.transition_type == 1 and message.interrupt_num != 0 and message.interrupt_num != 62:
-            self.interrupt_sink._interrupt_protocol.inject_interrupt(
-                message.interrupt_num)
 
     def run(self):
         """

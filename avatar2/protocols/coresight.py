@@ -18,7 +18,7 @@ else:
 
 from avatar2.archs.arm import ARM
 from avatar2.targets import TargetStates
-from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMessage, RemoteInterruptMessage
+from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMessage, RemoteInterruptEnterMessage
 from avatar2.protocols.openocd import OpenOCDProtocol
 
 # ARM System Control Block
@@ -76,12 +76,10 @@ class CoreSightProtocol(Thread):
 
 
     def shutdown(self):
-        if self._communicator is not None:
-            self._communicator.stop()
-            self._communicator = None
+        self.stop()
 
     def connect(self):
-        if not isinstance(self._origin._monitor_protocol, OpenOCDProtocol):
+        if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
             raise Exception(("CoreSightProtocol requires OpenOCDProtocol ")
                             ("to be present."))
 
@@ -91,9 +89,9 @@ class CoreSightProtocol(Thread):
     def enable_interrupts(self):
         try:
             self.log.info("Starting CoreSight Protocol")
-            if not isinstance(self._origin._monitor_protocol, OpenOCDProtocol):
+            if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
                 raise Exception("CoreSightProtocol requires OpenOCDProtocol to be present.")
-            openocd = self._origin._monitor_protocol
+            openocd = self._origin.protocols.monitor
             self.log.debug("Resetting target")
             openocd.reset()
             # Enable TCL tracing
@@ -126,7 +124,8 @@ class CoreSightProtocol(Thread):
         int_num = ((ord(packet[1]) & 0x01) << 8) | ord(packet[0])
         transition_type = (ord(packet[1]) & 0x30) >> 4
 
-        msg = RemoteInterruptMessage(self._origin, transition_type, int_num)
+        msg = RemoteInterruptEnterMessage(self._origin, transition_type,
+                                          int_num)
         self._avatar_queue.put(msg)
 
     def run(self):

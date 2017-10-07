@@ -9,6 +9,7 @@ import os
 from avatar2.targets import Target
 from avatar2.protocols.gdb import GDBProtocol
 from avatar2.protocols.openocd import OpenOCDProtocol
+from avatar2.watchmen import watch
 
 
 class OpenOCDTarget(Target):
@@ -35,6 +36,7 @@ class OpenOCDTarget(Target):
         self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
         self.gdb_port = gdb_port
 
+    @watch("TargetInit")
     def init(self):
         openocd = OpenOCDProtocol(self.avatar, self, self.openocd_script,
                                   openocd_executable=self.executable,

@@ -8,6 +8,8 @@ from avatar2.protocols.remote_memory import RemoteMemoryProtocol
 from avatar2.targets import Target
 
 from avatar2.installer.config import QEMU, GDB_ARM
+from avatar2.watchmen import watch
+
 
 class QemuTarget(Target):
     """
@@ -141,6 +143,7 @@ class QemuTarget(Target):
         # self._memory_mapping[mr.address: mr.address + mr.size] = mr
         # TODO: add qemu specific properties to the memory region object
 
+    @watch("TargetInit")
     def init(self):
         """
         Spawns a Qemu process and connects to it

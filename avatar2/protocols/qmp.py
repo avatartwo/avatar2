@@ -81,8 +81,3 @@ class QMPProtocol(object):
         regs_r = re.findall('(...)=([0-9a-f]{8})', regs_s)
         return dict([(r.lower(), int(v, 16)) for r, v in regs_r])
 
-
-    def inject_interrupt(self, interrupt_number, cpu_number=0):
-        self.log.info("Injecting interrupt %d" % interrupt_number)
-        self.execute_command('avatar-arm-irq', {'num_irq': interrupt_number,
-                                                'num_cpu': cpu_number})
