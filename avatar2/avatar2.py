@@ -21,39 +21,6 @@ from .peripherals import AvatarPeripheral
 from .targets.target import TargetStates #TargetStates
 from .watchmen import watch, Watchmen
 
-class AvatarFastQueueProcessor(Thread):
-
-    def __init__(self, avatar):
-        super(AvatarFastQueueProcessor, self).__init__()
-        self.avatar = avatar
-        self._close = Event()
-        self.daemon = True
-        self.start()
-
-    def run(self):
-        self._close.clear()
-        while True:
-            if self._close.is_set():
-                break
-
-
-            try:
-                message = self.avatar.fast_queue.get(timeout=0.5)
-            except:
-                continue
-
-            if isinstance(message, UpdateStateMessage):
-                message.origin.update_state(message.state)
-                self.avatar.queue.put(message)
-            else:
-                raise Exception("Unknown Avatar Fast Message received")
-
-    def stop(self):
-        """
-        Stop the thread which manages the asynchronous messages.
-        """
-        self._close.set()
-        self.join()
 
 class Avatar(Thread):
     """The Avatar-object is the main interface of avatar.
@@ -343,19 +310,20 @@ class Avatar(Thread):
         return self.status
 
 class AvatarFastQueueProcessor(Thread):
-    """
-    The avatar fast queue handles events which require immediate action, 
-    i.e. TargetStateUpdates. 
-    After processing, they get passed to the main avatar queue for further
-    handling.
-    """
 
     def __init__(self, avatar):
         super(AvatarFastQueueProcessor, self).__init__()
         self.avatar = avatar
         self._close = Event()
         self.daemon = True
+        self.message_handlers = { 
+            UpdateStateMessage: self._fast_handle_update_state_message,
+        }
         self.start()
+
+    def _fast_handle_update_state_message(self, message):
+        message.origin.update_state(message.state)
+        self.avatar.queue.put(message)
 
     def run(self):
         self._close.clear()
@@ -363,16 +331,18 @@ class AvatarFastQueueProcessor(Thread):
             if self._close.is_set():
                 break
 
+
             try:
                 message = self.avatar.fast_queue.get(timeout=0.5)
             except queue.Empty as e:
                 continue
 
-            if isinstance(message, UpdateStateMessage):
-                message.origin.update_state(message.state)
-                self.avatar.queue.put(message)
+            handler = self.message_handlers.get(message.__class__, None)
+            if handler is None:
+                raise Exception("No handler for fast message %s registered" %
+                                message)
             else:
-                raise Exception("Unknown Avatar Fast Message received")
+                handler(message)
 
     def stop(self):
         """

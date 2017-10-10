@@ -1,5 +1,6 @@
 import logging
 
+from os import O_WRONLY, O_RDONLY
 from threading import Thread, Event, Condition
 from ctypes import Structure, c_uint32, c_uint64
 from posix_ipc import MessageQueue, ExistentialError
@@ -48,7 +49,7 @@ class ARMV7MInterruptProtocol(Thread):
         self._tx_queue_name = tx_queue_name
         self._rx_queue = None
         self._tx_queue = None
-        self._avatar_queue = origin.avatar.queue
+        self._avatar_queue = origin.avatar.fast_queue
         self._origin = origin
         self._close = Event()
         self._closed = Event()
@@ -73,10 +74,10 @@ class ARMV7MInterruptProtocol(Thread):
             req_struct = V7MInterruptExitReq.from_buffer_copy(request[0])
 
             self.log.debug("Received an InterruptExitRequest for irq %d (%x)" %
-                           (req_struct.irq_num, req_struct.type))
+                           (req_struct.num_irq, req_struct.type))
             msg = RemoteInterruptExitMessage(self._origin, req_struct.id, 
                                              req_struct.type,
-                                             req_struct.irq_num)
+                                             req_struct.num_irq)
             self._avatar_queue.put(msg)
 
         self._closed.set()
@@ -88,16 +89,16 @@ class ARMV7MInterruptProtocol(Thread):
 
     def enable_interrupts(self):
         if isinstance(self._origin, QemuTarget):
+            # the tx-queue for qemu is the rx-queue for avatar and vice versa
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-enable-irq',
-                 {'rx_queue_name': self._rx_queue_name,
-                  'tx_queue_name': self._tx_queue_name}
+                 {'rx_queue_name': self._tx_queue_name,
+                  'tx_queue_name': self._rx_queue_name}
             )
         else:
             raise Exception("V7MInterruptProtocol is not implemented for %s" %
                             self._origin.__class__)
                         
-
         try:
             self._rx_queue = MessageQueue(self._rx_queue_name, flags=O_RDONLY,
                                           read=True, write=False)
@@ -131,7 +132,7 @@ class ARMV7MInterruptProtocol(Thread):
         response = RemoteInterruptExitResp(id, success)
         try:
             self._tx_queue.send(response)
-            self.log.debug("Send RemoteMemoryResponse with id %d, %x" % (id, value))
+            self.log.debug("Send RemoteInterruptResponse with id %d, %x" % (id, value))
             return True
         except Exception as e:
             self.log.error("Unable to send response: %s" % e)

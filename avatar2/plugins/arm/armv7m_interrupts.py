@@ -16,18 +16,22 @@ from avatar2.watchmen import watch
 
 def add_protocols(self, **kwargs):
     target = kwargs['watched_target']
-    #import IPython; IPython.embed()
     if isinstance(target, OpenOCDTarget):
         target.protocols.interrupts = CoreSightProtocol(target.avatar,
                                                         target)
     if isinstance(target, QemuTarget):
         target.protocols.interrupts = ARMV7MInterruptProtocol(
-            target, self.v7m_irq_rx_queue_name, self.v7m_irq_tx_queue_name,
+            target, self.v7m_irq_rx_queue_name, self.v7m_irq_tx_queue_name
         )
 
 
-def enable_interrupt_forwarding(self, from_target, to_target):
-    self.message_handlers.update(
+def enable_interrupt_forwarding(self, from_target, to_target,
+                                disabled_irqs=None):
+    self._irq_src = from_target
+    self._irq_dst = to_target
+    self._irq_ignore = [] if disabled_irqs is None else disabled_irqs
+
+    self.fast_queue_listener.message_handlers.update(
         {RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
          RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message}    
     )
@@ -38,17 +42,15 @@ def enable_interrupt_forwarding(self, from_target, to_target):
 
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
-    print "AAAA"
     if message.transition_type == 1 and \
-       message.interrupt_num != 0 and message.interrupt_num != 62:
-        self.interrupt_sink._interrupt_protocol.inject_interrupt(
+       message.interrupt_num not in self._irq_ignore:
+        self._irq_dst.protocols.interrupts.inject_interrupt(
             message.interrupt_num)
 
 @watch('RemoteInterruptExit')
 def _handle_remote_interrupt_exit_message(self, message):
-    print "BBBB"
     # TODO Implement stub and so on
-    from_target.protocols.send_interrupt_exit_response(message.id,
+    self._irq_dst.protocols.send_interrupt_exit_response(message.id,
                                                        message.success)
 
 

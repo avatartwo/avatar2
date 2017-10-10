@@ -49,7 +49,7 @@ class CoreSightProtocol(Thread):
 
     def __init__(self, avatar, origin):
         self.avatar = avatar
-        self._avatar_queue = avatar.queue
+        self._avatar_queue = avatar.fast_queue
         self._origin = origin
         self.trace_queue = None
         self.trace_buffer = BitStream()

@@ -365,19 +365,6 @@ class Target(object):
         while self.state != state:
             pass
 
-    @watch('EnableInterruptForwarding')
-    @action_valid_decorator_factory(TargetStates.RUNNING, '_interrupt_protocol')
-    def enable_interrupt_forwarding(self):
-        pass
-
-    @watch('TargetInjectInterrupt')
-    @action_valid_decorator_factory(TargetStates.RUNNING,
-                                    '_interrupt_protocol')
-
-    def inject_interrupt(self, interrupt_number):
-        self._interrupt_protocol.inject_interrupt(interrupt_number)
-
-
     def get_status(self):
         """
         Returns useful information about the target as a dict.
