@@ -50,8 +50,8 @@ def _handle_remote_interrupt_enter_message(self, message):
 @watch('RemoteInterruptExit')
 def _handle_remote_interrupt_exit_message(self, message):
     # TODO Implement stub and so on
-    self._irq_dst.protocols.send_interrupt_exit_response(message.id,
-                                                       message.success)
+    self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
+                                                       True)
 
 
 def load_plugin(avatar):

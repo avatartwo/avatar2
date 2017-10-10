@@ -129,10 +129,10 @@ class ARMV7MInterruptProtocol(Thread):
             )
 
     def send_interrupt_exit_response(self, id, success):
-        response = RemoteInterruptExitResp(id, success)
+        response = V7MInterruptExitResp(id, success)
         try:
             self._tx_queue.send(response)
-            self.log.debug("Send RemoteInterruptResponse with id %d, %x" % (id, value))
+            self.log.debug("Send RemoteInterruptResponse with id %d" % id)
             return True
         except Exception as e:
             self.log.error("Unable to send response: %s" % e)
