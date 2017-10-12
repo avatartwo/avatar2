@@ -22,7 +22,13 @@ from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMess
 from avatar2.protocols.openocd import OpenOCDProtocol
 
 # ARM System Control Block
-SCB_CPUID = 0xe000ed00
+SCB_CPUID = 0xe000ed00 # What is it
+SCB_STIR  = 0xe000ef00 # Send interrupts here
+SCB_VTOR =  0xe000ed08 # Vector Table offset register
+
+# NVIC stuff
+NVIC_ISER0 = 0xe000e100
+
 
 # CoreSight Constant Addresses
 RCC_APB2ENR      = 0x40021018
@@ -68,12 +74,50 @@ class CoreSightProtocol(Thread):
     def __del__(self):
         self.shutdown()
 
+    def inject_interrupt(self, interrupt_number, cpu_number=0):
+        # Set an interrupt using the STIR
+        self._origin.write_memory(SCB_STIR, 4, interrupt_number)
+
+
+    def enable_interrupt(self, interrupt_number):
+        """
+        Enables an interrupt (e.g., in the NIVC)
+        :param interrupt_number:
+        :return:
+        """
+        assert (0 < interrupt_number < 256)
+        iser_num = interrupt_number >> 5
+        iser_addr = NVIC_ISER0 + (iser_num * 4)
+        # iser_off = interrupt_number % 32
+        # iser_val = self._origin.read_memory(iser_addr, 4)
+        iser_val = ((1 << interrupt_number) & 0x1F)
+        # iser_val |= 0x1 << iser_off
+        self._origin.write_memory(iser_addr, 4, iser_val)
+
+    def get_vtor(self):
+        return self._origin.read_memory(SCB_VTOR, 4)
+    
+    def set_vtor(self, addr):
+        return self._origin.write_memory(SCB_VTOR, 4, addr)
+    
+    def get_isr(self, interrupt_num):
+        return self._origin.read_memory(self.get_vtor() + (interrupt_num * 4), 4)
+
+    def set_isr(self, interrupt_num, addr):
+        return self._origin.write_memory(self.get_vtor() + (interrupt_num * 4), 4, addr)
+
     def cpuid(self):
         c = self._origin.read_memory(SCB_CPUID, 4, 1)
         print("CPUID: %#08x" % c)
-        if c == 0xF:
+        if (0x412fc230 & 0x000f0000) >> 16 == 0xf:
             print("Found ARM Cortex CPUID")
-
+        else:
+            return
+        impl = (c >> 24)
+        vari = (c & 0x00f00000) >> 20
+        part = (c & 0x0000fff0) >> 4
+        rev = (c & 0x0000000f)
+        print("Implementer %#08x, Variant %#08x, Part %#08x, Rev %#08x" % (impl, vari, part, rev))
 
     def shutdown(self):
         self.stop()
@@ -119,6 +163,50 @@ class CoreSightProtocol(Thread):
             self.start()
         except:
             self.log.exception("Error starting Coresight")
+
+    STUB_ADDR = 0x08001336
+    IRET_CODE_ADDR = 0x08000666
+
+    MONITOR_STUB = """
+    writeme: .word 0x0
+    stub: mov r3, pc
+    sub r5, r3, #8
+    ldr r0, [r5]
+    mov r1, #0
+    cmp r1, r0
+    beq stub
+    mov r4, r15
+    add r4, #8
+    str r1, [r5]
+    mov r15, r0
+    """
+
+    def inject_monitor_stub(self, addr=0x20001234, vtor=0x20002000):
+        """
+        Injects a safe monitoring stub.
+        This has the following effects:
+        0. Pivot the VTOR to someplace sane
+        1. Insert an infinite loop at addr
+        2. Set the PC to addr
+        3. set up logic for the injection of interrupt returns.
+           Write to return_code_register to trigger an IRET
+        4.
+        :return:
+        """
+        #self._origin.stop()
+        # Pivot VTOR
+        if self.get_vtor() == 0:
+            self.set_vtor(vtor)
+        # put the stub
+        self._origin.inject_asm(self.MONITOR_STUB, addr)
+        # wreck the IVT
+        for x in range(0, 254):
+            self.set_isr(x, addr+5)
+        self._origin.regs.pc = addr + 4
+
+    def inject_exc_return(exc_return, flag_addr=0x20001234):
+        return nucleo.write_memory(flag_addr, 4, exc_return)
+
 
     def dispatch_exception_packet(self, packet):
         int_num = ((ord(packet[1]) & 0x01) << 8) | ord(packet[0])

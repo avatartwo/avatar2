@@ -27,8 +27,8 @@ def disassemble(self, addr=None, insns=1,
 
     disassembled = 0
     while disassembled < insns:
-        code_len = 0x1000 - addr % 0x1000
-        code = self.read_memory(addr, code_len, raw=True)
+        code_len = 8 * insns
+        code = self.read_memory(addr, 1, code_len, raw=True)
 
         for ins in md.disasm(code, addr):
             ret.append(ins)

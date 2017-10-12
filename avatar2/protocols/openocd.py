@@ -171,6 +171,14 @@ class OpenOCDProtocol(Thread):
             #TODO handle these
             event = mevent.group(1)
             self.log.debug("Target event: %s " % event)
+            # TODO handle these
+            if event == 'halted':
+                avatar_msg = UpdateStateMessage(self._origin, TargetStates.STOPPED)
+                self.avatar.fast_queue.put(avatar_msg)
+            elif event == 'resumed':
+                avatar_msg = UpdateStateMessage(self._origin, TargetStates.RUNNING)
+                self.avatar.fast_queue.put(avatar_msg)
+
         else:
             self.log.warning("Unhandled event message %s" % str)
 
@@ -287,7 +295,10 @@ class OpenOCDProtocol(Thread):
                 # A list of ints
                 write_val = hex(val[i]).rstrip("L")
             write_addr = hex(address + i).rstrip("L")
-            self.execute_command('mww %s %s' % (write_addr, write_val))
+            if wordsize == 1:
+                self.execute_command('mwb %s %s' % (write_addr, write_val))
+            else:
+                self.execute_command('mww %s %s' % (write_addr, write_val))
 
         return True
 
@@ -300,16 +311,15 @@ class OpenOCDProtocol(Thread):
         :param raw:       Whether the read memory should be returned unprocessed
         :return:          The read memory
         """
-        print("nucleo.read_memory(%s, %s, %s, %s)" % (repr(address),
-                                                      repr(wordsize),
-                                                      repr(num_words),
-                                                      repr(raw)))
         num2fmt = {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}
         raw_mem = b''
         words = []
         for i in range(0, num_words, wordsize):
             read_addr = hex(address + i).rstrip('L')
-            resp = self.execute_command('mrw %s' % read_addr)
+            if wordsize == 1:
+                resp = self.execute_command('mrb %s' % read_addr)
+            else:
+                resp = self.execute_command('mrw %s' % read_addr)
             if resp:
                 val = int(resp)
                 raw_mem += binascii.unhexlify(hex(val)[2:].zfill(wordsize * 2))
