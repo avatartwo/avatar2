@@ -97,8 +97,8 @@ class ARMV7MInterruptProtocol(Thread):
                 'avatar-armv7m-enable-irq',
                  {'irq_rx_queue_name': self._tx_queue_name,
                   'irq_tx_queue_name': self._rx_queue_name,
-                  'rmem_rx_queue_name': self._rx_queue_name,
-                  'rmem_tx_queue_name': self._tx_queue_name
+                  'rmem_rx_queue_name': rmem_tx_qname,
+                  'rmem_tx_queue_name': rmem_rx_qname
                  }
             )
         else:

@@ -11,6 +11,7 @@ from avatar2.watchmen import AFTER
 
 from avatar2.message import RemoteInterruptEnterMessage
 from avatar2.message import RemoteInterruptExitMessage
+from avatar2.message import RemoteMemoryWriteMessage
 
 from avatar2.watchmen import watch
 
@@ -31,16 +32,16 @@ def enable_interrupt_forwarding(self, from_target, to_target,
     self._irq_dst = to_target
     self._irq_ignore = [] if disabled_irqs is None else disabled_irqs
 
-    self._handle_remote_interrupt_enter_message = MethodType(_handle_remote_interrupt_enter_message, avatar)
-    self._handle_remote_interrupt_exit_message = MethodType(_handle_remote_interrupt_exit_message, avatar)
-    self._handle_remote_memory_write_message_nvic = MethodType(_handle_remote_memory_write_message_nvic)
+    self._handle_remote_interrupt_enter_message = MethodType(_handle_remote_interrupt_enter_message, self)
+    self._handle_remote_interrupt_exit_message = MethodType(_handle_remote_interrupt_exit_message, self)
+    self._handle_remote_memory_write_message_nvic = MethodType(_handle_remote_memory_write_message_nvic, self)
 
     self.fast_queue_listener.message_handlers.update(
         {RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
          RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message}    
     )
     self.message_handlers.update(
-        RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic
+       {RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic}
     )
 
     from_target.protocols.interrupts.enable_interrupts()
@@ -62,6 +63,7 @@ def _handle_remote_interrupt_exit_message(self, message):
 
 @watch('RemoteMemoryWrite')
 def _handle_remote_memory_write_message_nvic(self, message):
+
     # NVIC address according to coresight manual
     if message.address < 0xe000e000 or message.address > 0xe000f000:
         return self._handle_remote_memory_write_message(message)
@@ -71,7 +73,7 @@ def _handle_remote_memory_write_message_nvic(self, message):
     if message.address == 0xE000ED08:
         success = True
     else:
-        success = mem_range.forwarded_to.write_memory(message.address,
+        success = self._irq_src.write_memory(message.address,
                                                       message.size,
                                                       message.value)
 
