@@ -55,7 +55,8 @@ class CoreSightProtocol(Thread):
 
     def __init__(self, avatar, origin):
         self.avatar = avatar
-        self._avatar_queue = avatar.fast_queue
+        self._avatar_queue = avatar.queue
+        self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
         self.trace_queue = None
         self.trace_buffer = BitStream()
@@ -214,7 +215,7 @@ class CoreSightProtocol(Thread):
 
         msg = RemoteInterruptEnterMessage(self._origin, transition_type,
                                           int_num)
-        self._avatar_queue.put(msg)
+        self._avatar_fast_queue.put(msg)
 
     def run(self):
         DWT_PKTSIZE_BITS = 24

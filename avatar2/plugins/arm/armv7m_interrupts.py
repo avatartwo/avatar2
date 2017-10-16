@@ -31,9 +31,16 @@ def enable_interrupt_forwarding(self, from_target, to_target,
     self._irq_dst = to_target
     self._irq_ignore = [] if disabled_irqs is None else disabled_irqs
 
+    self._handle_remote_interrupt_enter_message = MethodType(_handle_remote_interrupt_enter_message, avatar)
+    self._handle_remote_interrupt_exit_message = MethodType(_handle_remote_interrupt_exit_message, avatar)
+    self._handle_remote_memory_write_message_nvic = MethodType(_handle_remote_memory_write_message_nvic)
+
     self.fast_queue_listener.message_handlers.update(
         {RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
          RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message}    
+    )
+    self.message_handlers.update(
+        RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic
     )
 
     from_target.protocols.interrupts.enable_interrupts()
@@ -53,6 +60,25 @@ def _handle_remote_interrupt_exit_message(self, message):
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
                                                        True)
 
+@watch('RemoteMemoryWrite')
+def _handle_remote_memory_write_message_nvic(self, message):
+    # NVIC address according to coresight manual
+    if message.address < 0xe000e000 or message.address > 0xe000f000:
+        return self._handle_remote_memory_write_message(message)
+
+    # Discard writes to the vector table offset registers
+    # TODO add other blacklists
+    if message.address == 0xE000ED08:
+        success = True
+    else:
+        success = mem_range.forwarded_to.write_memory(message.address,
+                                                      message.size,
+                                                      message.value)
+
+    message.origin.protocols.remote_memory.send_response(message.id, 0,
+                                                         success)
+    return message.id, 0, success
+
 
 def load_plugin(avatar):
     if avatar.arch != ARMV7M:
@@ -62,8 +88,6 @@ def load_plugin(avatar):
     avatar.v7m_irq_rx_queue_name = '/avatar_v7m_irq_rx_queue'
     avatar.v7m_irq_tx_queue_name = '/avatar_v7m_irq_tx_queue'
     avatar.enable_interrupts = MethodType(enable_interrupt_forwarding, avatar)
-    avatar._handle_remote_interrupt_enter_message = MethodType(_handle_remote_interrupt_enter_message, avatar)
-    avatar._handle_remote_interrupt_exit_message = MethodType(_handle_remote_interrupt_exit_message, avatar)
 
     avatar.watchmen.add_watchman('TargetInit', when=AFTER,
                                  callback=add_protocols)

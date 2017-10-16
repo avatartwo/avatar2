@@ -89,11 +89,17 @@ class ARMV7MInterruptProtocol(Thread):
 
     def enable_interrupts(self):
         if isinstance(self._origin, QemuTarget):
+            #TODO: Make this more clean, i.e., check for remote memory
+            rmem_rx_qname = self._origin.protocols.remote_memory.rx_queue_name
+            rmem_tx_qname = self._origin.protocols.remote_memory.tx_queue_name
             # the tx-queue for qemu is the rx-queue for avatar and vice versa
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-enable-irq',
-                 {'rx_queue_name': self._tx_queue_name,
-                  'tx_queue_name': self._rx_queue_name}
+                 {'irq_rx_queue_name': self._tx_queue_name,
+                  'irq_tx_queue_name': self._rx_queue_name,
+                  'rmem_rx_queue_name': self._rx_queue_name,
+                  'rmem_tx_queue_name': self._tx_queue_name
+                 }
             )
         else:
             raise Exception("V7MInterruptProtocol is not implemented for %s" %
