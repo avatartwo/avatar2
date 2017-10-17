@@ -57,7 +57,8 @@ def _handle_remote_interrupt_enter_message(self, message):
 
 @watch('RemoteInterruptExit')
 def _handle_remote_interrupt_exit_message(self, message):
-    # TODO Implement stub and so on
+
+    self._irq_src.protocols.interrupts.inject_exc_return(message.transition_type)
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
                                                        True)
 
@@ -93,5 +94,4 @@ def load_plugin(avatar):
 
     avatar.watchmen.add_watchman('TargetInit', when=AFTER,
                                  callback=add_protocols)
-
 
