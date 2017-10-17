@@ -7,7 +7,6 @@ else:
 import time
 import os
 from avatar2.targets import Target
-from avatar2.protocols.gdb import GDBProtocol
 from avatar2.protocols.openocd import OpenOCDProtocol
 from avatar2.watchmen import watch
 
@@ -71,5 +70,5 @@ class OpenOCDTarget(Target):
             openocd.reset()
 
         self.protocols.set_all(openocd)
-
+        self.protocols.monitor = openocd
         self.wait()
