@@ -24,7 +24,6 @@ class V7MInterruptExitResp(Structure):
     ]
 
 
-
 class ARMV7MInterruptProtocol(Thread):
     """
     This protocol has two purposes: 

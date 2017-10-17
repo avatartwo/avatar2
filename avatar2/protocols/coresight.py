@@ -162,11 +162,10 @@ class CoreSightProtocol(Thread):
             self.log.debug("Starting interrupt handling thread")
             self.daemon=True
             self.start()
+            #self.inject_monitor_stub()
         except:
             self.log.exception("Error starting Coresight")
 
-    STUB_ADDR = 0x08001336
-    IRET_CODE_ADDR = 0x08000666
 
     MONITOR_STUB = """
     writeme: .word 0x0
@@ -204,6 +203,10 @@ class CoreSightProtocol(Thread):
         for x in range(0, 254):
             self.set_isr(x, addr+5)
         self._origin.regs.pc = addr + 4
+        #for x in range(0,3):
+        #    iser = NVIC_ISER0 + 4 * x
+        #    self._origin.write_memory(iser, 4, 0xffffffff)
+
 
     def inject_exc_return(exc_return, flag_addr=0x20001234):
         return nucleo.write_memory(flag_addr, 4, exc_return)
