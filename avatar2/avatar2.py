@@ -272,7 +272,7 @@ class Avatar(Thread):
 
         message.origin.protocols.remote_memory.send_response(message.id, 0,
                                                              success)
-        return message.id, 0, success
+        return message.id, message.value, success
 
     def run(self):
         """

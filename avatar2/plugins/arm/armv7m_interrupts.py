@@ -80,7 +80,7 @@ def _handle_remote_memory_write_message_nvic(self, message):
 
     message.origin.protocols.remote_memory.send_response(message.id, 0,
                                                          success)
-    return message.id, 0, success
+    return message.id, message.value, success
 
 
 def load_plugin(avatar):
