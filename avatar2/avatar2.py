@@ -318,6 +318,7 @@ class AvatarFastQueueProcessor(Thread):
         self.daemon = True
         self.message_handlers = { 
             UpdateStateMessage: self._fast_handle_update_state_message,
+            BreakpointHitMessage: self._fast_handle_update_state_message,
         }
         self.start()
 
