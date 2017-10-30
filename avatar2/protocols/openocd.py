@@ -459,10 +459,10 @@ class OpenOCDProtocol(Thread):
     def remove_breakpoint(self, bkpt):
         """Deletes a breakpoint"""
         cmd = ['rbp']
-        if isinstance(line, int):
-            cmd.append("%#08x" % line)
+        if isinstance(bkpt, int):
+            cmd.append("%#08x" % bkpt)
         else:
-            cmd.append(str(line))
+            cmd.append(str(bkpt))
         try:
             self.execute_command(" ".join(cmd))
             return True

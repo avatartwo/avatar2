@@ -171,7 +171,7 @@ class CoreSightProtocol(Thread):
     writeme: .word 0x0
     loop: b loop
     stub: mov r3, pc
-    sub r5, r3, #8
+    sub r5, r3, #10
     ldr r0, [r5]
     mov r1, #0
     cmp r1, r0
@@ -202,7 +202,7 @@ class CoreSightProtocol(Thread):
         self._origin.inject_asm(self.MONITOR_STUB, addr)
         # wreck the IVT
         for x in range(0, 254):
-            self.set_isr(x, addr+9)
+            self.set_isr(x, addr+7)
             #self.set_isr(x, 0x20000000)
         self._origin.regs.pc = addr + 4
         #for x in range(0,3):
