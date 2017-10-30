@@ -49,10 +49,10 @@ class ARM_CORTEX_M3(ARM):
 
             if args[0] == 'pc' or args[0] == 'cpsr':
                 cpsr = qemu.read_register('cpsr')
-                if cpsr & 0x20:
+                if cpsr & 1<<24:
                     return
                 else:
-                    cpsr |= 0x20
+                    cpsr |= 1<<24
                     qemu.write_register('cpsr', cpsr)
 
     @staticmethod
@@ -60,6 +60,7 @@ class ARM_CORTEX_M3(ARM):
         avatar.watchmen.add('TargetRegisterWrite', 'after',
                             ARM_CORTEX_M3.register_write_cb)
 
+        pass
 ARMV7M = ARM_CORTEX_M3
 
 
