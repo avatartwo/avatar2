@@ -284,7 +284,8 @@ class Avatar(Thread):
         while True:
             if self._close.is_set():
                 break
-
+            if self.queue.is_empty():
+                continue
             try:
                 message = self.queue.get(timeout=0.5)
             except:
@@ -332,7 +333,9 @@ class AvatarFastQueueProcessor(Thread):
             if self._close.is_set():
                 break
 
-
+            # get() blocks sometimes.  This is a non-blocking wait.
+            if self.avatar.fast_queue.is_empty():
+                continue
             try:
                 message = self.avatar.fast_queue.get(timeout=0.5)
             except queue.Empty as e:

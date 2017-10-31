@@ -70,6 +70,10 @@ class CoreSightProtocol(Thread):
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
             logging.getLogger(self.__class__.__name__)
+        self._monitor_stub_base = None
+        self._monitor_stub_isr = None
+        self._monitor_stub_loop = None
+
         Thread.__init__(self)
 
     def __del__(self):
@@ -166,7 +170,13 @@ class CoreSightProtocol(Thread):
         except:
             self.log.exception("Error starting Coresight")
 
-
+    """
+    What this does:
+    Hang in a loop at `loop`
+    When an interrupt comes, go to `stub`
+    At `stub`, load `writeme`, if it's not zero, reset it, and jump to the written value.
+    This lets us inject exc_return values into the running program
+    """
     MONITOR_STUB = """
     writeme: .word 0x0
     loop: b loop
@@ -176,11 +186,33 @@ class CoreSightProtocol(Thread):
     mov r1, #0
     cmp r1, r0
     beq stub
-    mov r4, r15
-    add r4, #8
     str r1, [r5]
     mov r15, r0
     """
+
+    def get_user_pc(self):
+        """
+        Return the "user PC", that is, the PC at the time an interrupt occurred.
+        Returns None if we're not in an interrupt right now.
+
+        :return:
+        """
+        if self.get_current_isr_num() > 0:
+            sp = self.get_register('sp')
+            val = self.read_memory(sp - 24)
+            return val
+        return None
+
+    def get_current_isr_num(self):
+        """
+        If we're in an interrupt, return the current ISR number that we're in.
+
+        :return:
+        """
+        # The bottom 8 bits of xPSR
+        xpsr = self.get_register("xPSR")
+        xpsr &= 0xff
+        return xpsr
 
     def inject_monitor_stub(self, addr=0x20001234, vtor=0x20002000):
         """
@@ -194,25 +226,29 @@ class CoreSightProtocol(Thread):
         4.
         :return:
         """
-        #self._origin.stop()
+        self._monitor_stub_base = addr
+        self._monitor_stub_loop = addr + 4
+        self._monitor_stub_isr = addr + 7
+
         # Pivot VTOR
         if self.get_vtor() == 0:
             self.set_vtor(vtor)
+
         # put the stub
-        self._origin.inject_asm(self.MONITOR_STUB, addr)
+        self._origin.inject_asm(self.MONITOR_STUB, self._monitor_stub_base)
         # wreck the IVT
         for x in range(0, 254):
-            self.set_isr(x, addr+7)
-            #self.set_isr(x, 0x20000000)
-        self._origin.regs.pc = addr + 4
-        #for x in range(0,3):
-        #    iser = NVIC_ISER0 + 4 * x
-        #    self._origin.write_memory(iser, 4, 0xffffffff)
+            self.set_isr(x, self._monitor_stub_isr)
+        if self._origin.state != TargetStates.STOPPED:
+            self.log.warning("Not setting PC to the monitor stub; Target not stopped")
+        else:
+            self._origin.regs.pc = self._monitor_stub_loop
 
-
-    def inject_exc_return(exc_return, flag_addr=0x20001234):
-        return nucleo.write_memory(flag_addr, 4, exc_return)
-
+    def inject_exc_return(self, exc_return):
+        if not self._monitor_stub_base:
+            self.log.error("You need to inject the monitor stub before you can inject exc_returns")
+            return False
+        return self._origin.write_memory(self._monitor_stub_base, 4, exc_return)
 
     def dispatch_exception_packet(self, packet):
         int_num = ((ord(packet[1]) & 0x01) << 8) | ord(packet[0])
