@@ -12,6 +12,7 @@ from avatar2.watchmen import AFTER
 from avatar2.message import RemoteInterruptEnterMessage
 from avatar2.message import RemoteInterruptExitMessage
 from avatar2.message import RemoteMemoryWriteMessage
+from avatar2.message import BreakpointHitMessage
 
 from avatar2.watchmen import watch
 
@@ -24,6 +25,17 @@ def add_protocols(self, **kwargs):
         target.protocols.interrupts = ARMV7MInterruptProtocol(
             target, self.v7m_irq_rx_queue_name, self.v7m_irq_tx_queue_name
         )
+
+def forward_interrupt(self, message, **kwargs):
+    target = message.origin
+    if isinstance(target, OpenOCDTarget):
+        if message.address == message.origin.protocols.interrupts._monitor_stub_isr -1:
+            xpsr = target.read_register('xPSR')
+            irq_num = xpsr & 0xff
+            self.log.info("Injecting IRQ 0x%x" % irq_num)
+            #TODO debug this stuff and make it working :(
+            #self._irq_dst.protocols.interrupts.inject_interrupt(irq_num)
+    
 
 
 def enable_interrupt_forwarding(self, from_target, to_target=None,
@@ -49,6 +61,16 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
         to_target.protocols.interrupts.enable_interrupts()
 
 
+    from_target.set_breakpoint(
+        from_target.protocols.interrupts._monitor_stub_isr, hardware=True)
+
+    # OpenOCDProtocol does not emit breakpointhitmessages currently,
+    # So we listen on state-updates and figure out the rest on our own
+    self.watchmen.add_watchman('BreakpointHit', when=AFTER,
+                                 callback=forward_interrupt)
+
+
+#this guy is currently not used
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
     if not self._irq_dst:

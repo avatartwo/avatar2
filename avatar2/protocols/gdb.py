@@ -108,6 +108,9 @@ class GDBResponseListener(Thread):
                 if payload.get('signal-name') == 'SIGSEGV':
                     avatar_msg = UpdateStateMessage(
                         self._origin, TargetStates.EXITED)
+                elif payload.get('signal-name') == 'SIGTRAP':
+                    avatar_msg = BreakpointHitMessage(self._origin, -1,
+                                                      int(payload['frame']['addr'], 16))
                 else:
                     avatar_msg = UpdateStateMessage(
                         self._origin, TargetStates.STOPPED)

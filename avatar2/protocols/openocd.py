@@ -202,7 +202,7 @@ class OpenOCDProtocol(Thread):
         Shuts down OpenOCD
         returns: True on success, else False
         """
-        self.execute_command('ocd_shutdown')
+        #self.execute_command('ocd_shutdown')
         self._close.set()
         if self.telnet:
             self.telnet.close()

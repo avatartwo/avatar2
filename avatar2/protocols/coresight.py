@@ -135,7 +135,7 @@ class CoreSightProtocol(Thread):
     def has_bits_to_read(self, b, n):
         return b.len - b.pos > n
 
-    def enable_interrupts(self):
+    def enable_interrupts(self, use_tcl_tracing=False, use_stub=True):
         try:
             self.log.info("Starting CoreSight Protocol")
             if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
@@ -143,30 +143,34 @@ class CoreSightProtocol(Thread):
             openocd = self._origin.protocols.monitor
             self.log.debug("Resetting target")
             openocd.reset()
-            # Enable TCL tracing
-            if not openocd.trace_enabled.is_set():
-                openocd.enable_trace()
+
+            if use_tcl_tracing:
+                # Enable TCL tracing
                 if not openocd.trace_enabled.is_set():
-                    self.log.error("Can't get trace events without tcl_trace! aborting...")
-                    return False
-            self.trace_queue = openocd.trace_queue
-            # Enable the TPIO output to the FIFO
-            self.log.debug("Enabling TPIU output events")
-            openocd.execute_command('tpiu config internal - uart off 32000000')
-            # Enable the DWT to get interrupts
-            self.log.debug("Enabling exceptions in DWT")
-            openocd.execute_command("setbits $COREDEBUG_DEMCR 0x1000000") # Enable access to trace regs - set TRCENA to 1
-            openocd.execute_command("mww $DWT_CTRL 0x40010000")  # exc trace only
-            self.log.debug("Enabling ITM passthrough of DWT events")
-            # Enable the ITM to pass DWT output to the TPIU
-            openocd.execute_command("mww $ITM_LAR 0xC5ACCE55")
-            openocd.execute_command("mww $ITM_TCR 0x0000000d")  # TraceBusID 1, enable dwt/itm/sync
-            openocd.execute_command("mww $ITM_TER 0xffffffff")  # Enable all stimulus ports
-            # Run our little daemon thingy
-            self.log.debug("Starting interrupt handling thread")
-            self.daemon=True
-            self.start()
-            #self.inject_monitor_stub()
+                    openocd.enable_trace()
+                    if not openocd.trace_enabled.is_set():
+                        self.log.error("Can't get trace events without tcl_trace! aborting...")
+                        return False
+                self.trace_queue = openocd.trace_queue
+                # Enable the TPIO output to the FIFO
+                self.log.debug("Enabling TPIU output events")
+                openocd.execute_command('tpiu config internal - uart off 32000000')
+                # Enable the DWT to get interrupts
+                self.log.debug("Enabling exceptions in DWT")
+                openocd.execute_command("setbits $COREDEBUG_DEMCR 0x1000000") # Enable access to trace regs - set TRCENA to 1
+                openocd.execute_command("mww $DWT_CTRL 0x40010000")  # exc trace only
+                self.log.debug("Enabling ITM passthrough of DWT events")
+                # Enable the ITM to pass DWT output to the TPIU
+                openocd.execute_command("mww $ITM_LAR 0xC5ACCE55")
+                openocd.execute_command("mww $ITM_TCR 0x0000000d")  # TraceBusID 1, enable dwt/itm/sync
+                openocd.execute_command("mww $ITM_TER 0xffffffff")  # Enable all stimulus ports
+                # Run our little daemon thingy
+                self.log.debug("Starting interrupt handling thread")
+                self.daemon=True
+                self.start()
+            
+            elif use_stub:
+                self.inject_monitor_stub()
         except:
             self.log.exception("Error starting Coresight")
 

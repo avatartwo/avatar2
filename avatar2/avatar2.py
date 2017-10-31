@@ -284,7 +284,7 @@ class Avatar(Thread):
         while True:
             if self._close.is_set():
                 break
-            if self.queue.is_empty():
+            if self.queue.empty():
                 continue
             try:
                 message = self.queue.get(timeout=0.5)
@@ -324,6 +324,7 @@ class AvatarFastQueueProcessor(Thread):
         self.start()
 
     def _fast_handle_update_state_message(self, message):
+        print message
         message.origin.update_state(message.state)
         self.avatar.queue.put(message)
 
@@ -334,7 +335,7 @@ class AvatarFastQueueProcessor(Thread):
                 break
 
             # get() blocks sometimes.  This is a non-blocking wait.
-            if self.avatar.fast_queue.is_empty():
+            if self.avatar.fast_queue.empty():
                 continue
             try:
                 message = self.avatar.fast_queue.get(timeout=0.5)

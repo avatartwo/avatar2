@@ -8,6 +8,7 @@ import time
 import os
 from avatar2.targets import Target
 from avatar2.protocols.openocd import OpenOCDProtocol
+from avatar2.protocols.gdb import GDBProtocol
 from avatar2.watchmen import watch
 
 
@@ -43,17 +44,16 @@ class OpenOCDTarget(Target):
                                   tcl_port=self.tcl_port,
                                   gdb_port=self.gdb_port,
                                   output_directory=self.avatar.output_directory)
-        """
+        time.sleep(.1)  # give openocd time to start. Find a better solution?
+        self.log.debug("Connecting to OpenOCD telnet port")
+        ocd_connected = openocd.connect()
+
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
                           arch=self._arch,
                           additional_args=self.gdb_additional_args,
                           avatar=self.avatar, origin=self)
-        """
-        time.sleep(.1)  # give openocd time to start. Find a better solution?
-        self.log.debug("Connecting to OpenOCD telnet port")
-        ocd_connected = openocd.connect()
-        #self.log.debug("Connecting to OpenOCD GDB port")
-        #gdb_connected = gdb.remote_connect(port=self.gdb_port)
+        self.log.debug("Connecting to OpenOCD GDB port")
+        gdb_connected = gdb.remote_connect(port=self.gdb_port)
         script_has_reset = False
         if self.openocd_script:
             with open(self.openocd_script) as f:
@@ -71,4 +71,5 @@ class OpenOCDTarget(Target):
 
         self.protocols.set_all(openocd)
         self.protocols.monitor = openocd
+        self.protocols.execution = gdb
         self.wait()
