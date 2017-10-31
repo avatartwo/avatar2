@@ -220,7 +220,7 @@ class CoreSightProtocol(Thread):
 
         msg = RemoteInterruptEnterMessage(self._origin, transition_type,
                                           int_num)
-        self._avatar_fast_queue.put(msg)
+        self._avatar_queue.put(msg)
 
     def run(self):
         DWT_PKTSIZE_BITS = 24

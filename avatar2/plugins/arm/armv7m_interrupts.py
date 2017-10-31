@@ -26,7 +26,7 @@ def add_protocols(self, **kwargs):
         )
 
 
-def enable_interrupt_forwarding(self, from_target, to_target,
+def enable_interrupt_forwarding(self, from_target, to_target=None,
                                 disabled_irqs=None):
     self._irq_src = from_target
     self._irq_dst = to_target
@@ -36,7 +36,7 @@ def enable_interrupt_forwarding(self, from_target, to_target,
     self._handle_remote_interrupt_exit_message = MethodType(_handle_remote_interrupt_exit_message, self)
     self._handle_remote_memory_write_message_nvic = MethodType(_handle_remote_memory_write_message_nvic, self)
 
-    self.fast_queue_listener.message_handlers.update(
+    self.message_handlers.update(
         {RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
          RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message}    
     )
@@ -45,11 +45,14 @@ def enable_interrupt_forwarding(self, from_target, to_target,
     )
 
     from_target.protocols.interrupts.enable_interrupts()
-    to_target.protocols.interrupts.enable_interrupts()
+    if to_target:
+        to_target.protocols.interrupts.enable_interrupts()
 
 
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
+    if not self._irq_dst:
+        return
     if message.transition_type == 1 and \
        message.interrupt_num not in self._irq_ignore:
         self._irq_dst.protocols.interrupts.inject_interrupt(
@@ -58,6 +61,8 @@ def _handle_remote_interrupt_enter_message(self, message):
 @watch('RemoteInterruptExit')
 def _handle_remote_interrupt_exit_message(self, message):
 
+    if not self._irq_dst or not self._irq_src:
+        return
     self._irq_src.protocols.interrupts.inject_exc_return(message.transition_type)
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
                                                        True)
