@@ -203,8 +203,8 @@ class CoreSightProtocol(Thread):
         :return:
         """
         if self.get_current_isr_num() > 0:
-            sp = self.get_register('sp')
-            val = self.read_memory(sp - 24)
+            sp = self._origin.read_register('sp')
+            val = self._origin.read_memory(sp - 24)
             return val
         return None
 
@@ -215,7 +215,7 @@ class CoreSightProtocol(Thread):
         :return:
         """
         # The bottom 8 bits of xPSR
-        xpsr = self.get_register("xPSR")
+        xpsr = self._origin.read_register("xPSR")
         xpsr &= 0xff
         return xpsr
 
