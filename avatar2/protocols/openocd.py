@@ -240,6 +240,7 @@ class OpenOCDProtocol(Thread):
                     self.shutdown()
                     break
                 if line is not None:
+                    #print line
                     line = line.rstrip(END_OF_MSG)
                     # This is async target notification data.  Don't return it normally
                     if line.startswith("type"):

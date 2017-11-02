@@ -182,16 +182,17 @@ class CoreSightProtocol(Thread):
     This lets us inject exc_return values into the running program
     """
     MONITOR_STUB = """
-    writeme: .word 0x0
     loop: b loop
-    stub: mov r3, pc
-    sub r5, r3, #10
-    ldr r0, [r5]
     mov r1, #0
+    sub r1, r1, #1
+    mov r5, pc
+    stub: 
+    ldr r0, [r5, #8]
     cmp r1, r0
     beq stub
-    str r1, [r5]
-    mov r15, r0
+    str r1, [r5, #8]
+    bx r0
+    writeme: .word 0xffffffff
     """
 
     def get_user_pc(self):
@@ -231,8 +232,9 @@ class CoreSightProtocol(Thread):
         :return:
         """
         self._monitor_stub_base = addr
-        self._monitor_stub_loop = addr + 4
-        self._monitor_stub_isr = addr + 7
+        self._monitor_stub_loop = addr
+        self._monitor_stub_isr = addr + 3
+        self._monitor_stub_writeme = addr + 0x16
 
         # Pivot VTOR
         if self.get_vtor() == 0:
@@ -252,7 +254,8 @@ class CoreSightProtocol(Thread):
         if not self._monitor_stub_base:
             self.log.error("You need to inject the monitor stub before you can inject exc_returns")
             return False
-        return self._origin.write_memory(self._monitor_stub_base, 4, exc_return)
+        print exc_return 
+        return self._origin.write_memory(self._monitor_stub_writeme, 4, exc_return)
 
     def dispatch_exception_packet(self, packet):
         int_num = ((ord(packet[1]) & 0x01) << 8) | ord(packet[0])

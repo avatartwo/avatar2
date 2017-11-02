@@ -26,16 +26,22 @@ def add_protocols(self, **kwargs):
             target, self.v7m_irq_rx_queue_name, self.v7m_irq_tx_queue_name
         )
 
-def forward_interrupt(self, message, **kwargs):
+def forward_interrupt(self, message): #, **kwargs):
     target = message.origin
     if isinstance(target, OpenOCDTarget):
         if message.address == message.origin.protocols.interrupts._monitor_stub_isr -1:
+            xpsr = target.read_register('lr')
             xpsr = target.read_register('xPSR')
             irq_num = xpsr & 0xff
             self.log.info("Injecting IRQ 0x%x" % irq_num)
             #TODO debug this stuff and make it working :(
-            #self._irq_dst.protocols.interrupts.inject_interrupt(irq_num)
+            self._irq_dst.protocols.interrupts.inject_interrupt(irq_num)
+    self.queue.put(message)
     
+def continue_execution(self, message, **kwargs):
+    target = message.origin
+    if message.address == message.origin.protocols.interrupts._monitor_stub_isr -1:
+        target.cont()
 
 
 def enable_interrupt_forwarding(self, from_target, to_target=None,
@@ -67,8 +73,17 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
     # OpenOCDProtocol does not emit breakpointhitmessages currently,
     # So we listen on state-updates and figure out the rest on our own
     self.watchmen.add_watchman('BreakpointHit', when=AFTER,
-                                 callback=forward_interrupt)
+                                 callback=continue_execution)
+    self._handle_breakpoint_handler  = MethodType(forward_interrupt, self)
+    self.fast_queue_listener.message_handlers.update({
+            BreakpointHitMessage: self._handle_breakpoint_handler
+        }
+    )
 
+    #def _fast_handle_update_state_message(self, message):
+        #print message
+        #message.origin.update_state(message.state)
+        #self.avatar.queue.put(message)
 
 #this guy is currently not used
 @watch('RemoteInterruptEnter')
