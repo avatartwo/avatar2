@@ -324,7 +324,7 @@ class AvatarFastQueueProcessor(Thread):
         self.start()
 
     def _fast_handle_update_state_message(self, message):
-        print message
+        #print message
         message.origin.update_state(message.state)
         self.avatar.queue.put(message)
 
