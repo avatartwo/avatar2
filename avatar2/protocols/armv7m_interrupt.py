@@ -48,7 +48,7 @@ class ARMV7MInterruptProtocol(Thread):
         self._tx_queue_name = tx_queue_name
         self._rx_queue = None
         self._tx_queue = None
-        self._avatar_queue = origin.avatar.fast_queue
+        self._avatar_queue = origin.avatar.queue
         self._origin = origin
         self._close = Event()
         self._closed = Event()
