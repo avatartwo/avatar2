@@ -185,12 +185,12 @@ class CoreSightProtocol(Thread):
     loop: b loop
     mov r1, #0
     sub r1, r1, #1
-    mov r5, pc
+    mov r3, pc
     stub: 
-    ldr r0, [r5, #8]
+    ldr r0, [r3, #8]
     cmp r1, r0
     beq stub
-    str r1, [r5, #8]
+    str r1, [r3, #8]
     bx r0
     writeme: .word 0xffffffff
     """
