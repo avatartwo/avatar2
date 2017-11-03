@@ -26,15 +26,15 @@ def add_protocols(self, **kwargs):
             target, self.v7m_irq_rx_queue_name, self.v7m_irq_tx_queue_name
         )
 
+
 def forward_interrupt(self, message): #, **kwargs):
+    global stawp
     target = message.origin
     if isinstance(target, OpenOCDTarget):
         if message.address == message.origin.protocols.interrupts._monitor_stub_isr -1:
-            xpsr = target.read_register('lr')
             xpsr = target.read_register('xPSR')
             irq_num = xpsr & 0xff
             self.log.info("Injecting IRQ 0x%x" % irq_num)
-            #TODO debug this stuff and make it working :(
             self._irq_dst.protocols.interrupts.inject_interrupt(irq_num)
     self.queue.put(message)
     

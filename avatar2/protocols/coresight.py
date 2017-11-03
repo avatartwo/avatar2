@@ -183,16 +183,19 @@ class CoreSightProtocol(Thread):
     """
     MONITOR_STUB = """
     loop: b loop
-    mov r1, #0
-    sub r1, r1, #1
-    mov r3, pc
+    nop
+    mov r2, pc
+    ldr r1, [r2, #16]
     stub: 
-    ldr r0, [r3, #8]
+    ldr r0, [r2, #12]
     cmp r1, r0
     beq stub
-    str r1, [r3, #8]
+    str r1, [r2, #12]
     bx r0
+    nop
     writeme: .word 0xffffffff
+    loadme: .word 0xffffffff
+    
     """
 
     def get_user_pc(self):
@@ -203,8 +206,8 @@ class CoreSightProtocol(Thread):
         :return:
         """
         if self.get_current_isr_num() > 0:
-            sp = self._origin.read_register('sp')
-            val = self._origin.read_memory(sp - 24)
+            sp = self.get_register('sp')
+            val = self.read_memory(sp - 24)
             return val
         return None
 
@@ -215,7 +218,7 @@ class CoreSightProtocol(Thread):
         :return:
         """
         # The bottom 8 bits of xPSR
-        xpsr = self._origin.read_register("xPSR")
+        xpsr = self.get_register("xPSR")
         xpsr &= 0xff
         return xpsr
 
@@ -234,7 +237,7 @@ class CoreSightProtocol(Thread):
         self._monitor_stub_base = addr
         self._monitor_stub_loop = addr
         self._monitor_stub_isr = addr + 3
-        self._monitor_stub_writeme = addr + 0x16
+        self._monitor_stub_writeme = addr + 0x14
 
         # Pivot VTOR
         if self.get_vtor() == 0:
@@ -254,7 +257,7 @@ class CoreSightProtocol(Thread):
         if not self._monitor_stub_base:
             self.log.error("You need to inject the monitor stub before you can inject exc_returns")
             return False
-        print exc_return 
+
         return self._origin.write_memory(self._monitor_stub_writeme, 4, exc_return)
 
     def dispatch_exception_packet(self, packet):
@@ -263,7 +266,7 @@ class CoreSightProtocol(Thread):
 
         msg = RemoteInterruptEnterMessage(self._origin, transition_type,
                                           int_num)
-        self._avatar_queue.put(msg)
+        self._avatar_fast_queue.put(msg)
 
     def run(self):
         DWT_PKTSIZE_BITS = 24
