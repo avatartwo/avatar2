@@ -217,17 +217,22 @@ class GDBProtocol(object):
             additional_args=[],
             async_message_handler=None,
             avatar=None,
-            origin=None):
+            origin=None,
+            binary=None,
+            local_arguments=None):
         self._async_message_handler = async_message_handler
         self._arch = arch
         self._register_mapping = dict(arch.registers)
+
+        gdb_args = ['--nx', '--quiet', '--interpreter=mi2']
+        gdb_args += additional_args
+        if binary is not None:
+            gdb_args += ['--args', binary]
+            if local_arguments is not None:
+                gdb_args += [local_arguments]
         self._gdbmi = pygdbmi.gdbcontroller.GdbController(
             gdb_path=gdb_executable,
-            gdb_args=[
-                         '--nx',
-                         '--quiet',
-                         '--interpreter=mi2'] +
-                     additional_args,
+            gdb_args=gdb_args,
             verbose=False)  # set to True for debugging
         queue = avatar.queue if avatar is not None else None
         fast_queue = avatar.fast_queue if avatar is not None else None
@@ -655,6 +660,16 @@ class GDBProtocol(object):
 
         self.log.debug(
             "Attempted to step on the target. Received response: %s" %
+            resp)
+        return ret
+
+    def run(self):
+        """Starts the execution of the target
+        :returns: True on success"""
+        ret, resp = self._sync_request(["-exec-run"], GDB_PROT_RUN)
+
+        self.log.debug(
+            "Attempted to start execution on the target. Received response: %s" %
             resp)
         return ret
 
