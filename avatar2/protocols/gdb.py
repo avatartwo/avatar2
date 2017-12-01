@@ -422,7 +422,8 @@ class GDBProtocol(object):
                        regex=False,
                        condition=None,
                        ignore_count=0,
-                       thread=0):
+                       thread=0,
+                       pending=False):
         """Inserts a breakpoint
 
         :param bool hardware: Hardware breakpoint
@@ -451,6 +452,8 @@ class GDBProtocol(object):
         if thread:
             cmd.append("-p")
             cmd.append("%d" % thread)
+        if pending:
+            cmd.append("-f")
 
         if isinstance(line, int):
             cmd.append("*0x%x" % line)
