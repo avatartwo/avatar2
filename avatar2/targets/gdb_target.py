@@ -12,6 +12,7 @@ class GDBTarget(Target):
                  gdb_serial_baud_rate=38400,
                  gdb_serial_parity='none',
                  serial=False,
+                 enable_init_files=False,
                  local_binary=None,
                  arguments=None,
                  **kwargs
@@ -29,6 +30,7 @@ class GDBTarget(Target):
         self._serial = serial
         self._local_binary = local_binary
         self._arguments = arguments
+        self._enable_init_files = enable_init_files
 
     def init(self):
 
@@ -36,6 +38,7 @@ class GDBTarget(Target):
                           arch=self._arch,
                           additional_args=self.gdb_additional_args,
                           avatar=self.avatar, origin=self,
+                          enable_init_files=self._enable_init_files,
                           binary=self._local_binary, local_arguments=self._arguments)
 
         # If we are debugging a program locally,

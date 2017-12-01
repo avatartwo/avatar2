@@ -218,13 +218,17 @@ class GDBProtocol(object):
             async_message_handler=None,
             avatar=None,
             origin=None,
+            enable_init_files=False,
             binary=None,
             local_arguments=None):
         self._async_message_handler = async_message_handler
         self._arch = arch
         self._register_mapping = dict(arch.registers)
 
-        gdb_args = ['--nx', '--quiet', '--interpreter=mi2']
+        gdb_args = []
+        if not enable_init_files:
+            gdb_args += ['--nx']
+        gdb_args = ['--quiet', '--interpreter=mi2']
         gdb_args += additional_args
         if binary is not None:
             gdb_args += ['--args', binary]
