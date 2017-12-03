@@ -144,6 +144,7 @@ class X86(Architecture):
 class X86_64(X86):
     qemu_name = 'x86_64'
     gdb_name = 'i386:x86-64'
+    angr_name = 'AMD64'
     registers = {'rax': 0,
                  'rbx': 1,
                  'rcx': 2,
