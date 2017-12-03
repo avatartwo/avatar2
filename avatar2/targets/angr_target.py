@@ -3,12 +3,11 @@ from types import MethodType
 
 from angr import sim_options as o
 
-
 import logging
 import Queue as queue
 
 import angr
-from angr.storage.paged_memory import BasePage, SimPagedMemory
+from angr.storage.paged_memory import Page, SimPagedMemory, TreePage
 from angr.storage.memory_object import SimMemoryObject
 
 
@@ -18,51 +17,73 @@ from claripy import BVV
 from avatar2.targets import Target, TargetStates
 from avatar2.message import RemoteMemoryReadMessage, RemoteMemoryWriteMessage
 
-
-class AvatarPage(BasePage):
-
-    def __init__(self, *args, **kwargs):
-        origin = kwargs.pop('origin', None)
-        self.id = kwargs.pop('req_id', 0)
-
-        super(self.__class__, self).__init__(*args, **kwargs)
+class AvatarPage(TreePage):
+    def __init__(self, start, size, origin=None, req_id=0, cowed=False,
+                 *args, **kwargs):
+        super(self.__class__, self).__init__(page_addr=start,
+                                             page_size=size,
+                                             *args, **kwargs)
+        self.id = req_id
+        self.cowed = cowed
         self.avatar = origin.avatar
         self.origin = origin
 
     def copy(self):
         return AvatarPage(self._page_addr, self._page_size,
-                          permissions=self.permissions,
                           origin=self.origin, req_id=self.id)
 
+    def _copy_args(self):
+        ret = super(self.__class__, self)._copy_args()
+        ret['origin'] = self.origin
+        ret['req_id'] = self.id
+        ret['cowed'] = self.cowed
+        return ret
 
-    def store_mo(self, state, new_mo, overwrite=True): 
-        #overwrite=True means that that it's a normal write, False means that the blank parts of the page are being filled in with default data
-         # do your stuff
+    def fill_page_from_remote(self, state):
+        start_addr = self._page_addr
+        end_addr = self._page_addr + self._page_size
+        for x in xrange(start_addr, end_addr, 4):
+            start, value = self.load_slice(state, x, x+4)[0]
+            super(self.__class__, self).store_mo(state, value, overwrite=True)
 
-        address = new_mo.base
-        value = state.se.any_int(new_mo.object)
-        size = new_mo.size()/8 # Claripy uses bit- and not bytesizes
 
-        #import IPython; IPython.embed()
-        
-        MemoryForwardMsg = RemoteMemoryWriteMessage(self.origin, self.id,
-                                                    address, value, size)
-        self.avatar.queue.put(MemoryForwardMsg)
-        r_id, r_value, r_success = self.origin.response_queue.get()
-        if self.id != r_id:
-            raise("AvatarAngrMemory received mismatching id!")
-        if r_success != True:
-            raise Exception("AvatarAngrMemory remote memory request failed!")
-         
-         
-        self.id += 1
-        return r_success
+    # In case of a store operation, we fetch the whole page from RemoteMemory and feed
+    # into a regular angr Page
+    def store_mo(self, state, new_mo, overwrite=True):
+        # overwrite=True means that that it's a normal write,
+        # False means that the blank parts of the page are being filled in with default data
+        if self.cowed:
+            return super(self.__class__, self).store_mo(state, new_mo, overwrite)
 
+        self.fill_page_from_remote(state)
+        self.cowed = True
+        super(self.__class__, self).store_mo(state, new_mo, overwrite)
+
+        # address = new_mo.base
+        # value = state.se.any_int(new_mo.object)
+        # size = new_mo.size()/8 # Claripy uses bit- and not bytesizes
+
+        # #import IPython; IPython.embed()
+
+        # MemoryForwardMsg = RemoteMemoryWriteMessage(self.origin, self.id,
+        #                                             address, value, size)
+        # self.avatar.queue.put(MemoryForwardMsg)
+        # r_id, r_value, r_success = self.origin.response_queue.get()
+        # if self.id != r_id:
+        #     raise("AvatarAngrMemory received mismatching id!")
+        # if r_success != True:
+        #     raise Exception("AvatarAngrMemory remote memory request failed!")
+
+        # self.id += 1
+        # return r_success
 
     def load_slice(self, state, start, end):
-        print "my load_slice"
+        if self.cowed:
+            return super(self.__class__, self).load_slice(state, start, end)
 
-        MemoryForwardMsg = RemoteMemoryReadMessage(self.origin, self.id, start,
+        MemoryForwardMsg = RemoteMemoryReadMessage(self.origin, self.id,
+                                                   0x0, # Fake PC
+                                                   start,
                                                    end - start)
 
         self.avatar.queue.put(MemoryForwardMsg)
@@ -123,7 +144,9 @@ class AvatarPage(BasePage):
     #'''
 
 
-def avatar_state(angr_factory, **kwargs):
+def avatar_state(angr_factory, angr_target, options=frozenset(),
+                 add_options=None, remove_options=None,
+                 memory_backer=None, plugins=None, **kwargs):
     '''
     This method sets up a SimState which is usable for avatar and will be
     registered to the project's factory.
@@ -140,26 +163,23 @@ def avatar_state(angr_factory, **kwargs):
 
     l = logging.getLogger('angr.factory')
   
-    options = set(kwargs.get('options', set()))
-    add_options = kwargs.get('add_options')
-    remove_options = kwargs.get('remove_options')
+    options = set(options)
+    unsupported_options = set([o.ABSTRACT_MEMORY, o.FAST_MEMORY])
+
+    if options & unsupported_options:
+        l.warning('Discarding user-defined memory options for avatar state')
+        remove_options |= (options & unsupported_options)
 
     if add_options is not None:
         options |= add_options
     if remove_options is not None:
         options -= remove_options
 
-    unsupported_options = set([o.ABSTRACT_MEMORY, o.FAST_MEMORY])
-
-    if options & unsupported_options:
-        l.warning('Discarding user-defined memory options for avatar state')
-        r_options = kwargs.get('remove_options',set())
-        kwargs['remove_options'] = r_options.update(m_options)
-
     permissions_backer = angr_factory._project.loader.memory 
     
-    memory_backer = kwargs.get('memory_backer',
-                               angr_factory._project.loader.memory)
+    if memory_backer is None:
+        memory_backer = angr_factory._project.loader.memory
+
     permissions_backer = generate_permissions_backer()
     page_size = angr_factory._project.loader.page_size
 
@@ -186,19 +206,31 @@ def avatar_state(angr_factory, **kwargs):
 
     sim_memory = SimSymbolicMemory(mem=memory_storage, memory_id='mem')
 
-    plugins = kwargs.get('plugins',{})
+    if plugins is None:
+        plugins = {}
+
     if plugins.has_key('memory'):
         l.warning('Discarding user-defined memory plugin for avatar state')
     plugins['memory'] = sim_memory
 
-    kwargs['plugins'] = plugins
-
-    avatar_state = angr_factory.blank_state(**kwargs)
+    avatar_state = angr_factory.blank_state(options=options,
+                                            add_options=add_options,
+                                            remove_options=remove_options,
+                                            memory_backer=memory_backer,
+                                            plugins=plugins, **kwargs)
 
     return avatar_state
 
 
+class AngrRemoteMemoryListener():
+    def __init__(self, target):
+        self._target = target
 
+    def send_response(self, id, value, success):
+        self._target.response_queue.put((id, value, success))
+
+    def shutdown(self):
+        pass
 
 class AngrTarget(Target):
     ''' The angr-target does not require additional protocols
@@ -218,7 +250,8 @@ class AngrTarget(Target):
 
 
     def init(self):
-
+        prot = AngrRemoteMemoryListener(self)
+        self.protocols.remote_memory = prot
         # If no base addr is specified, try to figure it out via memory ranges
         for (start, end, mr) in self.avatar.memory_ranges:
             if hasattr(mr, 'file') and mr.file == self.binary:
@@ -233,7 +266,7 @@ class AngrTarget(Target):
         load_options['auto_load_libs'] = False,
         load_options['page_size'] = 0x1000 # change me once angr is ready!
 
-        print self.base_addr
+        # print self.base_addr
 
         # Angr needs a "main-binary" to execute. If the user did not specify
         # one, we will create one on the fly based on avatar's memory_ranges
@@ -262,7 +295,7 @@ class AngrTarget(Target):
         self.angr.factory.avatar_state = MethodType(avatar_state, self.angr.factory)
 
 
-        self.base_state = self.angr.factory.avatar_state()
+        self.base_state = self.angr.factory.avatar_state(self)
         # Now that we have an angr-project, let's load the other ranges
         self._remote_memory_protocol = self
 
@@ -320,7 +353,6 @@ class AngrTarget(Target):
     def set_breakpoint(self, line, hardware=False, temporary=False, regex=False,
                        condition=None, ignore_count=0, thread=0):
         pass
-
 
 
     def remove_breakpoint(self, bkptno):
