@@ -49,6 +49,8 @@ class GDBResponseListener(Thread):
         self._sync_responses_cv = Condition()
         self._last_exec_token = 0
         self._origin = origin
+        self._console_output = None
+        self._console_enable = False
         self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
@@ -64,7 +66,7 @@ class GDBResponseListener(Thread):
     def parse_async_notify(self, response):
         """
         This functions converts gdb notify messages to an avatar message
-        
+
         :param response: A pygdbmi response dictonary
         :returns:        An avatar message
         """
@@ -134,7 +136,7 @@ class GDBResponseListener(Thread):
         """
 
         if response['type'] == 'console':
-            pass  # TODO: implement handler for console messages
+            self.collect_console_output(response)
         elif response['type'] == 'log':
             pass  # TODO: implement handler for log messages
         elif response['type'] == 'target':
@@ -200,6 +202,17 @@ class GDBResponseListener(Thread):
         self._close.set()
         self._closed.wait()
 
+    def start_console_collection(self):
+        self._console_output = ""
+        self._console_enable = True
+
+    def stop_console_collection(self):
+        self._console_enable = False
+
+    def collect_console_output(self, msg):
+        if self._console_enable:
+            self._console_output += '\n'
+            self._console_output += msg['payload']
 
 class GDBProtocol(object):
     """Main class for the gdb communication protocol
@@ -237,7 +250,7 @@ class GDBProtocol(object):
         self._gdbmi = pygdbmi.gdbcontroller.GdbController(
             gdb_path=gdb_executable,
             gdb_args=gdb_args,
-            verbose=False)  # set to True for debugging
+            verbose=True)  # set to True for debugging
         queue = avatar.queue if avatar is not None else None
         fast_queue = avatar.fast_queue if avatar is not None else None
 
@@ -709,3 +722,12 @@ class GDBProtocol(object):
         self.log.debug("Attempt to set endianness of the target. Received: %s" %
                        resp)
         return ret
+
+    def get_mappings(self):
+        self._communicator.start_console_collection()
+        req = ['info', 'proc', 'mappings']
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+        self._communicator.stop_console_collection()
+        self.log.debug("Attempt to read the memory mappings of the target. " +
+                       "Received: %s" % resp)
+        return ret, self._communicator._console_output
