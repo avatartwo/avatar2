@@ -1,6 +1,7 @@
 # from capstone import CS_ARCH_ARM, CS_MODE_LITTLE_ENDIAN, CS_MODE_BIG_ENDIAN
 
 from capstone import *
+from keystone import *
 from .architecture import Architecture
 import avatar2
 
@@ -16,6 +17,8 @@ class ARM(Architecture):
     unemulated_instructions = ['mcr', 'mrc']
     capstone_arch = CS_ARCH_ARM
     capstone_mode = CS_MODE_LITTLE_ENDIAN
+    keystone_arch = KS_ARCH_ARM
+    keystone_mode = KS_MODE_ARM
 
 
 class ARM_CORTEX_M3(ARM):
@@ -25,6 +28,9 @@ class ARM_CORTEX_M3(ARM):
 
     capstone_arch = CS_ARCH_ARM
     capstone_mode = CS_MODE_LITTLE_ENDIAN | CS_MODE_THUMB | CS_MODE_MCLASS
+    keystone_arch = KS_ARCH_ARM
+    keystone_mode = KS_MODE_LITTLE_ENDIAN | KS_MODE_THUMB
+
 
     @staticmethod
     def register_write_cb(avatar, *args, **kwargs):
