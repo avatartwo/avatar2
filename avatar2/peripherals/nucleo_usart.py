@@ -44,11 +44,12 @@ class NucleoUSART(AvatarPeripheral, Thread):
         if len(self.data_buf) == 0:
             self.status_register &= ~SR_RXNE
         self.lock.release()
-        return ord(ret)
+        return ret
 
     def write_data_register(self, size, value):
         if self.connected:
-            self.conn.send(bytes((chr(value))))
+            self.conn.send(bytes((chr(value).encode('utf-8'))))
+
         return True
 
     def nop_read(self, size):
@@ -62,7 +63,7 @@ class NucleoUSART(AvatarPeripheral, Thread):
         AvatarPeripheral.__init__(self, name, address, size)
         self.port = nucleo_usart_port
 
-        self.data_buf = ''
+        self.data_buf = bytearray()
         self.status_register = SR_TXE | SR_TC
 
         self.read_handler[0:3] = self.read_status_register
