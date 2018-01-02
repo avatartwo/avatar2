@@ -28,7 +28,7 @@ class X86(Architecture):
     capstone_mode = CS_MODE_32
 
 
-class X86_64(Architecture):
+class X86_64(X86):
     qemu_name = 'x86_64'
     gdb_name = 'i386:x86-64'
     registers = {'rax': 0,
@@ -57,4 +57,5 @@ class X86_64(Architecture):
                  'fs': 22,
                  'gs': 23,
                  }
+    capstone_mode = CS_MODE_64
     unemulated_instructions = []
