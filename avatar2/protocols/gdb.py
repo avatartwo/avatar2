@@ -2,9 +2,11 @@ import sys
 from threading import Thread, Event, Condition
 from struct import pack, unpack
 from codecs import encode
+
 import logging
 import pygdbmi.gdbcontroller
 
+import parse
 if sys.version_info < (3, 0):
     import Queue as queue
     # __class__ = instance.__class__
@@ -574,11 +576,38 @@ class GDBProtocol(object):
                 return mem
 
     def read_register(self, reg):
-        reg_nr = (
-            self._origin.regs._get_nr_from_name(reg) 
-            if hasattr(self._origin, 'regs')
-            else self._arch.registers[reg])
-        return self.read_register_from_nr(reg_nr)
+        if reg in self._arch.special_registers:
+            return self._read_special_reg_from_name(reg)
+        else:
+            reg_nr = (
+                self._origin.regs._get_nr_from_name(reg) 
+                if hasattr(self._origin, 'regs')
+                else self._arch.registers[reg])
+            return self.read_register_from_nr(reg_nr)
+
+    def _read_special_reg_from_name(self, reg):
+        """GDB does not return simple values for certain registers,
+           such as SSE-registers on x86.
+           This function tries to cover those cases by looking up an
+           expression to access the register, and the resulting format,
+           in the architecture description.
+        """
+
+        ret, resp = self._sync_request(
+            ["-data-evaluate-expression", "%s" %
+                self._arch.special_registers[reg]['gdb_expression']],
+             GDB_PROT_DONE)
+        fmt = self._arch.special_registers[reg]['format']
+        res = parse.parse(fmt, resp['payload']['value'])
+        if res is None:
+            self.log.critical(
+                "Unable to parse content of special register %s" % reg
+            )
+            raise Exception("Couldn't parse special register")
+        return list(res)
+
+
+
 
     def read_register_from_nr(self, reg_num):
         """Gets the value of a single register
@@ -587,6 +616,7 @@ class GDBProtocol(object):
         :returns:       the value as integer on success, else None
         :todo: Implement function for multiple registers
         """
+
         ret, resp = self._sync_request(
             ["-data-list-register-values", "x", "%d" % reg_num], GDB_PROT_DONE)
 
@@ -599,8 +629,20 @@ class GDBProtocol(object):
     def write_register(self, reg, value):
         """Set one register on the target
         :returns: True on success"""
-        ret, resp = self._sync_request(
-            ["-gdb-set", "$%s=0x%x" % (reg, value)], GDB_PROT_DONE)
+
+        if reg in self._arch.special_registers:
+
+            fmt = "{:s}=" \
+                  + self._arch.special_registers[reg]['format'].replace(' ','')
+            
+            ret, resp = self._sync_request(
+                ["-data-evaluate-expression", fmt.format(
+                   self._arch.special_registers[reg]['gdb_expression'], *value)
+                ], GDB_PROT_DONE
+            )
+        else:
+            ret, resp = self._sync_request(
+                ["-gdb-set", "$%s=0x%x" % (reg, value)], GDB_PROT_DONE)
 
         self.log.debug("Attempted to set register. Received response: %s" % resp)
         return ret

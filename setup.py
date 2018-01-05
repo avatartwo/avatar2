@@ -17,7 +17,8 @@ setup(
         'ipython==5.3',
         'posix_ipc>=1.0.0',
         'capstone>=3.0.4',
-        'keystone-engine'
+        'keystone-engine',
+        'parse',
     ],
     url='http://www.s3.eurecom.fr/tools/avatar/',
     description='Dynamic firmware analysis'
