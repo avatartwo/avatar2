@@ -129,6 +129,7 @@ class X86(Architecture):
     unemulated_instructions = []
     capstone_arch = CS_ARCH_X86
     capstone_mode = CS_MODE_32
+    word_size = 32
 
 
 class X86_64(X86):
@@ -162,3 +163,5 @@ class X86_64(X86):
                  }
     capstone_mode = CS_MODE_64
     unemulated_instructions = []
+    capstone_mode = CS_MODE_64
+    word_size = 64

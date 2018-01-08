@@ -4,6 +4,7 @@ from struct import pack, unpack
 from codecs import encode
 
 import logging
+import re
 import pygdbmi.gdbcontroller
 
 import parse
@@ -250,7 +251,7 @@ class GDBProtocol(object):
         self._gdbmi = pygdbmi.gdbcontroller.GdbController(
             gdb_path=gdb_executable,
             gdb_args=gdb_args,
-            verbose=True)  # set to True for debugging
+            verbose=False)  # set to True for debugging
         queue = avatar.queue if avatar is not None else None
         fast_queue = avatar.fast_queue if avatar is not None else None
 
@@ -731,3 +732,40 @@ class GDBProtocol(object):
         self.log.debug("Attempt to read the memory mappings of the target. " +
                        "Received: %s" % resp)
         return ret, self._communicator._console_output
+
+    def console_command(self, cmd, rexpect=GDB_PROT_DONE):
+        self._communicator.start_console_collection()
+        req = cmd.split()
+        ret, resp = self._sync_request(req, rexpect)
+        self._communicator.stop_console_collection()
+        self.log.debug("Attempt to execute the console command: %s" % cmd)
+        return ret, self._communicator._console_output
+
+    def get_symbol(self, symbol):
+        self._communicator.start_console_collection()
+        req = ['info', 'address', '%s' % symbol]
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+        self._communicator.stop_console_collection()
+        if ret:
+            resp = self._communicator._console_output
+            regex = re.compile("(0x[0-9a-f]*)[ .]")
+            resp = regex.findall(resp)
+            if len(resp) == 1:
+                resp = long(resp[0], 16)
+            else:
+                resp = -1
+                ret = False
+        self.log.debug("Attempt to resolve the symbol %s. " +
+                       "Received: %s" % resp)
+        return ret, resp
+
+    def set_gdb_variable(self, variable, value):
+        req = ['-gdb-set', str(variable), str(value)]
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+        if ret:
+            self.log.debug("Successfully set variable %s to %s" %
+                           (str(variable), str(value)))
+        else:
+            self.log.debug("Unable to set variable %s to %s" %
+                           (str(variable), str(value)))
+        return ret
