@@ -9,7 +9,8 @@ setup(
               'avatar2/protocols',
               'avatar2/peripherals',
               'avatar2/plugins',
-              'avatar2/plugins/arm'
+              'avatar2/plugins/arm',
+              'avatar2/plugins/x86'
               ],
     install_requires=[
         'pygdbmi>=0.7.3.1',
@@ -20,6 +21,7 @@ setup(
         'keystone-engine',
         'parse',
     ],
+    package_data={'avatar2/plugins/x86': ['avatar_fs.so']},
     url='http://www.s3.eurecom.fr/tools/avatar/',
     description='Dynamic firmware analysis'
 )
