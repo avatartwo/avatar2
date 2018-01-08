@@ -2,6 +2,7 @@ from threading import Event, Thread
 from types import MethodType
 
 from angr import sim_options as o
+from cle import Clemory
 
 import logging
 import Queue as queue
@@ -9,15 +10,16 @@ import Queue as queue
 import angr
 from angr.storage.paged_memory import Page, SimPagedMemory, TreePage
 from angr.storage.memory_object import SimMemoryObject
-
+from angr.procedures import SIM_PROCEDURES as simprocedures
 
 from angr.state_plugins.symbolic_memory import SimSymbolicMemory
 from claripy import BVV
 
-from avatar2.targets import Target, TargetStates
+from avatar2.targets import Target, TargetStates, GDBTarget
 from avatar2.message import RemoteMemoryReadMessage, RemoteMemoryWriteMessage
 
 class AvatarPage(TreePage):
+    cnt = 0
     def __init__(self, start, size, origin=None, req_id=0, cowed=False,
                  *args, **kwargs):
         super(self.__class__, self).__init__(page_addr=start,
@@ -27,10 +29,16 @@ class AvatarPage(TreePage):
         self.cowed = cowed
         self.avatar = origin.avatar
         self.origin = origin
+        self.log = logging.getLogger('%s.%s' %
+                                     (origin.log.name, self.__class__.__name__)
+                                     ) if origin else \
+            logging.getLogger(self.__class__.__name__)
+
 
     def copy(self):
+        self.log.debug("AvatarPage at %x is being copied" % self._page_addr)
         return AvatarPage(self._page_addr, self._page_size,
-                          origin=self.origin, req_id=self.id)
+                          **self._copy_args())
 
     def _copy_args(self):
         ret = super(self.__class__, self)._copy_args()
@@ -40,52 +48,46 @@ class AvatarPage(TreePage):
         return ret
 
     def fill_page_from_remote(self, state):
+        AvatarPage.cnt += 1
+        self.log.debug("Loading page at %x from remote" % self._page_addr)
         start_addr = self._page_addr
         end_addr = self._page_addr + self._page_size
-        for x in xrange(start_addr, end_addr, 4):
-            start, value = self.load_slice(state, x, x+4)[0]
+        for x in xrange(start_addr, end_addr, state.arch.bytes):
+            start, value = self._read_memory(state, x,
+                                             x+state.arch.bytes)[0]
+            value._object = value.object.reversed
             super(self.__class__, self).store_mo(state, value, overwrite=True)
 
-
-    # In case of a store operation, we fetch the whole page from RemoteMemory and feed
-    # into a regular angr Page
     def store_mo(self, state, new_mo, overwrite=True):
-        # overwrite=True means that that it's a normal write,
-        # False means that the blank parts of the page are being filled in with default data
         if self.cowed:
-            return super(self.__class__, self).store_mo(state, new_mo, overwrite)
-
+            return super(self.__class__, self).store_mo(state, new_mo,
+                                                        overwrite)
         self.fill_page_from_remote(state)
         self.cowed = True
         super(self.__class__, self).store_mo(state, new_mo, overwrite)
 
-        # address = new_mo.base
-        # value = state.se.any_int(new_mo.object)
-        # size = new_mo.size()/8 # Claripy uses bit- and not bytesizes
-
-        # #import IPython; IPython.embed()
-
-        # MemoryForwardMsg = RemoteMemoryWriteMessage(self.origin, self.id,
-        #                                             address, value, size)
-        # self.avatar.queue.put(MemoryForwardMsg)
-        # r_id, r_value, r_success = self.origin.response_queue.get()
-        # if self.id != r_id:
-        #     raise("AvatarAngrMemory received mismatching id!")
-        # if r_success != True:
-        #     raise Exception("AvatarAngrMemory remote memory request failed!")
-
-        # self.id += 1
-        # return r_success
+    def load_mo(self, state, page_idx):
+        self.log.debug("Reading")
+        if self.cowed:
+            return super(self.__class__, self).load_mo(state, page_idx)
+        self.cowed = True
+        self.fill_page_from_remote(state)
+        return super(self.__class__, self).load_mo(state, page_idx)
 
     def load_slice(self, state, start, end):
+        self.log.debug("Reading %x %x" % (start, end))
         if self.cowed:
             return super(self.__class__, self).load_slice(state, start, end)
+        self.cowed = True
+        self.fill_page_from_remote(state)
+        return super(self.__class__, self).load_slice(state, start, end)
 
+
+    def _read_memory(self, state, start, end):
         MemoryForwardMsg = RemoteMemoryReadMessage(self.origin, self.id,
                                                    0x0, # Fake PC
                                                    start,
                                                    end - start)
-
         self.avatar.queue.put(MemoryForwardMsg)
 
         r_id, r_value, r_success = self.origin.response_queue.get()
@@ -94,7 +96,6 @@ class AvatarPage(TreePage):
             raise("AvatarAngrMemory received mismatching id!")
         if r_success != True:
             raise Exception("AvatarAngrMemory remote memory request failed!")
-
 
         self.id += 1
         # do your stuff
@@ -146,7 +147,8 @@ class AvatarPage(TreePage):
 
 def avatar_state(angr_factory, angr_target, options=frozenset(),
                  add_options=None, remove_options=None,
-                 memory_backer=None, plugins=None, **kwargs):
+                 memory_backer=None, plugins=None,
+                 load_register_from=None, **kwargs):
     '''
     This method sets up a SimState which is usable for avatar and will be
     registered to the project's factory.
@@ -188,15 +190,20 @@ def avatar_state(angr_factory, angr_target, options=frozenset(),
     pages = {}
     symbolic_addrs = {}
     for (start, end, mr) in angr_factory.origin.avatar.memory_ranges:
+        if not start % page_size == 0:
+            log.warning("Memory ranges starts at addres %x which is not" +
+                        " page aligned (page size: %x)" % (start, page_size))
+        if not end % page_size == 0:
+            log.warning("Memory ranges ends at addres %x which is not" +
+                        " page aligned (page size: %x)" % (end, page_size))
         if mr.forwarded:
             page_num = start / page_size
-            while page_num * page_size < end:
-                pages[page_num] = AvatarPage(start,
-                                             page_size, 
-                                             origin=angr_factory.origin)
+            while page_num * page_size <= end:
+                pages[page_num] = AvatarPage(page_num * page_size,
+                                                    page_size, 
+                                                    origin=angr_factory.origin)
                 symbolic_addrs[page_num] = set()
                 page_num += 1
-
     memory_storage = SimPagedMemory(page_size=page_size, pages=pages,
                                     symbolic_addrs=symbolic_addrs,
                                     check_permissions=True,
@@ -204,7 +211,8 @@ def avatar_state(angr_factory, angr_target, options=frozenset(),
                                     permissions_backer=permissions_backer)
 
 
-    sim_memory = SimSymbolicMemory(mem=memory_storage, memory_id='mem')
+    sim_memory = SimSymbolicMemory(mem=memory_storage, memory_id='mem',
+                                   check_permissions=True)
 
     if plugins is None:
         plugins = {}
@@ -219,6 +227,19 @@ def avatar_state(angr_factory, angr_target, options=frozenset(),
                                             memory_backer=memory_backer,
                                             plugins=plugins, **kwargs)
 
+    if load_register_from is not None:
+        for reg in angr_target.avatar.arch.registers.keys():
+            try:
+                value = BVV(load_register_from.rr(reg),
+                            avatar_state.arch.bits)
+                avatar_state.registers.store(reg, value)
+            except KeyError as e:
+                l.warning("Register %s was not set." % str(e))
+        avatar_state.scratch.ins_addr = avatar_state.regs.ip
+        avatar_state.scratch.bbl_addr = avatar_state.regs.ip
+        avatar_state.scratch.stmt_idx = 0
+
+    avatar_state.history.jumpkind = 'Ijk_Boring'
     return avatar_state
 
 
@@ -286,16 +307,15 @@ class AngrTarget(Target):
 
             load_options['main_opts'].update({'segments': segments})
             self.binary = filename
-                
+
         # Before loading the project, let's apply the user defined load_options
         load_options.update(self.load_options)
 
         self.angr = angr.Project(self.binary, load_options=load_options)
+
         self.angr.factory.origin = self
         self.angr.factory.avatar_state = MethodType(avatar_state, self.angr.factory)
 
-
-        self.base_state = self.angr.factory.avatar_state(self)
         # Now that we have an angr-project, let's load the other ranges
         self._remote_memory_protocol = self
 
@@ -306,6 +326,18 @@ class AngrTarget(Target):
         self._signal_protocol = None
         self._monitor_protocol = None
         self.state = TargetStates.STOPPED
+
+    def hook_symbols(self, from_target):
+        libraries = ['libc', 'glibc', 'linux_loader', 'posix',
+                     'linux_kernel']
+        sim_libraries = [simprocedures[lib] for lib in libraries]
+        for lib in sim_libraries:
+            for symbol in lib.items():
+                prot = from_target.protocols.execution
+                exists, addr = prot.get_symbol(symbol[0])
+                if exists:
+                    self.log.debug("Hooking the symbol %s" % symbol[0])
+                    self.angr.hook(addr, symbol[1])
 
     def send_response(self, id, value, success):
         self.response_queue.put((id, value, success))
@@ -360,8 +392,6 @@ class AngrTarget(Target):
 
     def set_watchpoint(self, variable, write=True, read=False):
         raise("Watchpoints are not implemented for the angr target! :(")
-
-
 
 '''
 class SimAvatarMemory(SimPagedMemory):

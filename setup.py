@@ -13,6 +13,7 @@ setup(
               'avatar2/plugins',
               'avatar2/plugins/arm',
               'avatar2/installer'
+              'avatar2/plugins/x86'
               ],
     install_requires=[
         'pygdbmi>=0.7.3.1',
@@ -29,5 +30,6 @@ setup(
     url='https://github.com/avatartwo/avatar2',
     description='A Dynamic Multi-Target Orchestration Framework',
     maintainer='Marius Muench',
-    maintainer_email='marius.muench@eurecom.fr'
+    maintainer_email='marius.muench@eurecom.fr',
+    package_data={'avatar2/plugins/x86': ['avatar_fs.so']},
 )
