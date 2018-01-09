@@ -6,7 +6,14 @@ Avatar² is developed and maintained by [Eurecom's S3 Group](http://s3.eurecom.f
 # Building
 
 Building avatar² is easy!
-The following three commands are enough to install the core.
+
+First, make sure that all the dependencies are present:
+
+```
+sudo apt-get install python-pip python-setuptools python-dev cmake
+```
+
+Afterwards, the following three commands are enough to install the core.
 ```
 $ git clone https://github.com/avatartwo/avatar2.git
 $ cd avatar2
