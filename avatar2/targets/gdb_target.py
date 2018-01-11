@@ -79,3 +79,14 @@ class GDBTarget(Target):
             super(GDBTarget, self).cont()
         else:
             self.run()
+
+    @action_valid_decorator_factory(TargetStates.INITIALIZED, 'execution')
+    def disable_aslr(self):
+        self.protocols.execution.set_gdb_variable('disable-randomization',
+                                                  'on')
+
+    @action_valid_decorator_factory(TargetStates.INITIALIZED, 'execution')
+    def disable_aslr(self):
+        self.protocols.execution.set_gdb_variable('disable-randomization',
+                                                  'off')
+    
