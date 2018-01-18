@@ -181,21 +181,35 @@ class CoreSightProtocol(Thread):
     At `stub`, load `writeme`, if it's not zero, reset it, and jump to the written value.
     This lets us inject exc_return values into the running program
     """
-    MONITOR_STUB = """
-    loop: b loop
-    nop
-    mov r2, pc
-    ldr r1, [r2, #16]
-    stub: 
-    ldr r0, [r2, #12]
-    cmp r1, r0
-    beq stub
-    str r1, [r2, #12]
-    bx r0
-    nop
-    writeme: .word 0xffffffff
-    loadme: .word 0xffffffff
+    #MONITOR_STUB = """
+    #loop: b loop
+    #nop
+    #mov r2, pc
+    #ldr r1, [r2, #16]
+    #stub: 
+    #ldr r0, [r2, #12]
+    #cmp r1, r0
+    #beq stub
+    #str r1, [r2, #12]
+    #bx r0
+    #nop
+    #writeme: .word 0xffffffff
+    #loadme: .word 0xffffffff    
+    #"""
     
+    MONITOR_STUB = """
+    init:
+    ldr r1, =dcscr
+    ldr r2, =haltme
+    ldr r1, [r1]
+    ldr r2, [r2]
+    nop
+    loop: b loop
+    stub: 
+    str r2, [r1]
+    bx r3
+    dcscr: .word 0xe000edf0
+    haltme: .word 0xA05F0003
     """
 
     def get_user_pc(self):
@@ -206,8 +220,8 @@ class CoreSightProtocol(Thread):
         :return:
         """
         if self.get_current_isr_num() > 0:
-            sp = self.get_register('sp')
-            val = self.read_memory(sp - 24)
+            sp = self._origin.get_register('sp')
+            val = self._origin.read_memory(sp - 24)
             return val
         return None
 
@@ -218,7 +232,7 @@ class CoreSightProtocol(Thread):
         :return:
         """
         # The bottom 8 bits of xPSR
-        xpsr = self.get_register("xPSR")
+        xpsr = self._origin.read_register("xPSR")
         xpsr &= 0xff
         return xpsr
 
@@ -235,9 +249,8 @@ class CoreSightProtocol(Thread):
         :return:
         """
         self._monitor_stub_base = addr
-        self._monitor_stub_loop = addr
-        self._monitor_stub_isr = addr + 3
-        self._monitor_stub_writeme = addr + 0x14
+        self._monitor_stub_loop = addr + 10
+        self._monitor_stub_isr = addr + 13
 
         # Pivot VTOR
         if self.get_vtor() == 0:
@@ -251,14 +264,15 @@ class CoreSightProtocol(Thread):
         if self._origin.state != TargetStates.STOPPED:
             self.log.warning("Not setting PC to the monitor stub; Target not stopped")
         else:
-            self._origin.regs.pc = self._monitor_stub_loop
+            self._origin.regs.pc = self._monitor_stub_base
 
     def inject_exc_return(self, exc_return):
         if not self._monitor_stub_base:
             self.log.error("You need to inject the monitor stub before you can inject exc_returns")
             return False
 
-        return self._origin.write_memory(self._monitor_stub_writeme, 4, exc_return)
+        #return self._origin.write_memory(self._monitor_stub_writeme, 4, exc_return)
+        self._origin.regs.r3 = exc_return
 
     def dispatch_exception_packet(self, packet):
         int_num = ((ord(packet[1]) & 0x01) << 8) | ord(packet[0])

@@ -72,8 +72,8 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
 
     # OpenOCDProtocol does not emit breakpointhitmessages currently,
     # So we listen on state-updates and figure out the rest on our own
-    self.watchmen.add_watchman('BreakpointHit', when=AFTER,
-                                 callback=continue_execution)
+    #self.watchmen.add_watchman('BreakpointHit', when=AFTER,
+    #                             callback=continue_execution)
     self._handle_breakpoint_handler  = MethodType(forward_interrupt, self)
     self.fast_queue_listener.message_handlers.update({
             BreakpointHitMessage: self._handle_breakpoint_handler
@@ -103,6 +103,7 @@ def _handle_remote_interrupt_exit_message(self, message):
     self._irq_src.protocols.interrupts.inject_exc_return(message.transition_type)
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
                                                        True)
+    self._irq_src.cont()
 
 @watch('RemoteMemoryWrite')
 def _handle_remote_memory_write_message_nvic(self, message):
