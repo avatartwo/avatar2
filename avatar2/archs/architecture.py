@@ -4,5 +4,5 @@ class Architecture(object):
         pass
     
     registers = None
-    special_registers = None
+    special_registers = {}
     sr_name = None
