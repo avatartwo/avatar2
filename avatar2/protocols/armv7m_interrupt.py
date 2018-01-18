@@ -132,7 +132,6 @@ class ARMV7MInterruptProtocol(Thread):
                 'avatar-armv7m-inject-irq',
                  {'num_irq': interrupt_number, 'num_cpu': cpu_number}
             )
-            print "Done"
 
     def send_interrupt_exit_response(self, id, success):
         response = V7MInterruptExitResp(id, success)
