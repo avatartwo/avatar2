@@ -3,6 +3,7 @@ import subprocess
 import telnetlib
 import logging
 import distutils
+from codecs import encode
 import binascii
 from threading import Thread, Lock, Event
 from struct import pack, unpack
@@ -151,7 +152,7 @@ class OpenOCDProtocol(Thread):
             self.log.debug("Got reset event type %s" % reset_type)
             if reset_type == "halt":
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.STOPPED)
-                #self.avatar.fast_queue.put(avatar_msg)
+                self.avatar.fast_queue.put(avatar_msg)
         elif mtrace:
             # DOn't log anything here.  If we do, our IO will be exhausted by the sheer volume of trace packets.
             self.trace_queue.put(str)
@@ -161,11 +162,11 @@ class OpenOCDProtocol(Thread):
             if "halted" in state:
                 self.log.debug("Target has halted")
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.STOPPED)
-                #self.avatar.fast_queue.put(avatar_msg)
+                self.avatar.fast_queue.put(avatar_msg)
             elif "running" in state:
                 self.log.debug("Target is now running")
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.RUNNING)
-                #self.avatar.fast_queue.put(avatar_msg)
+                self.avatar.fast_queue.put(avatar_msg)
             else:
                 self.log.warning("Weird target state %s" % state)
         elif mevent:
@@ -175,10 +176,10 @@ class OpenOCDProtocol(Thread):
             # TODO handle these
             if event == 'halted':
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.STOPPED)
-                #self.avatar.fast_queue.put(avatar_msg)
+                self.avatar.fast_queue.put(avatar_msg)
             elif event == 'resumed':
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.RUNNING)
-                #self.avatar.fast_queue.put(avatar_msg)
+                self.avatar.fast_queue.put(avatar_msg)
 
         else:
             self.log.warning("Unhandled event message %s" % str)
@@ -295,7 +296,8 @@ class OpenOCDProtocol(Thread):
             num_words = len(val) / wordsize
         for i in range(0, num_words, wordsize):
             if raw:
-                write_val = '0x' + binascii.hexlify(val[i:i+wordsize])
+                #write_val = '0x' + binascii.hexlify(val[i:i+wordsize])
+                write_val = encode(val[i:i+wordsize], 'hex_codec').decode('ascii')
             elif isinstance(val, int) or isinstance(val, long):
                 write_val = hex(val).rstrip("L")
             else:
