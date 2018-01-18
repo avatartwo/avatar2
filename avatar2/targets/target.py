@@ -306,7 +306,7 @@ class Target(object):
         return self.protocols.registers.write_register(register, value)
 
     @watch('TargetRegisterRead')
-    @action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
+    #@action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
     def read_register(self, register):
         """
         Reading a register from the target
