@@ -35,8 +35,8 @@ def inject_asm(self, asmstr, addr=None, arch=None, mode=None):
 
     md = Ks(arch, mode)
     bytelist = md.asm(asmstr, addr)[0]
-    bytess = bytearray(bytelist)
-    return self.write_memory(addr, 1, bytess, len(bytess), raw=True)
+    bytes = bytearray(bytelist)
+    return self.write_memory(addr, 1, bytes, len(bytes), raw=True)
 
 def target_added_callback(avatar, *args, **kwargs):
     target = kwargs['watched_return']

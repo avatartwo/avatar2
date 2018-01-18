@@ -296,8 +296,7 @@ class OpenOCDProtocol(Thread):
             num_words = len(val) / wordsize
         for i in range(0, num_words, wordsize):
             if raw:
-                #write_val = '0x' + binascii.hexlify(val[i:i+wordsize])
-                write_val = encode(val[i:i+wordsize], 'hex_codec').decode('ascii')
+                write_val = '0x' + encode(val[i:i+wordsize], 'hex_codec').decode('ascii')
             elif isinstance(val, int) or isinstance(val, long):
                 write_val = hex(val).rstrip("L")
             else:
