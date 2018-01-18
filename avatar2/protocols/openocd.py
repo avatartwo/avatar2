@@ -6,6 +6,7 @@ import distutils
 import binascii
 from threading import Thread, Lock, Event
 from struct import pack, unpack
+from time import sleep
 import re
 from os.path import abspath
 if sys.version_info < (3, 0):
@@ -86,6 +87,7 @@ class OpenOCDProtocol(Thread):
             self._openocd = subprocess.Popen(self._cmd_line,
                                              stdout=out, stderr=err)#, shell=True)
         Thread.__init__(self)
+        self.daemon = True
 
 
     def connect(self):
@@ -93,7 +95,6 @@ class OpenOCDProtocol(Thread):
         Connects to OpenOCDs TCL Server for all subsequent communication
         returns: True on success, else False
         """
-        from time import sleep
         sleep(1)
         self.log.debug("Connecting to OpenOCD on %s:%s" % (self._host, self._tcl_port))
         try:
@@ -150,7 +151,7 @@ class OpenOCDProtocol(Thread):
             self.log.debug("Got reset event type %s" % reset_type)
             if reset_type == "halt":
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.STOPPED)
-                self.avatar.fast_queue.put(avatar_msg)
+                #self.avatar.fast_queue.put(avatar_msg)
         elif mtrace:
             # DOn't log anything here.  If we do, our IO will be exhausted by the sheer volume of trace packets.
             self.trace_queue.put(str)
@@ -160,11 +161,11 @@ class OpenOCDProtocol(Thread):
             if "halted" in state:
                 self.log.debug("Target has halted")
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.STOPPED)
-                self.avatar.fast_queue.put(avatar_msg)
+                #self.avatar.fast_queue.put(avatar_msg)
             elif "running" in state:
                 self.log.debug("Target is now running")
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.RUNNING)
-                self.avatar.fast_queue.put(avatar_msg)
+                #self.avatar.fast_queue.put(avatar_msg)
             else:
                 self.log.warning("Weird target state %s" % state)
         elif mevent:
@@ -174,10 +175,10 @@ class OpenOCDProtocol(Thread):
             # TODO handle these
             if event == 'halted':
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.STOPPED)
-                self.avatar.fast_queue.put(avatar_msg)
+                #self.avatar.fast_queue.put(avatar_msg)
             elif event == 'resumed':
                 avatar_msg = UpdateStateMessage(self._origin, TargetStates.RUNNING)
-                self.avatar.fast_queue.put(avatar_msg)
+                #self.avatar.fast_queue.put(avatar_msg)
 
         else:
             self.log.warning("Unhandled event message %s" % str)
@@ -259,12 +260,15 @@ class OpenOCDProtocol(Thread):
                             self.log.debug("response --> " +  line)
                             self.out_queue.put(line)
                             cmd = None
+                sleep(.001) # Have a heart. Give other threads a chance
         except Exception as e:
             self.log.exception("OpenOCD Background thread died with an exception")
         self.log.debug("OpenOCD Background thread exiting")
 
     def read_response(self):
         self.buf += self.telnet.read_eager().decode('ascii')
+        #if buf is not '':
+            #print(self.buf)
         if END_OF_MSG in self.buf:
             resp, self.buf = self.buf.split(END_OF_MSG, 1)
             return resp
