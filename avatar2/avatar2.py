@@ -72,7 +72,7 @@ class Avatar(Thread):
             BreakpointHitMessage: self._handle_breakpoint_hit_message,
             UpdateStateMessage: self._handle_update_state_message,
             RemoteMemoryReadMessage: self._handle_remote_memory_read_message,
-            RemoteMemoryWriteMessage: self._handle_remote_memory_write_msg
+            RemoteMemoryWriteMessage: self._handle_remote_memory_write_message
         }
         self.daemon = True
         self.start()
@@ -260,7 +260,7 @@ class Avatar(Thread):
         return (message.id, mem, success)
 
     @watch('RemoteMemoryWrite')
-    def _handle_remote_memory_write_msg(self, message):
+    def _handle_remote_memory_write_message(self, message):
         mem_range = self.get_memory_range(message.address)
         if not mem_range.forwarded:
             raise Exception("Forward request for non forwarded range received!")
@@ -322,7 +322,20 @@ class AvatarFastQueueProcessor(Thread):
         self.avatar = avatar
         self._close = Event()
         self.daemon = True
+        self.message_handlers = {
+            UpdateStateMessage: self._fast_handle_update_state_message,
+            BreakpointHitMessage: self._fast_handle_update_state_message,
+        }
+
         self.start()
+
+
+    def _fast_handle_update_state_message(self, message):
+        #print message
+        message.origin.update_state(message.state)
+        self.avatar.queue.put(message)
+
+
 
     def run(self):
         self._close.clear()
@@ -330,16 +343,23 @@ class AvatarFastQueueProcessor(Thread):
             if self._close.is_set():
                 break
 
+            # get() blocks sometimes.  This is a non-blocking wait.
+            #if self.avatar.fast_queue.empty():
+                #import time; time.sleep(.001)
+                #continue
+
             try:
                 message = self.avatar.fast_queue.get(timeout=0.1)
-            except queue.Empty as e:
+            except:
                 continue
 
-            if isinstance(message, UpdateStateMessage):
-                message.origin.update_state(message.state)
-                self.avatar.queue.put(message)
+            handler = self.message_handlers.get(message.__class__, None)
+            if handler is None:
+                raise Exception("No handler for fast message %s registered" %
+                                message)
+
             else:
-                raise Exception("Unknown Avatar Fast Message received")
+                handler(message)
 
     def stop(self):
         """
