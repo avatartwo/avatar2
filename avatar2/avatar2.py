@@ -10,6 +10,7 @@ import tempfile
 import intervaltree
 import logging
 import signal
+import time
 
 from os import path, makedirs
 from threading import Thread, Event
@@ -286,10 +287,11 @@ class Avatar(Thread):
                 break
 
             try:
-                message = self.queue.get(timeout=0.5)
+                message = self.queue.get(timeout=0.1)
             except:
                 continue
-            self.log.debug("Avatar received %s" % message)
+            self.log.debug("Avatar received %s. Queue-Status: %d/%d" % (message,
+                            self.queue.qsize(), self.fast_queue.qsize()))
 
             handler = self.message_handlers.get(message.__class__, None)
             if handler is None:
@@ -345,7 +347,7 @@ class AvatarFastQueueProcessor(Thread):
 
             # get() blocks sometimes.  This is a non-blocking wait.
             #if self.avatar.fast_queue.empty():
-                #import time; time.sleep(.001)
+                #time.sleep(.001)
                 #continue
 
             try:

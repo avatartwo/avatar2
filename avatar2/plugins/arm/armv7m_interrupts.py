@@ -30,6 +30,9 @@ def add_protocols(self, **kwargs):
 def forward_interrupt(self, message): #, **kwargs):
     global stawp
     target = message.origin
+    target.update_state(message.state)
+    self.queue.put(message)
+
     if isinstance(target, OpenOCDTarget):
         if message.address == message.origin.protocols.interrupts._monitor_stub_isr -1:
             xpsr = target.read_register('xPSR')
@@ -37,8 +40,6 @@ def forward_interrupt(self, message): #, **kwargs):
             self.log.info("Injecting IRQ 0x%x" % irq_num)
             self._irq_dst.protocols.interrupts.inject_interrupt(irq_num)
         
-    message.origin.update_state(message.state)
-    self.queue.put(message)
     
 def continue_execution(self, message, **kwargs):
     target = message.origin
@@ -103,10 +104,9 @@ def _handle_remote_interrupt_exit_message(self, message):
     if not self._irq_dst or not self._irq_src:
         return
     self._irq_src.protocols.interrupts.inject_exc_return(message.transition_type)
+    self._irq_src.cont()
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
                                                        True)
-    print(self._irq_src.state)
-    self._irq_src.cont()
 
 @watch('RemoteMemoryWrite')
 def _handle_remote_memory_write_message_nvic(self, message):
