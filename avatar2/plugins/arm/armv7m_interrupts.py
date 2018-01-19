@@ -36,6 +36,8 @@ def forward_interrupt(self, message): #, **kwargs):
             irq_num = xpsr & 0xff
             self.log.info("Injecting IRQ 0x%x" % irq_num)
             self._irq_dst.protocols.interrupts.inject_interrupt(irq_num)
+        
+    message.origin.update_state(message.state)
     self.queue.put(message)
     
 def continue_execution(self, message, **kwargs):
@@ -103,6 +105,7 @@ def _handle_remote_interrupt_exit_message(self, message):
     self._irq_src.protocols.interrupts.inject_exc_return(message.transition_type)
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
                                                        True)
+    print(self._irq_src.state)
     self._irq_src.cont()
 
 @watch('RemoteMemoryWrite')

@@ -133,6 +133,11 @@ class OpenOCDProtocol(Thread):
             return False
 
     def handle_target_notification(self, str):
+
+        # Check if we should handle notifications
+        if self != self._origin.protocols.execution:
+            return
+
         # mode halt | run | init
         reset_re = re.compile("type target_reset mode (\w+)")
         # Trace data (from TPIU) Hex-encoded.

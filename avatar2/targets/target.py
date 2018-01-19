@@ -295,7 +295,7 @@ class Target(object):
         return self.protocols.memory.read_memory(address, size, words, raw)
 
     @watch('TargetRegisterWrite')
-    @action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
+    #@action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
     def write_register(self, register, value):
         """
         Writing a register to the target
