@@ -125,6 +125,23 @@ class ARMV7MInterruptProtocol(Thread):
         return True
 
 
+    def ignore_interrupt_return(self, interrupt_number):
+        if isinstance(self._origin, QemuTarget):
+            self.log.info("Disable handling of irq return for %d" % interrupt_number)
+            self._origin.protocols.monitor.execute_command(
+                'avatar-armv7m-ignore-irq-return',
+                 {'num_irq': interrupt_number}
+            )
+
+
+    def unignore_interrupt_return(self, interrupt_number):
+        if isinstance(self._origin, QemuTarget):
+            self.log.info("Re-enable handling of irq return for %d" % interrupt_number)
+            self._origin.protocols.monitor.execute_command(
+                'avatar-armv7m-ignore-irq-return',
+                 {'num_irq': interrupt_number}
+            )
+
     def inject_interrupt(self, interrupt_number, cpu_number=0):
         if isinstance(self._origin, QemuTarget):
             self.log.info("Injecting interrupt %d" % interrupt_number)
