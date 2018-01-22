@@ -138,7 +138,7 @@ class ARMV7MInterruptProtocol(Thread):
         if isinstance(self._origin, QemuTarget):
             self.log.info("Re-enable handling of irq return for %d" % interrupt_number)
             self._origin.protocols.monitor.execute_command(
-                'avatar-armv7m-ignore-irq-return',
+                'avatar-armv7m-unignore-irq-return',
                  {'num_irq': interrupt_number}
             )
 
