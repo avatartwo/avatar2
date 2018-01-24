@@ -181,8 +181,9 @@ class Avatar(Thread):
             raise Exception("More than one memory range specified at 0x%x, \
                          not supported yet!" % address)
         elif len(ranges) == 0:
-            raise Exception("No Memory range specified at 0x%x" %
+            self.log.critical("No Memory range specified at 0x%x" %
                             address)
+            return None
         return ranges.pop().data
 
     @watch('StateTransfer')
@@ -242,8 +243,11 @@ class Avatar(Thread):
 
     @watch('RemoteMemoryRead')
     def _handle_remote_memory_read_message(self, message):
+        
         range = self.get_memory_range(message.address)
-
+        if not range:
+            return (message.id, None, False)
+        message.dst = range
         if not range.forwarded:
             raise Exception("Forward request for non forwarded range received!")
         if range.forwarded_to is None:
@@ -263,6 +267,10 @@ class Avatar(Thread):
     @watch('RemoteMemoryWrite')
     def _handle_remote_memory_write_message(self, message):
         mem_range = self.get_memory_range(message.address)
+        if not mem_range:
+            message.origin.protocols.remote_memory.send_response(message.id, 0, True)
+            return (message.id, 0, False)
+        message.dst = mem_range
         if not mem_range.forwarded:
             raise Exception("Forward request for non forwarded range received!")
         if mem_range.forwarded_to is None:
