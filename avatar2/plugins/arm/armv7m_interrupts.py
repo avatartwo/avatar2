@@ -101,10 +101,11 @@ def _handle_remote_interrupt_enter_message(self, message):
 @watch('RemoteInterruptExit')
 def _handle_remote_interrupt_exit_message(self, message):
 
-    if not self._irq_dst or not self._irq_src:
-        return
-    self._irq_src.protocols.interrupts.inject_exc_return(message.transition_type)
-    self._irq_src.cont()
+    if self._irq_dst and self._irq_src:
+        # We are forwarding, make sure to forward the return
+        self._irq_src.protocols.interrupts.inject_exc_return(message.transition_type)
+        self._irq_src.cont()
+    # Always ack the exit message
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
                                                        True)
 
