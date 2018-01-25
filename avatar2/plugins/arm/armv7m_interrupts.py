@@ -109,7 +109,6 @@ def _handle_remote_interrupt_exit_message(self, message):
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
                                                        True)
 
-@watch('RemoteMemoryWrite')
 def _handle_remote_memory_write_message_nvic(self, message):
 
     # NVIC address according to coresight manual
