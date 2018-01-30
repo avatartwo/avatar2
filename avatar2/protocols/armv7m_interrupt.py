@@ -3,24 +3,31 @@ import logging
 from os import O_WRONLY, O_RDONLY
 from threading import Thread, Event, Condition
 from ctypes import Structure, c_uint32, c_uint64
+from enum import Enum
 from posix_ipc import MessageQueue, ExistentialError
 
 from avatar2.message import RemoteInterruptEnterMessage
 from avatar2.message import RemoteInterruptExitMessage
 from avatar2.targets import QemuTarget
 
-class V7MInterruptExitReq(Structure):
+class RINOperation(Enum):
+    ENTER = 0
+    EXIT = 1
+
+class V7MRemoteInterruptNotification(Structure):
     _fields_ = [
         ('id', c_uint64),
         ('num_irq', c_uint32),
+        ('operation', c_uint32),
         ('type', c_uint32)
     ]
 
 
-class V7MInterruptExitResp(Structure):
+class V7MInterruptNotificationAck(Structure):
     _fields_ = [
         ('id', c_uint64),
-        ('success', c_uint32)
+        ('success', c_uint32),
+        ('operation', c_uint32),
     ]
 
 
@@ -70,13 +77,24 @@ class ARMV7MInterruptProtocol(Thread):
             except:
                 continue
 
-            req_struct = V7MInterruptExitReq.from_buffer_copy(request[0])
+            req_struct = V7MRemoteInterruptNotification.from_buffer_copy(request[0])
 
-            self.log.debug("Received an InterruptExitRequest for irq %d (%x)" %
-                           (req_struct.num_irq, req_struct.type))
-            msg = RemoteInterruptExitMessage(self._origin, req_struct.id, 
-                                             req_struct.type,
-                                             req_struct.num_irq)
+            if RINOperation(req_struct.operation) == RINOperation.ENTER:
+                msg = RemoteInterruptEnterMessage(self._origin, req_struct.id, 
+                                                 req_struct.num_irq)
+            elif RINOperation(req_struct.operation) == RINOperation.EXIT:
+                msg = RemoteInterruptExitMessage(self._origin, req_struct.id, 
+                                                 req_struct.type,
+                                                 req_struct.num_irq)
+                self.log.debug("Received an InterruptExitRequest for irq %d (%x)" %
+                               (req_struct.num_irq, req_struct.type))
+
+            else:
+                msg = None
+                raise Exception(("Received V7MRemoteInterrupt Notification with"
+                                "unknown operation type %d") %
+                                req_struct.operation)
+
             self._avatar_queue.put(msg)
 
         self._closed.set()
@@ -151,10 +169,22 @@ class ARMV7MInterruptProtocol(Thread):
             )
 
     def send_interrupt_exit_response(self, id, success):
-        response = V7MInterruptExitResp(id, success)
+        response =  V7MInterruptNotificationAck(id, success,
+                                                RINOperation.EXIT.value)
         try:
             self._tx_queue.send(response)
-            self.log.debug("Send RemoteInterruptResponse with id %d" % id)
+            self.log.debug("Send RemoteInterruptExitResponse with id %d" % id)
+            return True
+        except Exception as e:
+            self.log.error("Unable to send response: %s" % e)
+            return False 
+
+    def send_interrupt_enter_response(self, id, success):
+        response = V7MInterruptNotificationAck(id, success,
+                                               RINOperation.ENTER.value)
+        try:
+            self._tx_queue.send(response)
+            self.log.debug("Send RemoteInterruptEnterResponse with id %d" % id)
             return True
         except Exception as e:
             self.log.error("Unable to send response: %s" % e)

@@ -75,6 +75,7 @@ class CoreSightProtocol(Thread):
         self._monitor_stub_loop = None
 
         Thread.__init__(self)
+        self.daemon=True
 
     def __del__(self):
         self.shutdown()

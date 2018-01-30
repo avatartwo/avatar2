@@ -44,9 +44,9 @@ class RemoteMemoryWriteMessage(AvatarMessage):
         self.dst = dst
 
 class RemoteInterruptEnterMessage(AvatarMessage):
-    def __init__(self, origin, transition_type, interrupt_num):
+    def __init__(self, origin, id, interrupt_num):
         super(self.__class__, self).__init__(origin)
-        self.transition_type = transition_type
+        self.id = id
         self.interrupt_num = interrupt_num
 
 class RemoteInterruptExitMessage(AvatarMessage):
@@ -55,7 +55,6 @@ class RemoteInterruptExitMessage(AvatarMessage):
         self.id = id
         self.transition_type = transition_type
         self.interrupt_num = interrupt_num
-
 
 
 from .targets.target import TargetStates

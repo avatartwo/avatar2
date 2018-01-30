@@ -88,15 +88,13 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
         #message.origin.update_state(message.state)
         #self.avatar.queue.put(message)
 
-#this guy is currently not used
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
     if not self._irq_dst:
         return
-    if message.transition_type == 1 and \
-       message.interrupt_num not in self._irq_ignore:
-        self._irq_dst.protocols.interrupts.inject_interrupt(
-            message.interrupt_num)
+    self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,
+                                                       True)
+
 
 @watch('RemoteInterruptExit')
 def _handle_remote_interrupt_exit_message(self, message):
