@@ -4,6 +4,7 @@ from struct import pack, unpack
 from codecs import encode
 
 import logging
+import re
 import pygdbmi.gdbcontroller
 
 import parse
@@ -49,6 +50,8 @@ class GDBResponseListener(Thread):
         self._sync_responses_cv = Condition()
         self._last_exec_token = 0
         self._origin = origin
+        self._console_output = None
+        self._console_enable = False
         self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
@@ -64,7 +67,7 @@ class GDBResponseListener(Thread):
     def parse_async_notify(self, response):
         """
         This functions converts gdb notify messages to an avatar message
-        
+
         :param response: A pygdbmi response dictonary
         :returns:        An avatar message
         """
@@ -134,7 +137,7 @@ class GDBResponseListener(Thread):
         """
 
         if response['type'] == 'console':
-            pass  # TODO: implement handler for console messages
+            self.collect_console_output(response)
         elif response['type'] == 'log':
             pass  # TODO: implement handler for log messages
         elif response['type'] == 'target':
@@ -200,6 +203,17 @@ class GDBResponseListener(Thread):
         self._close.set()
         self._closed.wait()
 
+    def start_console_collection(self):
+        self._console_output = ""
+        self._console_enable = True
+
+    def stop_console_collection(self):
+        self._console_enable = False
+
+    def collect_console_output(self, msg):
+        if self._console_enable:
+            self._console_output += '\n'
+            self._console_output += msg['payload']
 
 class GDBProtocol(object):
     """Main class for the gdb communication protocol
@@ -217,17 +231,26 @@ class GDBProtocol(object):
             additional_args=[],
             async_message_handler=None,
             avatar=None,
-            origin=None):
+            origin=None,
+            enable_init_files=False,
+            binary=None,
+            local_arguments=None):
         self._async_message_handler = async_message_handler
         self._arch = arch
         self._register_mapping = dict(arch.registers)
+
+        gdb_args = []
+        if not enable_init_files:
+            gdb_args += ['--nx']
+        gdb_args = ['--quiet', '--interpreter=mi2']
+        gdb_args += additional_args
+        if binary is not None:
+            gdb_args += ['--args', binary]
+            if local_arguments is not None:
+                gdb_args += [local_arguments]
         self._gdbmi = pygdbmi.gdbcontroller.GdbController(
             gdb_path=gdb_executable,
-            gdb_args=[
-                         '--nx',
-                         '--quiet',
-                         '--interpreter=mi2'] +
-                     additional_args,
+            gdb_args=gdb_args,
             verbose=False)  # set to True for debugging
         queue = avatar.queue if avatar is not None else None
         fast_queue = avatar.fast_queue if avatar is not None else None
@@ -413,7 +436,8 @@ class GDBProtocol(object):
                        regex=False,
                        condition=None,
                        ignore_count=0,
-                       thread=0):
+                       thread=0,
+                       pending=False):
         """Inserts a breakpoint
 
         :param bool hardware: Hardware breakpoint
@@ -442,6 +466,8 @@ class GDBProtocol(object):
         if thread:
             cmd.append("-p")
             cmd.append("%d" % thread)
+        if pending:
+            cmd.append("-f")
 
         if isinstance(line, int):
             cmd.append("*0x%x" % line)
@@ -658,6 +684,16 @@ class GDBProtocol(object):
             resp)
         return ret
 
+    def run(self):
+        """Starts the execution of the target
+        :returns: True on success"""
+        ret, resp = self._sync_request(["-exec-run"], GDB_PROT_RUN)
+
+        self.log.debug(
+            "Attempted to start execution on the target. Received response: %s" %
+            resp)
+        return ret
+
     def cont(self):
         """Continues the execution of the target
         :returns: True on success"""
@@ -686,4 +722,50 @@ class GDBProtocol(object):
 
         self.log.debug("Attempt to set endianness of the target. Received: %s" %
                        resp)
+        return ret
+
+    def get_mappings(self):
+        self._communicator.start_console_collection()
+        req = ['info', 'proc', 'mappings']
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+        self._communicator.stop_console_collection()
+        self.log.debug("Attempt to read the memory mappings of the target. " +
+                       "Received: %s" % resp)
+        return ret, self._communicator._console_output
+
+    def console_command(self, cmd, rexpect=GDB_PROT_DONE):
+        self._communicator.start_console_collection()
+        req = cmd.split()
+        ret, resp = self._sync_request(req, rexpect)
+        self._communicator.stop_console_collection()
+        self.log.debug("Attempt to execute the console command: %s" % cmd)
+        return ret, self._communicator._console_output
+
+    def get_symbol(self, symbol):
+        self._communicator.start_console_collection()
+        req = ['info', 'address', '%s' % symbol]
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+        self._communicator.stop_console_collection()
+        if ret:
+            resp = self._communicator._console_output
+            regex = re.compile("(0x[0-9a-f]*)[ .]")
+            resp = regex.findall(resp)
+            if len(resp) == 1:
+                resp = long(resp[0], 16)
+            else:
+                resp = -1
+                ret = False
+        self.log.debug("Attempt to resolve the symbol %s. " +
+                       "Received: %s" % resp)
+        return ret, resp
+
+    def set_gdb_variable(self, variable, value):
+        req = ['-gdb-set', str(variable), str(value)]
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+        if ret:
+            self.log.debug("Successfully set variable %s to %s" %
+                           (str(variable), str(value)))
+        else:
+            self.log.debug("Unable to set variable %s to %s" %
+                           (str(variable), str(value)))
         return ret

@@ -70,8 +70,8 @@ def watch(watched_type):
             avatar.watchmen.t(watched_type, BEFORE, *args, **cb_kwargs)
             ret = func(self, *args, **kwargs)
             cb_kwargs.update({'watched_return': ret})
-            avatar.watchmen.t(watched_type, AFTER, *args, **cb_kwargs)
-            return ret
+            cb_ret = avatar.watchmen.t(watched_type, AFTER, *args, **cb_kwargs)
+            return ret if cb_ret is None else cb_ret
 
         return watchtrigger
 
@@ -92,11 +92,13 @@ class AsyncReaction(Thread):
 
 class WatchedEvent(object):
     # noinspection PyUnusedLocal
-    def __init__(self, watch_type, when, callback, is_async, *args, **kwargs):
+    def __init__(self, watch_type, when, callback, is_async,
+                 overwrite_return = False, *args, **kwargs):
         self._callback = callback
         self.type = watch_type
         self.when = when
         self.is_async = is_async
+        self.overwrite_return = overwrite_return
 
     def react(self, avatar, *args, **kwargs):
         if self._callback is None:
@@ -108,7 +110,10 @@ class WatchedEvent(object):
                 self.daemon = True
                 thread.start()
             else:
-                self._callback(avatar, *args, **kwargs)
+                ret = self._callback(avatar, *args, **kwargs)
+                if self.overwrite_return:
+                    return ret
+                
 
 
 class Watchmen(object):
@@ -128,14 +133,24 @@ class Watchmen(object):
             if self.watched_types._add(type):
                 self._watched_events[type] = []
 
-    def add_watchman(self, watch_type, when=BEFORE, callback=None, is_async=False, *args, **kwargs):
+    def add_watchman(self, watch_type, when=BEFORE, callback=None, is_async=False, overwrite_return=False, *args, **kwargs):
 
         if watch_type not in self.watched_types:
             raise Exception("Requested event_type does not exist")
         if when not in (BEFORE, AFTER):
             raise Exception("Watchman has to be invoked \'before\' or \'after\'!")
+        if when == BEFORE and overwrite_return == True:
+            self._avatar.log.warning("Overite return enabled for watchman BEFORE event %s. Discarding." % watch_type)
+            overwrite_return = False
+        w = WatchedEvent(watch_type, when, callback, is_async,
+                         overwrite_return=overwrite_return,
+                         *args, **kwargs)
+        overwriting_cbs = [x.overwrite_return for x in
+                           self._watched_events[watch_type]
+                           if x.overwrite_return]
 
-        w = WatchedEvent(watch_type, when, callback, is_async, *args, **kwargs)
+        if len(overwriting_cbs) > 1:
+            self._avatar.log.warning("More than one watchman can modify the return value for the event. Watch type: %s" % watch_type)
         self._watched_events[watch_type].append(w)
         return w
 
@@ -147,8 +162,14 @@ class Watchmen(object):
         self._watched_events[watch_type].remove(watchman)
 
     def trigger(self, watch_type, when, *args, **kwargs):
+        ret = None
         for watchman in self._watched_events[watch_type]:
             if watchman.when == when:
-                watchman.react(self._avatar, *args, **kwargs)
+                if watchman.overwrite_return:
+                    ret = watchman.react(self._avatar, *args, **kwargs)
+                    kwargs.update({'watched_return': ret})
+                else:
+                    watchman.react(self._avatar, *args, **kwargs)
+        return ret
 
     t = trigger

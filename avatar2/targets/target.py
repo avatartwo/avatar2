@@ -26,7 +26,7 @@ def action_valid_decorator_factory(state, protocol):
                 raise Exception(
                     "%s() requested but %s is undefined." %
                     (func.__name__, protocol))
-            if self.state != state:
+            if not self.state.value & state.value:
                 raise Exception("%s() requested but Target is %s" %
                                 (func.__name__, TargetStates(self.state).name))
             return func(self, *args, **kwargs)
@@ -46,7 +46,7 @@ class TargetStates(Enum):
     RUNNING = 0x8
     SYNCING = 0x10
     EXITED = 0x20
-
+    NOT_RUNNING = INITIALIZED | STOPPED
 
 class TargetRegs(object):
     def __init__(self, target, register_dict):
@@ -278,9 +278,9 @@ class Target(object):
         return self.protocols.registers.read_register(register)
 
     @watch('TargetSetBreakpoint')
-    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
+    @action_valid_decorator_factory(TargetStates.NOT_RUNNING, 'execution')
     def set_breakpoint(self, line, hardware=False, temporary=False, regex=False,
-                       condition=None, ignore_count=0, thread=0):
+                       condition=None, ignore_count=0, thread=0, **kwargs):
         """Inserts a breakpoint
 
         :param bool hardware: Hardware breakpoint
@@ -295,10 +295,10 @@ class Target(object):
                                                   regex=regex,
                                                   condition=condition,
                                                   ignore_count=ignore_count,
-                                                  thread=thread)
+                                                  thread=thread, **kwargs)
 
     @watch('TargetSetWatchPoint')
-    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
+    @action_valid_decorator_factory(TargetStates.NOT_RUNNING, 'execution')
     def set_watchpoint(self, variable, write=True, read=False):
         """Inserts a watchpoint
 
@@ -348,3 +348,4 @@ class Target(object):
     rr = read_register
     rm = read_memory
     wm = write_memory
+    bp = set_breakpoint

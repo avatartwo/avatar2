@@ -1,6 +1,8 @@
-from avatar2.targets import Target
+from avatar2.targets import Target, TargetStates
 from avatar2.protocols.gdb import GDBProtocol
 
+from .target import action_valid_decorator_factory
+from ..watchmen import watch
 
 class GDBTarget(Target):
     def __init__(self, avatar,
@@ -10,6 +12,9 @@ class GDBTarget(Target):
                  gdb_serial_baud_rate=38400,
                  gdb_serial_parity='none',
                  serial=False,
+                 enable_init_files=False,
+                 local_binary=None,
+                 arguments=None,
                  **kwargs
                  ):
 
@@ -23,27 +28,65 @@ class GDBTarget(Target):
         self.gdb_serial_baud_rate = gdb_serial_baud_rate
         self.gdb_serial_parity = gdb_serial_parity
         self._serial = serial
+        self._local_binary = local_binary
+        self._arguments = arguments
+        self._enable_init_files = enable_init_files
 
     def init(self):
 
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
                           arch=self._arch,
                           additional_args=self.gdb_additional_args,
-                          avatar=self.avatar, origin=self)
+                          avatar=self.avatar, origin=self,
+                          enable_init_files=self._enable_init_files,
+                          binary=self._local_binary, local_arguments=self._arguments)
 
-        if not self._serial:
-            if gdb.remote_connect(ip=self.gdb_ip, port=self.gdb_port):
-                self.log.info("Connected to Target")
+        # If we are debugging a program locally,
+        # we do not need to establish any connections
+        if not self._local_binary:
+            if not self._serial:
+                if gdb.remote_connect(ip=self.gdb_ip, port=self.gdb_port):
+                    self.log.info("Connected to Target")
+                else:
+                    self.log.warning("Connecting failed")
             else:
-                self.log.warning("Connecting failed")
+                if gdb.remote_connect_serial(device=self.gdb_serial_device,
+                                             baud_rate=self.gdb_serial_baud_rate,
+                                             parity=self.gdb_serial_parity):
+                    self.log.info("Connected to Target")
+                else:
+                    self.log.warning("Connecting failed")
         else:
-            if gdb.remote_connect_serial(device=self.gdb_serial_device,
-                                         baud_rate=self.gdb_serial_baud_rate,
-                                         parity=self.gdb_serial_parity):
-                self.log.info("Connected to Target")
-            else:
-                self.log.warning("Connecting failed")
+            self.update_state(TargetStates.INITIALIZED)
 
         self.protocols.set_all(gdb)
 
-        self.wait()
+        if self._local_binary:
+            self.wait(state=TargetStates.INITIALIZED)
+        else:
+            self.wait()
+
+    @watch('TargetCont')
+    @action_valid_decorator_factory(TargetStates.INITIALIZED, 'execution')
+    def run(self):
+        self._no_state_update_pending.clear()
+        ret = self.protocols.execution.run()
+        self.wait(TargetStates.RUNNING)
+        return ret
+
+    def cont(self):
+        if self.state != TargetStates.INITIALIZED:
+            super(GDBTarget, self).cont()
+        else:
+            self.run()
+
+    @action_valid_decorator_factory(TargetStates.INITIALIZED, 'execution')
+    def disable_aslr(self):
+        self.protocols.execution.set_gdb_variable('disable-randomization',
+                                                  'on')
+
+    @action_valid_decorator_factory(TargetStates.INITIALIZED, 'execution')
+    def disable_aslr(self):
+        self.protocols.execution.set_gdb_variable('disable-randomization',
+                                                  'off')
+    
