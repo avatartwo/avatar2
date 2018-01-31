@@ -19,6 +19,15 @@ from avatar2.targets import Target, TargetStates, GDBTarget
 from avatar2.message import RemoteMemoryReadMessage, RemoteMemoryWriteMessage
 
 class AvatarPage(TreePage):
+    '''
+    Avatar-specific page with angr semantic.
+    Based in TreePage because the default Page (ListPage) in angr allocates
+    an object for each memory location, even if this location is not used at
+    all.
+    AvatarPage implements a copy-on-access mechanism to pull data from the
+    remote target when a memory access occours. The entire page is collected
+    to leverage locality of reference.
+    '''
     cnt = 0
     def __init__(self, start, size, origin=None, req_id=0, cowed=False,
                  *args, **kwargs):
@@ -101,48 +110,6 @@ class AvatarPage(TreePage):
         # do your stuff
         return [(start, SimMemoryObject(BVV(r_value, (end-start)*8), start))]
 
-
-#class SimAvatarState(SimState):
-
-
-    #def __init__(self, origin=None, **kwargs):
-        #options = set(kwargs.get('options', set()))
-        #add_options = kwargs.get('add_options')
-        #remove_options = kwargs.get('remove_options')
-
-        #if add_options is not None:
-            #options |= add_options
-        #if remove_options is not None:
-            #options -= remove_options
-
-        #m_options = set([o.ABSTRACT_MEMORY, o.FAST_MEMORY])
-
-    #if options & m_options:
-        #l.warning('Discarding user-defined memory options for avatar state')
-        #r_options = kwargs.get('remove_options',set())
-        #kwargs['remove_options'] = r_options.update(m_options)
-
-        #m_options = set([o.ABSTRACT_MEMORY, o.FAST_MEMORY])
-
-        #if options & m_options:
-            #l.warning('Discarding user-defined memory options for avatar state')
-            #r_options = kwargs.get('remove_options',set())
-            #kwargs['remove_options'] = r_options.update(m_options)
-
-
-        #memory_storage = SimPagedMemory(page_size=4096)
-        #sim_memory = SimSymbolicMemory(mem=memory_storage)
-
-        #super(SimAvatarState, self).__init__(self, arch="AMD64", plugins=None, memory_backer=None, permissions_backer=None, mode=None, options=None,
-                                                          #add_options=None, remove_options=None, special_memory_filler=None, os_name=None
-
-                                            #)
-        #if origin is None:
-            #raise Exception(("SimAvatarState without Origin instantiated!"
-                              #"Bailing out!"))
-#class AvatarStatePlugin(SimStatePlugin):
-    #'''This class enables an AvatarAPI to the SimState.
-    #'''
 
 
 def avatar_state(angr_factory, angr_target, options=frozenset(),
@@ -253,9 +220,14 @@ class AngrRemoteMemoryListener():
     def shutdown(self):
         pass
 
+
 class AngrTarget(Target):
-    ''' The angr-target does not require additional protocols
-    Reason for this is that the '''
+    '''
+    The angr-target is somewhat different from the other targets in avatar2,
+    which usually communicate with something outside the bounder of the
+    analysis process. Conversely, the angr target manages python objects which
+    reside in the same process of the analysis script.
+    '''
 
     def __init__(self, avatar, binary=None, base_addr=None, load_options=None,
                  entry_address=0x00, **kwargs):
@@ -273,11 +245,14 @@ class AngrTarget(Target):
     def init(self):
         prot = AngrRemoteMemoryListener(self)
         self.protocols.remote_memory = prot
+
         # If no base addr is specified, try to figure it out via memory ranges
         for (start, end, mr) in self.avatar.memory_ranges:
             if hasattr(mr, 'file') and mr.file == self.binary:
                 self.base_addr = start
 
+        ## Custom load_options for the angr Project. These are meant to enable
+        ## angr to deal with binaries extracted from the memory of a process
         load_options = {}
         load_options['main_opts'] = {'backend': 'blob', 
                                      'custom_arch': self.avatar.arch.angr_name,
@@ -286,8 +261,6 @@ class AngrTarget(Target):
                                     }
         load_options['auto_load_libs'] = False,
         load_options['page_size'] = 0x1000 # change me once angr is ready!
-
-        # print self.base_addr
 
         # Angr needs a "main-binary" to execute. If the user did not specify
         # one, we will create one on the fly based on avatar's memory_ranges
@@ -311,10 +284,13 @@ class AngrTarget(Target):
         # Before loading the project, let's apply the user defined load_options
         load_options.update(self.load_options)
 
+        ## Create the angr Project
         self.angr = angr.Project(self.binary, load_options=load_options)
-
         self.angr.factory.origin = self
-        self.angr.factory.avatar_state = MethodType(avatar_state, self.angr.factory)
+
+        ## Add the capability to create angr state to the angr target
+        self.angr.factory.avatar_state = MethodType(avatar_state,
+                                                    self.angr.factory)
 
         # Now that we have an angr-project, let's load the other ranges
         self._remote_memory_protocol = self
@@ -327,7 +303,13 @@ class AngrTarget(Target):
         self._monitor_protocol = None
         self.state = TargetStates.STOPPED
 
+
     def hook_symbols(self, from_target):
+        '''
+        Automatically hook all the functions that angr is able to emulate.
+        First retreive the address of the symbols from the from_target
+        and then hook this address with the corresponding angr SimProcedure.
+        '''
         libraries = ['libc', 'glibc', 'linux_loader', 'posix',
                      'linux_kernel']
         sim_libraries = [simprocedures[lib] for lib in libraries]
