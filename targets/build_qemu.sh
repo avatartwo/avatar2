@@ -4,9 +4,9 @@ ci_distr="Ubuntu 16.04.3 LTS \n \l"
 
 if [[ "$distr" == "$ci_distr" ]]
 then
-  echo "deb-src http://archive.ubuntu.com/ubuntu/ xenial-security main restricted" >> /etc/apt/sources.list
-  apt-get update
-  apt-get build-dep -y qemu
+  sudo sh -c 'echo "deb-src http://archive.ubuntu.com/ubuntu/ xenial-security main restricted" >> /etc/apt/sources.list'
+  sudo apt-get update
+  sudo apt-get build-dep -y qemu
 fi
 
 cd `dirname "$BASH_SOURCE"`/src/
