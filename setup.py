@@ -1,4 +1,9 @@
-from distutils.core import setup
+from distutils.core import setup, Extension
+
+segment_registers = Extension('segment_registers',
+                          sources=['avatar2/plugins/x86/segment_registers.c'],
+                          extra_compile_args = ["-fno-stack-protector"]
+                             )
 
 setup(
     name='avatar2',
@@ -23,5 +28,6 @@ setup(
     ],
     package_data={'avatar2/plugins/x86': ['avatar_fs.so']},
     url='http://www.s3.eurecom.fr/tools/avatar/',
-    description='Dynamic firmware analysis'
+    description='Dynamic firmware analysis',
+    ext_modules=[segment_registers]
 )

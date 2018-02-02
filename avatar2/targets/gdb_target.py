@@ -32,6 +32,7 @@ class GDBTarget(Target):
         self._arguments = arguments
         self._enable_init_files = enable_init_files
 
+    @watch('TargetInit')
     def init(self):
 
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
