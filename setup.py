@@ -1,6 +1,12 @@
 from setuptools import setup
 from sys import version_info
 
+from distutils.core import setup, Extension
+
+segment_registers = Extension('segment_registers',
+                          sources=['avatar2/plugins/x86/segment_registers.c'],
+                          extra_compile_args = ["-fno-stack-protector"]
+                             )
 
 setup(
     name='avatar2',
@@ -32,4 +38,5 @@ setup(
     maintainer='Marius Muench',
     maintainer_email='marius.muench@eurecom.fr',
     package_data={'avatar2/plugins/x86': ['avatar_fs.so']},
+    ext_modules=[segment_registers]
 )

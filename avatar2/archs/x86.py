@@ -171,6 +171,9 @@ class X86_64(X86):
                  'fs': 22,
                  'gs': 23,
                  }
+
+    scratch_registers = ['rax', 'rdi', 'rsi', 'rdx', 'rcx','r8','r9', 'r10',
+                         'r11']
     capstone_mode = CS_MODE_64
     unemulated_instructions = []
     capstone_mode = CS_MODE_64
