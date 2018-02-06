@@ -258,6 +258,7 @@ class Avatar(Thread):
             mem = range.forwarded_to.read_memory(message.address, message.size)
             success = True
         except:
+            self.log.exception("Error performing memory operation")
             mem = -1
             success = False
         message.origin.protocols.remote_memory.send_response(message.id, mem,
