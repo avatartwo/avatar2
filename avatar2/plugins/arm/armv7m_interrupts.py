@@ -39,8 +39,8 @@ def forward_interrupt(self, message): #, **kwargs):
             irq_num = xpsr & 0xff
             self.log.info("Injecting IRQ 0x%x" % irq_num)
             self._irq_dst.protocols.interrupts.inject_interrupt(irq_num)
-        
-    
+
+
 def continue_execution(self, message, **kwargs):
     target = message.origin
     if message.address == message.origin.protocols.interrupts._monitor_stub_isr -1:
@@ -69,9 +69,9 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
     if to_target:
         to_target.protocols.interrupts.enable_interrupts()
 
-
-    from_target.set_breakpoint(
-        from_target.protocols.interrupts._monitor_stub_isr, hardware=True)
+    isr_addr = from_target.protocols.interrupts._monitor_stub_isr - 1
+    self.log.info("ISR breakpoint at %#08x" % isr_addr)
+    from_target.set_breakpoint(isr_addr, hardware=True)
 
     # OpenOCDProtocol does not emit breakpointhitmessages currently,
     # So we listen on state-updates and figure out the rest on our own
@@ -92,8 +92,12 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
 def _handle_remote_interrupt_enter_message(self, message):
     if not self._irq_dst:
         return
-    self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,
-                                                       True)
+    self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,True)
+    self.log.info("Restarting " + repr(self._irq_src))
+    try:
+        self._irq_src.cont()
+    except:
+        self.log.exception(" ")
 
 
 @watch('RemoteInterruptExit')
@@ -102,7 +106,7 @@ def _handle_remote_interrupt_exit_message(self, message):
     if self._irq_dst and self._irq_src:
         # We are forwarding, make sure to forward the return
         self._irq_src.protocols.interrupts.inject_exc_return(message.transition_type)
-        self._irq_src.cont()
+        #self._irq_src.cont()
     # Always ack the exit message
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
                                                        True)

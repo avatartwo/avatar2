@@ -73,7 +73,7 @@ class CoreSightProtocol(Thread):
         self._monitor_stub_base = None
         self._monitor_stub_isr = None
         self._monitor_stub_loop = None
-
+        self._monitor_stub_writeme = None
         Thread.__init__(self)
         self.daemon=True
 
@@ -83,7 +83,6 @@ class CoreSightProtocol(Thread):
     def inject_interrupt(self, interrupt_number, cpu_number=0):
         # Set an interrupt using the STIR
         self._origin.write_memory(SCB_STIR, 4, interrupt_number)
-
 
     def enable_interrupt(self, interrupt_number):
         """
@@ -197,20 +196,28 @@ class CoreSightProtocol(Thread):
     #writeme: .word 0xffffffff
     #loadme: .word 0xffffffff    
     #"""
-    
+    # str r2, [r1]
+
     MONITOR_STUB = """
+    dcscr:   .word 0xe000edf0
+    haltme:  .word 0xA05F0003
+    writeme: .word 0x00000000
     init:
     ldr r1, =dcscr
     ldr r2, =haltme
+    ldr r3, =writeme
     ldr r1, [r1]
     ldr r2, [r2]
-    nop
     loop: b loop
     stub: 
-    str r2, [r1]
-    bx r3
-    dcscr: .word 0xe000edf0
-    haltme: .word 0xA05F0003
+    nop
+    intloop:
+    ldr r4, [r3]
+    cmp r4, #0
+    beq intloop
+    ldr r4, #0
+    str r4, [r3]
+    bx lr
     """
 
     def get_user_pc(self):
@@ -250,9 +257,9 @@ class CoreSightProtocol(Thread):
         :return:
         """
         self._monitor_stub_base = addr
-        self._monitor_stub_loop = addr + 10
-        self._monitor_stub_isr = addr + 13
-
+        self._monitor_stub_loop = addr + 12
+        self._monitor_stub_isr = addr + 25
+        self._monitor_stub_writeme = addr + 8
         # Pivot VTOR
         if self.get_vtor() == 0:
             self.set_vtor(vtor)
@@ -265,15 +272,14 @@ class CoreSightProtocol(Thread):
         if self._origin.state != TargetStates.STOPPED:
             self.log.warning("Not setting PC to the monitor stub; Target not stopped")
         else:
-            self._origin.regs.pc = self._monitor_stub_base
+            self._origin.regs.pc = self._monitor_stub_loop
 
     def inject_exc_return(self, exc_return):
         if not self._monitor_stub_base:
             self.log.error("You need to inject the monitor stub before you can inject exc_returns")
             return False
-
-        #return self._origin.write_memory(self._monitor_stub_writeme, 4, exc_return)
-        self._origin.regs.r3 = exc_return
+        # We can just BX LR for now.
+        return self._origin.write_memory(self._monitor_stub_writeme, 4, 1)
 
     def dispatch_exception_packet(self, packet):
         int_num = ((ord(packet[1]) & 0x01) << 8) | ord(packet[0])
