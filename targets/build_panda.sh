@@ -1,6 +1,6 @@
 #!/bin/bash
 distr=`cat /etc/issue`
-ci_distr="Ubuntu 16.04.3 LTS \n \l"
+ci_distr="Ubuntu 16.04.4 LTS \n \l"
 
 if [[ "$distr" == "$ci_distr" ]]
 then
