@@ -1,0 +1,58 @@
+sudo: enabled
+language: python
+python: 
+    - "2.7"
+    - "3.5"
+
+services:
+    - docker
+
+before_install:
+    - docker pull ubuntu:latest
+    - docker run --name ubuntu -dit ubuntu
+    # need also to clone avatar2 into the docker container
+    - docker exec ubuntu apt-get update
+    - docker exec ubuntu apt-get install -y git 
+    - docker exec ubuntu bash -c 'git init && git remote add origin https://github.com/SamAicardi/avatar2.git && git pull origin master:master'
+    #- docker exec ubuntu git clone --depth=50 --branch=master https://github.com/SamAicardi/avatar2.git avatar2
+    #- docker exec ubuntu cd avatar2; git submodule update --init --recursive
+
+
+install:
+    # NOTE: every command is executed starting from '/'
+    - docker exec ubuntu apt-get install -y cmake
+    - docker exec ubuntu apt-get install -y python python-pip
+    - docker exec ubuntu apt-get install -y python3 python3-pip
+    - docker exec ubuntu apt-get install -y libc6-i386 
+    - docker exec ubuntu apt-get install -y gdb 
+    - docker exec ubuntu apt-get install -y pkg-config 
+    - docker exec ubuntu apt-get install -y gdb-arm-none-eabi
+    - docker exec ubuntu apt-get install -y libcapstone3 
+    - docker exec ubuntu apt-get install -y libcapstone-dev
+    - docker exec ubuntu pip2 install --upgrade pip
+    - docker exec ubuntu pip3 install --upgrade pip
+    - docker exec ubuntu pip2 install nose
+    - docker exec ubuntu pip3 install nose
+    - docker exec ubuntu pip2 install . --upgrade
+    - docker exec ubuntu pip3 install . --upgrade
+    ## Ugly hackery to fix keystone install paths on ubuntu
+    - docker exec ubuntu bash -c 'cp /usr/local/lib/python2.7/dist-packages/usr/lib/python2.7/dist-packages/keystone/libkeystone.so /usr/local/lib/python2.7/dist-packages/keystone || true'
+    - docker exec ubuntu bash -c 'cp /usr/local/lib/python3.5/dist-packages/usr/lib/python3/dist-packages/keystone/libkeystone.so /usr/local/lib/python3.5/dist-packages/keystone || true'
+                                                    
+                                                    
+
+
+script:
+    - docker exec ubuntu bash -c 'nosetests-2.7 ./tests/test_remote_memoryprotocol.py'
+    - docker exec ubuntu bash -c 'nosetests-2.7 ./tests/test_gdbprotocol.py'
+    - docker exec ubuntu bash -c 'nosetests-3.4 ./tests/test_remote_memoryprotocol.py'
+    - docker exec ubuntu bash -c 'nosetests-3.4 ./tests/test_gdbprotocol.py'
+
+    - docker exec ubuntu bash -c 'bash ./targets/build_qemu.sh'
+    - docker exec ubuntu bash -c 'nosetests-2.7 ./tests/test_qemutarget.py'
+    - docker exec ubuntu bash -c 'nosetests-3.4 ./tests/test_qemutarget.py'
+
+    - docker exec ubuntu bash -c 'python2 ./examples/hello_world.py'
+    - docker exec ubuntu bash -c 'python3 ./examples/hello_world.py'
+
+
