@@ -4,17 +4,17 @@ ci_distr="Ubuntu 16.04.4 LTS \n \l"
 
 if [[ "$distr" == "$ci_distr" ]]
 then
-  echo "deb-src http://archive.ubuntu.com/ubuntu/ xenial-security main restricted" >> /etc/apt/sources.list
-  apt-get update
-  apt-get build-dep -y qemu
+  sudo bash -c 'echo "deb-src http://archive.ubuntu.com/ubuntu/ xenial-security main restricted" >> /etc/apt/sources.list'
+  sudo apt-get update
+  sudo apt-get build-dep -y qemu
 
   # panda-specific deps below, taken from panda/scripts/install_ubuntu.sh
-  apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
-      libprotobuf-c0-dev libprotoc-dev libelf-dev libc++-dev pkg-config
-  apt-get -y install software-properties-common
-  add-apt-repository -y ppa:phulin/panda
-  apt-get update
-  apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
+  sudo apt-get -y install python-pip git protobuf-compiler protobuf-c-compiler \
+       libprotobuf-c0-dev libprotoc-dev libelf-dev libc++-dev pkg-config
+  sudo apt-get -y install software-properties-common
+  sudo add-apt-repository -y ppa:phulin/panda
+  sudo apt-get update
+  sudo apt-get -y install libcapstone-dev libdwarf-dev python-pycparser
 fi
 
 cd `dirname "$BASH_SOURCE"`/src/

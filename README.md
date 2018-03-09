@@ -17,7 +17,7 @@ Afterwards, the following three commands are enough to install the core.
 ```
 $ git clone https://github.com/avatartwo/avatar2.git
 $ cd avatar2
-$ sudo pip install .
+$ sudo python setup.py install
 ```
 Afterwards, the different target endpoints can be built, such as QEmu or PANDA.
 For doing so, we are providing build-scripts for Ubuntu 16.04 - while other
