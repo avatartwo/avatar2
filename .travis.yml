@@ -11,6 +11,7 @@ before_install:
     - docker run --name ubuntu -dit ubuntu
     # need also to clone avatar2 into the docker container
     - docker exec ubuntu apt-get update
+    - docker exec ubuntu apt-get install -y sudo
     - docker exec ubuntu apt-get install -y git 
     #- docker exec ubuntu bash -c 'git init && git remote add origin https://github.com/SamAicardi/avatar2.git && git pull origin master:master'
     - docker exec ubuntu git clone --depth=50 --branch=master https://github.com/SamAicardi/avatar2.git avatar2
