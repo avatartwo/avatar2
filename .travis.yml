@@ -13,9 +13,7 @@ before_install:
     - docker exec ubuntu apt-get update
     - docker exec ubuntu apt-get install -y sudo
     - docker exec ubuntu apt-get install -y git 
-    #- docker exec ubuntu bash -c 'git init && git remote add origin https://github.com/SamAicardi/avatar2.git && git pull origin master:master'
     - docker exec ubuntu git clone --depth=50 --branch=master https://github.com/SamAicardi/avatar2.git avatar2
-    #- docker exec ubuntu cd avatar2; git submodule update --init --recursive
 
 
 install:
@@ -34,20 +32,13 @@ install:
     - docker exec ubuntu pip2 install nose
     - docker exec ubuntu pip3 install nose
 
-    - docker exec ubuntu pip2 install ./avatar2/ --upgrade
-    - docker exec ubuntu pip3 install ./avatar2/ --upgrade
-      #- docker exec ubuntu pip2 install . --upgrade
-      #- docker exec ubuntu pip3 install . --upgrade
-      #- docker exec ubuntu python2 setup.py install
-      #- docker exec ubuntu python3 setup.py install
+    - docker exec ubuntu pip2 install ./avatar2/
+    - docker exec ubuntu pip3 install ./avatar2/
 
     ## Ugly hackery to fix keystone install paths on ubuntu
     - docker exec ubuntu bash -c 'cp /usr/local/lib/python2.7/dist-packages/usr/lib/python2.7/dist-packages/keystone/libkeystone.so /usr/local/lib/python2.7/dist-packages/keystone || true'
     - docker exec ubuntu bash -c 'cp /usr/local/lib/python3.5/dist-packages/usr/lib/python3/dist-packages/keystone/libkeystone.so /usr/local/lib/python3.5/dist-packages/keystone || true'
                                                     
-                                                    
-
-
 script:
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-2.7 ./tests/test_remote_memoryprotocol.py'
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-2.7 ./tests/test_gdbprotocol.py'
