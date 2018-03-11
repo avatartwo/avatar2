@@ -90,7 +90,6 @@ def setup():
 def teardown():
     global qemu
     qemu.shutdown()
-    os.system('stty sane')
 
 
 @with_setup(setup, teardown)
