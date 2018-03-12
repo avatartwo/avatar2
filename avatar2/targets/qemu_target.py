@@ -69,7 +69,8 @@ class QemuTarget(Target):
 
     def shutdown(self):
         if self._process is not None:
-            self._process.kill()
+            self._process.terminate()
+            self._process.wait()
             self._process = None
         super(QemuTarget, self).shutdown()
 
