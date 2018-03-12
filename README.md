@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/avatartwo/avatar2.svg?branch=master)](https://travis-ci.org/avatartwo/avatar2)
+
 Welcome to avatar², the target orchestration framework with focus on dynamic
  analysis of embedded devices' firmware!
 
@@ -37,6 +39,9 @@ Additionally, a documentation of the API is provided
 [here](https://avatartwo.github.io/avatar2-docs/) and some exemplary
 avatar²-scripts can be found 
 [here](https://github.com/avatartwo/avatar2-examples).
+Additionally, another good way to get started with avatar² is to read the official
+[avatar² paper](http://s3.eurecom.fr/docs/bar18_muench.pdf) or to watch the
+[34c3-talk](https://media.ccc.de/v/34c3-9195-avatar).
 
 For further support or follow-up questions, feel free to contact us via IRC
 in #avatar2 on freenode, or to send a mail to avatar2 [at] lists.eurecom.fr, 
@@ -44,3 +49,14 @@ our public mailing list.
 
 Additionally, you can subscribe to the list 
 [here](https://lists.eurecom.fr/sympa/subscribe/avatar2).
+
+
+# Publications
+[1] M. Muench, D. Nisi, A. Francillon, D. Balzarotti. "Avatar²: A Multi-target Orchestration Platform." Workshop on Binary Analysis Research, San Diego, California, February 2018.
+
+[Paper](http://s3.eurecom.fr/docs/bar18_muench.pdf) - [Code](https://github.com/avatartwo/bar18_avatar2)
+
+
+[2] M. Muench, J. Stijohann, F. Kargl, A. Francillon, D.avide Balzarotti. "What You Corrupt Is Not What You Crash: Challenges in Fuzzing Embedded Devices." Network and Distributed System Security Symposium, San Diego, California, 2018.
+
+[Paper](http://www.s3.eurecom.fr/docs/ndss18_muench.pdf) - [Code](https://github.com/avatartwo/ndss18_wycinwyc)
