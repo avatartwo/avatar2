@@ -1,4 +1,11 @@
 from setuptools import setup
+from sys import version_info
+
+#if version_info < (3, 0):
+    #ipython_version='6'
+#else:
+
+
 
 setup(
     name='avatar2',
@@ -9,16 +16,21 @@ setup(
               'avatar2/protocols',
               'avatar2/peripherals',
               'avatar2/plugins',
-              'avatar2/plugins/arm'
+              'avatar2/plugins/arm',
+              'avatar2/installer'
               ],
     install_requires=[
         'pygdbmi>=0.7.3.1',
         'intervaltree',
-        'ipython==5.3',
         'posix_ipc>=1.0.0',
         'capstone>=3.0.4',
         'keystone-engine',
         'parse',
+        'configparser',
+        'npyscreen'
+    ],
+    dependency_links=[
+        'https://github.com/jonathanslenders/python-prompt-toolkit/tarball/2.0#egg=prompt-toolkit-2.0.0'
     ],
     url='http://www.s3.eurecom.fr/tools/avatar/',
     description='Dynamic firmware analysis'
