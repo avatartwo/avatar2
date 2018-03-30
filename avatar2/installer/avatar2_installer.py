@@ -5,7 +5,7 @@ from os.path import exists
 from time import sleep
 from shutil import rmtree
 from curses import endwin as get_terminal_screen
-from config import *
+from .config import *
 
 import npyscreen as nps
 
@@ -290,7 +290,7 @@ class AvatarInstallerTargetSelector(AvatarInstallerAF):
         if self.parentApp.installer_list is not None:
             self.parentApp.current_target = self.parentApp.installer_list.pop()
             path = self.parentApp.config.get_target_path(self.parentApp.current_target)
-            if path == 'None':
+            if path == None:
                 self.parentApp.switchForm('TargetInstaller')
             else:
                 self.parentApp.setNextForm('AlreadyInstalled')
@@ -366,7 +366,7 @@ class Avatar2Installer(nps.NPSAppManaged):
         self.addForm('WelcomeDialog', AvatarInstallerWarningPopup, 
                      text=WELCOME_DIALOG, exit_on_cancel=True,
                      next_form='TargetSelector',
-                     action_on_ok=self.config.get_config)
+                     action_on_ok=self.config.write_config)
 
         self.addForm('TargetSelector', AvatarInstallerTargetSelector,
                      next_form='AlreadyInstalled')

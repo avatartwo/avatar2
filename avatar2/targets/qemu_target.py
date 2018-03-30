@@ -7,6 +7,7 @@ from avatar2.protocols.qmp import QMPProtocol
 from avatar2.protocols.remote_memory import RemoteMemoryProtocol
 from avatar2.targets import Target
 
+from avatar2.installer.config import QEMU, GDB_ARM
 
 class QemuTarget(Target):
     """
@@ -15,9 +16,9 @@ class QemuTarget(Target):
     QEMU_CONFIG_FILE = "conf.json"
 
     def __init__(self, avatar,
-                 executable="qemu-system-",
+                 executable=None,
                  cpu_model=None, firmware=None,
-                 gdb_executable='gdb', gdb_port=3333,
+                 gdb_executable=None, gdb_port=3333,
                  additional_args=None, gdb_additional_args=None,
                  qmp_port=3334,
                  entry_address=0x00,
@@ -25,14 +26,19 @@ class QemuTarget(Target):
         super(QemuTarget, self).__init__(avatar, **kwargs)
 
         # Qemu parameters
-        self.executable = executable
+        if hasattr(self, 'executable') is False: # May be initialized by subclass
+            self.executable = (executable if executable is not None
+                               else self._arch.get_qemu_executable())
         self.fw = firmware
         self.cpu_model = cpu_model
         self.entry_address = entry_address
         self.additional_args = additional_args if additional_args else []
 
         # gdb parameters
-        self.gdb_executable = gdb_executable
+        self.gdb_executable = (gdb_executable if gdb_executable is not None
+                               else self._arch.get_gdb_executable())
+
+
         self.gdb_port = gdb_port
         self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
 

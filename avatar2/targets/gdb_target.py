@@ -6,7 +6,7 @@ from ..watchmen import watch
 
 class GDBTarget(Target):
     def __init__(self, avatar,
-                 gdb_executable='gdb', gdb_additional_args=None, 
+                 gdb_executable=None, gdb_additional_args=None, 
                  gdb_ip='127.0.0.1', gdb_port=3333,
                  gdb_serial_device='/dev/ttyACM0',
                  gdb_serial_baud_rate=38400,
@@ -20,7 +20,8 @@ class GDBTarget(Target):
 
         super(GDBTarget, self).__init__(avatar, **kwargs)
 
-        self.gdb_executable = gdb_executable
+        self.gdb_executable = (gdb_executable if gdb_executable is not None
+                               else self._arch.get_gdb_executable())
         self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
         self.gdb_ip = gdb_ip
         self.gdb_port = gdb_port
