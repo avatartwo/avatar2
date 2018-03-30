@@ -2,8 +2,15 @@ from capstone import *
 
 from .architecture import Architecture
 
+from avatar2.installer.config import GDB_X86, OPENOCD
 
 class X86(Architecture):
+
+    get_gdb_executable  = Architecture.resolve(GDB_X86)
+    get_oocd_executable = Architecture.resolve(OPENOCD)
+
+
+
     qemu_name = 'i386'
     gdb_name = 'i386'
     registers = {'eax': 0,

@@ -343,6 +343,17 @@ class Target(object):
             return self._get_unique_name(i + 1)
         return targetname
 
+    def _resolve_executable_name(self):
+        """
+        Resolves the name of the executable for the endpoint.
+        Order of operation:
+            1: Check if config exists and whether target is installed
+            2: Check sys_name from default config
+            3: Check apt_name from default config
+            4: BailOut
+        """
+        pass
+
     # ##generic aliases##
     wr = write_register
     rr = read_register

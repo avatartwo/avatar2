@@ -12,20 +12,23 @@ from avatar2.protocols.openocd import OpenOCDProtocol
 
 
 class OpenOCDTarget(Target):
-    def __init__(self, avatar, executable="openocd",
+    def __init__(self, avatar, executable=None,
                  openocd_script=None, additional_args=None,
                  telnet_port=4444,
-                 gdb_executable='gdb', gdb_additional_args=None, gdb_port=3333,
+                 gdb_executable=None, gdb_additional_args=None, gdb_port=3333,
                  **kwargs
                  ):
 
         super(OpenOCDTarget, self).__init__(avatar, **kwargs)
 
-        self.executable = executable
+        self.gdb_executable = (executable if executable is not None
+                               else self._arch.get_oocd_executable())
         self.openocd_script = openocd_script
         self.additional_args = additional_args if additional_args else []
         self.telnet_port = telnet_port
-        self.gdb_executable = gdb_executable
+
+        self.gdb_executable = (gdb_executable if gdb_executable is not None
+                               else self._arch.get_gdb_executable())
         self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
         self.gdb_port = gdb_port
 

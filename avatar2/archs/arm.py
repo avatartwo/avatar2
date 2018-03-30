@@ -5,8 +5,17 @@ from keystone import *
 from .architecture import Architecture
 import avatar2
 
+from avatar2.installer.config import QEMU, PANDA, OPENOCD, GDB_ARM
 
 class ARM(Architecture):
+
+    get_qemu_executable = Architecture.resolve(QEMU)
+    get_panda_executable = Architecture.resolve(PANDA)
+    get_gdb_executable  = Architecture.resolve(GDB_ARM)
+    get_oocd_executable = Architecture.resolve(OPENOCD)
+
+
+
     qemu_name = 'arm'
     gdb_name = 'arm'
     registers = {'r0': 0, 'r1': 1, 'r2': 2, 'r3': 3, 'r4': 4, 'r5': 5, 'r6': 6,
