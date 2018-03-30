@@ -1,17 +1,16 @@
 from __future__ import print_function
-from configparser import ConfigParser
-from distutils.dir_util import mkpath
 from distutils.spawn import find_executable as find
 from os import system, chdir
-from os.path import expanduser, realpath, dirname, exists
+from os.path import exists
 from time import sleep
 from shutil import rmtree
-from collections import OrderedDict
 from curses import endwin as get_terminal_screen
+from config import *
 
 import npyscreen as nps
 
-CONFIG_FILE = expanduser('~/.avatar2/settings.cfg')
+
+
 
 # Strings used in varius menues
 WELCOME_DIALOG = ('Welcome to the avatar2 target install system.\n\n'
@@ -45,42 +44,6 @@ MENTRY_CANCEL = 'Cancel'
 MENTRY_BUILD = 'Build Target!'
 MENTRY_FETCH_DEPS = 'Install dependencies via apt-get'
 
-
-# Constant names for the different targets, used thorough the installer
-OPENOCD = 'openocd'
-QEMU = 'avatar-qemu'
-PANDA = 'avatar-panda'
-GDB_ARM = 'gdb (ARM)'
-GDB_X86 = 'gdb (x86)' 
-
-TARGETS = OrderedDict(
-    [
-    (OPENOCD, { 'git': 'https://git.code.sf.net/p/openocd/code',
-               'configure': '',
-               'make': '',
-               'rel_path': 'src/openocd',
-               'install_cmd': ['./bootstrap','./configure','make'],
-               'apt_name': 'openocd'
-             }),
-    (QEMU, {  'git': 'https://github.com/avatartwo/avatar-qemu',
-             'configure': '--disable-sdl --target-list=arm-softmmu',
-             'make': '',
-             'rel_path': 'arm-softmmu/qemu-system-arm',
-             'install_cmd': ['git submodule update --init dtc',
-                             './configure', 'make'],
-          }),
-    (PANDA, {'git': 'https://github.com/avatartwo/avatar-panda',
-             'configure': '--disable-sdl --target-list=arm-softmmu',
-             'make': '',
-             'rel_path': 'arm-softmmu/qemu-system-arm',
-             'install_cmd': ['git submodule update --init dtc',
-                             './configure', 'make'],
-           }),
-    (GDB_X86, { 'apt_name': 'gdb' }),
-    (GDB_ARM, { 'apt_name': 'gdb-arm-none-eabi',
-               'sys_name': 'arm-none-eabi-gdb'})
-    ]
-)
 
 
 
@@ -286,7 +249,7 @@ class AvatarInstallerWarningPopup(nps.ActionPopup, AvatarInstallerWarning):
 
 class AvatarInstallerWarningAlreadyInstalled(AvatarInstallerWarningPopup):
     def create(self):
-        path = self.parentApp.get_target_path()
+        path = self.parentApp.config.get_target_path(self.parentApp.current_target)
         self.name='WARNING!'
         self.text=ALR_INSTALL_WARN % (self.parentApp.current_target, path)
         super(AvatarInstallerWarningPopup, self).create()
@@ -326,7 +289,7 @@ class AvatarInstallerTargetSelector(AvatarInstallerAF):
         self.parentApp.installer_list = self.opt_form.get_selected_objects()
         if self.parentApp.installer_list is not None:
             self.parentApp.current_target = self.parentApp.installer_list.pop()
-            path = self.parentApp.get_target_path()
+            path = self.parentApp.config.get_target_path(self.parentApp.current_target)
             if path == 'None':
                 self.parentApp.switchForm('TargetInstaller')
             else:
@@ -346,40 +309,10 @@ class Avatar2Installer(nps.NPSAppManaged):
 
     STARTING_FORM = 'WelcomeDialog'
 
-    def write_config(self):
-        with open(expanduser(CONFIG_FILE), 'w+') as cfgfile:
-            self.config.write(cfgfile)
-
-
-    def create_config(self):
-        self.config_file = realpath(expanduser(CONFIG_FILE))
-        self.config_path = dirname(self.config_file)
-
-        mkpath(expanduser(self.config_path)) # create config dir if neccessary
-
-        # Create a default config if there's no config file yet
-        if self.config.read(expanduser(CONFIG_FILE)) == []:
-            self.config.add_section('DIST')
-            self.config.add_section('TARGETS')
-
-            has_apt = 'True' if find('apt-get') else 'False'
-            self.config.set('DIST', 'has_apt', has_apt)
-            self.config.set('DIST', 'default_install_path', self.config_path+'/')
-
-            for t_name, t_dict in TARGETS.items():
-                path = t_dict.get('sys_name', t_dict.get('apt_name', 'None'))
-                full_path = find(path) or 'None'
-                self.config.set('TARGETS', t_name, full_path) 
-            self.write_config()
-
-
-    def get_target_path(self):
-        if self.config.has_section('TARGETS'):
-            return self.config.get('TARGETS', self.current_target)
 
 
     def install_next_target(self):
-        self.write_config()
+        self.config.write_config()
         if len( self.installer_list ) > 0:
             self.current_target = self.installer_list.pop()
             self.setNextForm('TargetInstaller')
@@ -427,12 +360,13 @@ class Avatar2Installer(nps.NPSAppManaged):
         
     def onStart(self):
 
-        self.config = ConfigParser()
+        self.config = AvatarConfig()
         self.current_target = None
         self.install_dir = None
         self.addForm('WelcomeDialog', AvatarInstallerWarningPopup, 
                      text=WELCOME_DIALOG, exit_on_cancel=True,
-                     next_form='TargetSelector', action_on_ok=self.create_config)
+                     next_form='TargetSelector',
+                     action_on_ok=self.config.get_config)
 
         self.addForm('TargetSelector', AvatarInstallerTargetSelector,
                      next_form='AlreadyInstalled')
