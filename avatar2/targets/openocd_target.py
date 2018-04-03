@@ -21,8 +21,8 @@ class OpenOCDTarget(Target):
 
         super(OpenOCDTarget, self).__init__(avatar, **kwargs)
 
-        self.gdb_executable = (executable if executable is not None
-                               else self._arch.get_oocd_executable())
+        self.executable = (executable if executable is not None
+                           else self._arch.get_oocd_executable())
         self.openocd_script = openocd_script
         self.additional_args = additional_args if additional_args else []
         self.telnet_port = telnet_port
