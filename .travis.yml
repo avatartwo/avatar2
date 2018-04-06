@@ -49,7 +49,7 @@ script:
     - docker exec ubuntu bash -c 'cd avatar2/ && python2 ./tests/hello_world.py'
     - docker exec ubuntu bash -c 'cd avatar2/ && python3 ./tests/hello_world.py'
 
-    - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-2.7 --processes=-1 --process-timeout=5 ./tests/smoke/target_wait.py'
-    - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-3.4 --processes=-1 --process-timeout=5 ./tests/smoke/target_wait.py'
+    - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-2.7 --processes=-1 --process-timeout=20 ./tests/smoke/target_wait.py'
+    - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-3.4 --processes=-1 --process-timeout=20 ./tests/smoke/target_wait.py'
 
 
