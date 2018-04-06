@@ -34,6 +34,7 @@ install:
     - docker exec ubuntu pip3 install --upgrade pip
     - docker exec ubuntu pip2 install nose
     - docker exec ubuntu pip3 install nose
+    - docker exec ubuntu pip2 install enum-compat
     - docker exec ubuntu pip2 install enum
 
     - docker exec ubuntu pip2 install ./avatar2/
