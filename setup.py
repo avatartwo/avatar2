@@ -27,7 +27,8 @@ setup(
         'keystone-engine',
         'parse',
         'configparser',
-        'npyscreen'
+        'npyscreen',
+        'enum34',
     ],
     dependency_links=[
         'https://github.com/jonathanslenders/python-prompt-toolkit/tarball/2.0#egg=prompt-toolkit-2.0.0'
