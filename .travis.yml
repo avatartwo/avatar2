@@ -8,12 +8,9 @@ services:
 
 before_install:
     - docker pull ubuntu:latest
-    - docker run --name ubuntu -dit ubuntu
-    # need also to clone avatar2 into the docker container
+    - docker run -v /home/travis/build/avatartwo/avatar2:/avatar2 --name ubuntu -dit ubuntu
     - docker exec ubuntu apt-get update
     - docker exec ubuntu apt-get install -y sudo
-    - docker exec ubuntu apt-get install -y git 
-    - docker exec ubuntu git clone --depth=50 --branch=master https://github.com/SamAicardi/avatar2.git avatar2
 
 
 install:
