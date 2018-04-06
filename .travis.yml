@@ -13,7 +13,10 @@ before_install:
     - docker exec ubuntu apt-get update
     - docker exec ubuntu apt-get install -y sudo
     - docker exec ubuntu apt-get install -y git 
-    - docker exec ubuntu git clone --depth=50 --branch=master https://github.com/SamAicardi/avatar2.git avatar2
+    - export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo $TRAVIS_PULL_REQUEST_BRANCH; fi)
+    - echo "TRAVIS_BRANCH=$TRAVIS_BRANCH, PR=$PR, BRANCH=$BRANCH"
+    - echo "TRAVIS_REPO_SLUG=$TRAVIS_REPO_SLUG"
+    - docker exec ubuntu git clone --depth=50 --branch=$BRANCH https://github.com/$TRAVIS_REPO_SLUG.git avatar2
 
 
 install:
