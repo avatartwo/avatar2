@@ -35,7 +35,6 @@ install:
     - docker exec ubuntu pip2 install nose
     - docker exec ubuntu pip3 install nose
     - docker exec ubuntu pip2 install enum
-    - docker exec ubuntu pip3 install enum
 
     - docker exec ubuntu pip2 install ./avatar2/
     - docker exec ubuntu pip3 install ./avatar2/
