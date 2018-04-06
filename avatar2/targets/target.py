@@ -35,6 +35,53 @@ def action_valid_decorator_factory(state, protocol):
 
     return decorator
 
+def synchronize_state(*states, **kwargs):
+    """
+    This decorator can be used to make sure that the target executed a desired
+    set of state transitions in an particular order.
+    This is useful, when the user explicitly requests the target to change
+    it's state and need an update notification on the transition itself.
+    Internally, this works by creating an event and using a watchmen to check
+    whether it was triggered.
+    :param *states: The desired states of the target
+    :param transition_optional: Also allow to return if the target is already
+                                in the desired states, even if the transition
+                                didn't happen
+    """
+    def decorator(func):
+        @wraps(func)
+        def state_synchronizer(self, *args, **kwargs):
+            state = states[-1]
+            transition_optional = kwargs.get('transition_optional', False)
+
+            blocking = kwargs.get('blocking', True)
+            avatar = self.avatar
+            if blocking is True:
+                state_reached = Event()
+
+                def state_synchronize_cb(avatar, message, *args, **kwargs):
+                    if message.origin == self:
+                        if message.state == state:
+                            state_reached.set()
+                        elif message.state == TargetStates.EXITED:
+                            raise Exception("Target %s exited" % self.name)
+
+                w = avatar.watchmen.add('UpdateState', when='after',
+                                        callback=state_synchronize_cb)
+            if len(states) == 1:
+                ret = func(self, *args, **kwargs)
+            else:
+                ret = synchronize_state(*states[:-1])(func)(self, *args, **kwargs)
+            if blocking is True:
+                if not (transition_optional == True and self.state == state):
+                    state_reached.wait()
+                avatar.watchmen.remove_watchman('UpdateState', w)
+            return ret
+
+        return state_synchronizer
+
+    return decorator
+
 
 class TargetStates(Enum):
     """
@@ -186,40 +233,38 @@ class Target(object):
         """
         self.protocols.shutdown()
 
+
+
     @watch('TargetCont')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
-    def cont(self):
+    @synchronize_state(TargetStates.RUNNING)
+    def cont(self, blocking=True):
         """
         Continues the execution of the target
-        :returns: True on success
+        :param blocking: if True, block until the target is RUNNING
         """
-        self._no_state_update_pending.clear()
-        ret = self.protocols.execution.cont()
-        self.wait(TargetStates.RUNNING)
-        return ret
+        return self.protocols.execution.cont()
 
 
     @watch('TargetStop')
     @action_valid_decorator_factory(TargetStates.RUNNING, 'execution')
-    def stop(self):
+    @synchronize_state(TargetStates.STOPPED, transition_optional=True)
+    def stop(self, blocking=True):
         """
         Stops the execution of the target 
+        :param blocking: if True, block until the target is STOPPED
         """
-        self._no_state_update_pending.clear()
-        ret = self.protocols.execution.stop()
-        self.wait()
-        return ret
+        return self.protocols.execution.stop()
 
     @watch('TargetStep')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
-    def step(self):
+    @synchronize_state(TargetStates.RUNNING, TargetStates.STOPPED)
+    def step(self, blocking=True):
         """
-        Steps one instruction
+        Steps one instruction.
+        :param blocking: if True, block until the target is STOPPED again
         """
-        self._no_state_update_pending.clear()
-        ret = self.protocols.execution.step()
-        self.wait()
-        return ret
+        return self.protocols.execution.step()
 
     @watch('TargetWriteMemory')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
@@ -319,15 +364,12 @@ class Target(object):
     def update_state(self, state):
         self.log.info("State changed to to %s" % TargetStates(state))
         self.state = state
-        self._no_state_update_pending.set()
+        #self._no_state_update_pending.set()
 
     @watch('TargetWait')
     def wait(self, state=TargetStates.STOPPED):
-        while True:
-            self._no_state_update_pending.wait()
-            if self.state == state and \
-                    self._no_state_update_pending.is_set():
-                break
+        while self.state != state:
+            pass
 
     def get_status(self):
         """

@@ -1,7 +1,7 @@
 from avatar2.targets import Target, TargetStates
 from avatar2.protocols.gdb import GDBProtocol
 
-from .target import action_valid_decorator_factory
+from .target import action_valid_decorator_factory, synchronize_state
 from ..watchmen import watch
 
 class GDBTarget(Target):
@@ -73,13 +73,11 @@ class GDBTarget(Target):
 
     @watch('TargetCont')
     @action_valid_decorator_factory(TargetStates.INITIALIZED, 'execution')
+    @synchronize_state(TargetStates.RUNNING)
     def run(self):
-        self._no_state_update_pending.clear()
-        ret = self.protocols.execution.run()
-        self.wait(TargetStates.RUNNING)
-        return ret
+        return self.protocols.execution.run()
 
-    def cont(self):
+    def cont(self, blocking=True):
         if self.state != TargetStates.INITIALIZED:
             super(GDBTarget, self).cont()
         else:
