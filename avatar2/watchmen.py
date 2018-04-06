@@ -99,12 +99,18 @@ class WatchedEvent(object):
         self.when = when
         self.is_async = is_async
         self.overwrite_return = overwrite_return
+        self.watchmen_args = args
+        self.watchmen_kwargs = kwargs
 
     def react(self, avatar, *args, **kwargs):
         if self._callback is None:
             raise Exception("No callback defined for watchmen of type %s" %
                             self.type)
         else:
+            args += self.watchmen_args
+            # WARNING: This could overwrite original kwargs,
+            #          which may be desired in some cases
+            kwargs.update(self.watchmen_kwargs)
             if self.is_async:
                 thread = AsyncReaction(avatar, self._callback, *args, **kwargs)
                 self.daemon = True
