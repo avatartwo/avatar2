@@ -11,6 +11,7 @@ class GDBTarget(Target):
                  gdb_serial_device='/dev/ttyACM0',
                  gdb_serial_baud_rate=38400,
                  gdb_serial_parity='none',
+                 gdb_verbose_mi=False,
                  serial=False,
                  enable_init_files=False,
                  local_binary=None,
@@ -32,6 +33,7 @@ class GDBTarget(Target):
         self._local_binary = local_binary
         self._arguments = arguments
         self._enable_init_files = enable_init_files
+        self._verbose_gdbmi = gdb_verbose_mi
 
     def init(self):
 
@@ -40,7 +42,9 @@ class GDBTarget(Target):
                           additional_args=self.gdb_additional_args,
                           avatar=self.avatar, origin=self,
                           enable_init_files=self._enable_init_files,
-                          binary=self._local_binary, local_arguments=self._arguments)
+                          binary=self._local_binary,
+                          local_arguments=self._arguments,
+                          verbose=self._verbose_gdbmi)
 
         # If we are debugging a program locally,
         # we do not need to establish any connections

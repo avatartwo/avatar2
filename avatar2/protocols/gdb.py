@@ -234,7 +234,8 @@ class GDBProtocol(object):
             origin=None,
             enable_init_files=False,
             binary=None,
-            local_arguments=None):
+            local_arguments=None,
+            verbose=False):
         self._async_message_handler = async_message_handler
         self._arch = arch
         self._register_mapping = dict(arch.registers)
@@ -251,7 +252,7 @@ class GDBProtocol(object):
         self._gdbmi = pygdbmi.gdbcontroller.GdbController(
             gdb_path=gdb_executable,
             gdb_args=gdb_args,
-            verbose=False)  # set to True for debugging
+            verbose=verbose)  # set to True for debugging
         queue = avatar.queue if avatar is not None else None
         fast_queue = avatar.fast_queue if avatar is not None else None
 
