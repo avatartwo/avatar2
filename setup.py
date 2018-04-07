@@ -1,15 +1,10 @@
 from setuptools import setup
 from sys import version_info
 
-#if version_info < (3, 0):
-    #ipython_version='6'
-#else:
-
-
 
 setup(
     name='avatar2',
-    version='1.01',
+    version='1.1.1',
     packages=['avatar2',
               'avatar2/archs',
               'avatar2/targets',
