@@ -114,6 +114,12 @@ class GDBResponseListener(Thread):
             elif payload.get('reason') == 'watchpoint-trigger':
                 avatar_msg = UpdateStateMessage(
                     self._origin, TargetStates.STOPPED)
+            elif payload.get('reason') == 'access-watchpoint-trigger':
+                avatar_msg = UpdateStateMessage(
+                    self._origin, TargetStates.STOPPED)
+            elif payload.get('reason') == 'read-watchpoint-trigger':
+                avatar_msg = UpdateStateMessage(
+                    self._origin, TargetStates.STOPPED)
             elif payload.get('reason') is not None:
                 self.log.critical("Target stopped with unknown reason: %s" %
                                   payload['reason'])
@@ -481,10 +487,12 @@ class GDBProtocol(object):
 
     def set_watchpoint(self, variable, write=True, read=False):
         cmd = ["-break-watch"]
-        if read and write:
+        if read is True and write is True:
             cmd.append("-a")
-        elif read:
+        elif read is True:
             cmd.append("-r")
+        elif write is True:
+            pass
         else:
             raise ValueError("At least one read and write must be True")
 
