@@ -1,10 +1,9 @@
 #!/bin/bash
-distr=`cat /etc/issue`
-ci_distr="Ubuntu 16.04.4 LTS \n \l"
+source /etc/os-release
 
-if [[ "$distr" == "$ci_distr" ]]
+if [[ "$ID" == "ubuntu" ]]
 then
-  sudo bash -c 'echo "deb-src http://archive.ubuntu.com/ubuntu/ xenial-security main restricted" >> /etc/apt/sources.list'
+  sudo bash -c 'echo "deb-src http://archive.ubuntu.com/ubuntu/ '$UBUNTU_CODENAME'-security main restricted" >> /etc/apt/sources.list'
   sudo apt-get update
   sudo apt-get build-dep -y qemu
 
