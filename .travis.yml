@@ -7,14 +7,15 @@ services:
     - docker
 
 before_install:
-    - docker pull ubuntu:latest
-    - docker run -v /home/travis/build/avatartwo/avatar2:/avatar2 --name ubuntu -dit ubuntu
+    - docker pull ubuntu:17.10
+    - docker run -v /home/travis/build/$TRAVIS_REPO_SLUG:/avatar2 --name ubuntu -dit ubuntu:17.10
     - docker exec ubuntu apt-get update
     - docker exec ubuntu apt-get install -y sudo
 
 
 install:
     # NOTE: every command is executed starting from '/'
+    - docker exec ubuntu apt-get install -y git
     - docker exec ubuntu apt-get install -y cmake
     - docker exec ubuntu apt-get install -y python python-pip
     - docker exec ubuntu apt-get install -y python3 python3-pip
@@ -33,8 +34,8 @@ install:
     - docker exec ubuntu pip3 install ./avatar2/
 
     ## Ugly hackery to fix keystone install paths on ubuntu
-    - docker exec ubuntu bash -c 'cp /usr/local/lib/python2.7/dist-packages/usr/lib/python2.7/dist-packages/keystone/libkeystone.so /usr/local/lib/python2.7/dist-packages/keystone || true'
-    - docker exec ubuntu bash -c 'cp /usr/local/lib/python3.5/dist-packages/usr/lib/python3/dist-packages/keystone/libkeystone.so /usr/local/lib/python3.5/dist-packages/keystone || true'
+    - docker exec ubuntu bash -c 'cp /usr/local/lib/python2.7/dist-packages/usr/lib/python2.7/dist-packages/keystone/libkeystone.so /usr/local/lib/python2.7/dist-packages/keystone'
+    - docker exec ubuntu bash -c 'cp /usr/local/lib/python3.6/dist-packages/usr/lib/python3/dist-packages/keystone/libkeystone.so /usr/local/lib/python3.6/dist-packages/keystone'
                                                     
 script:
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-2.7 ./tests/test_remote_memoryprotocol.py'
