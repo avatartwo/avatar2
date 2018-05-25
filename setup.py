@@ -24,7 +24,8 @@ setup(
         'configparser',
         'npyscreen',
         'enum34',
-        'bitstring'
+        'bitstring',
+	'pylink-square',
     ],
     dependency_links=[
         'https://github.com/jonathanslenders/python-prompt-toolkit/tarball/2.0#egg=prompt-toolkit-2.0.0'
