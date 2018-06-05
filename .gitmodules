@@ -1,6 +1,7 @@
 [submodule "targets/src/avatar-qemu"]
 	path = targets/src/avatar-qemu
-	url = ../avatar-qemu.git
+	url = git@gitlab.eurecom.fr:avatartwo/avatar-qemu.git
+    branch = inject_interrupts		
 [submodule "targets/src/avatar-panda"]
 	path = targets/src/avatar-panda
 	url = ../avatar-panda.git
