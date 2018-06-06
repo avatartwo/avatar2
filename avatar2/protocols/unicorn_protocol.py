@@ -259,9 +259,14 @@ class UnicornProtocol(object):
         self._worker_queue.put((args, kwargs))
 
     def _fixup_thumb_pc(self, pc):
-        """Fix the PC for emu_start in Thumb mode."""
-        # TODO what if a thumb target is in ARM mode?
-        return pc | 1 if self._arch.unicorn_mode == unicorn.UC_MODE_THUMB else pc
+        """Fix the PC for emu_start to take ARM Thumb mode into account."""
+        # If the arch mode is UC_MODE_THUMB, force Thumb.
+        # Otherwise, check Thumb bit in CPSR.
+        if self._arch.unicorn_arch == unicorn.UC_ARCH_ARM and \
+                (self._arch.unicorn_mode == unicorn.UC_MODE_THUMB or
+                 self.read_register(self._arch.sr_name) & 0x20):
+            pc |= 1
+        return pc
 
 
 class UnicornWorker(Thread):
