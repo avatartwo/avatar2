@@ -16,7 +16,19 @@ from avatar2.archs.arm import ARM
 
 
 class UnicornProtocol(object):
+    """Main class for the Unicorn protocol.
+
+    :ivar uc:  the Unicorn instance
+    :ivar log: this protocol's logger
+    """
+
     def __init__(self, avatar, arch=ARM, origin=None):
+        """Construct the protocol, along with its Unicorn instance and worker.
+
+        :param avatar: the Avatar object
+        :param arch:   the architecture
+        :param origin: the target utilizing this protocol
+        """
         self.uc = unicorn.Uc(arch.unicorn_arch, arch.unicorn_mode)
         self.log = logging.getLogger((origin.log.name + '.' if origin is not None else '') +
                                      self.__class__.__name__)
@@ -58,6 +70,7 @@ class UnicornProtocol(object):
         self.shutdown()
 
     def shutdown(self):
+        """Shutdown the protocol."""
         if self._alive:
             self._worker_queue.put((None, None))
             self.stop()
@@ -67,25 +80,46 @@ class UnicornProtocol(object):
     # Execution protocol
 
     def cont(self):
-        pc = self._fixup_pc(self.read_register(self._arch.pc_name))
+        """Continue execution."""
+        pc = self._fixup_thumb_pc(self.read_register(self._arch.pc_name))
         self._worker_emu_start(pc, 0)  # TODO 0 could be a valid address
 
     def stop(self):
+        """Stop execution."""
         self.uc.emu_stop()
 
     def step(self):
-        pc = self._fixup_pc(self.read_register(self._arch.pc_name))
+        """Execute one instruction and stop."""
+        pc = self._fixup_thumb_pc(self.read_register(self._arch.pc_name))
         self._worker_emu_start(pc, 0, count=1)  # TODO 0 could be a valid address
 
     def set_breakpoint(self, line, hardware=False, temporary=False, regex=False, condition=None,
                        ignore_count=0, thread=0):
-        # TODO support args, line <-> addr
-        # right now we use line as addr
+        """Insert a breakpoint.
+
+        :param line:         address to break at
+        :param hardware:     ignored
+        :param temporary:    ignored
+        :param regex:        ignored
+        :param condition:    ignored
+        :param ignore_count: ignored
+        :param thread:       ignored
+        :return: breakpoint number
+        """
+        # TODO support more kwargs, warn for others
+        # TODO line <-> addr
         hook = self.uc.hook_add(unicorn.UC_HOOK_CODE, self._breakpoint_hook, begin=line, end=line)
         self._hooks.append([hook])
         return len(self._hooks) - 1
 
     def set_watchpoint(self, variable, write=True, read=False):
+        """Insert a watchpoint.
+
+        :param variable: address to watch
+        :param write:    whether to watch writes
+        :param read:     whether to watch reads
+        :return: watchpoint number
+        """
         # TODO variable <-> addr
         hooks = []
         if write is True:
@@ -98,12 +132,27 @@ class UnicornProtocol(object):
         return len(self._hooks) - 1
 
     def remove_breakpoint(self, bkptno):
+        """Remove a breakpoint or watchpoint.
+
+        :param bkptno: breakpoint/watchpoint number
+        """
         for hook in self._hooks[bkptno]:
             self.uc.hook_del(hook)
 
     # Memory protocol
 
-    def read_memory(self, address, wordsize=4, num_words=1, raw=False):
+    def read_memory(self, address, wordsize, num_words=1, raw=False):
+        """Read memory.
+
+        :param address:   the address to read from
+        :param wordsize:  the size of a read word (1, 2, 4 or 8)
+        :param num_words: the amount of words to read
+        :param raw:       whether the read memory should be returned unprocessed
+        :return: the read memory
+        :rtype:  int if num_words == 1 and raw == False,
+                 list of int if num_words > 1 and raw == False,
+                 str or byte if raw == True
+        """
         raw_mem = self.uc.mem_read(address, wordsize * num_words)
         if raw:
             return raw_mem
@@ -115,6 +164,18 @@ class UnicornProtocol(object):
         return mem[0] if num_words == 1 else mem
 
     def write_memory(self, address, wordsize, val, num_words=1, raw=False):
+        """Write memory.
+
+        :param address:   the address to write to
+        :param wordsize:  size of a written word (1, 2, 4 or 8)
+        :param val:       the value to write
+        :type val:        int if num_words == 1 and raw == False,
+                          list of int if num_words > 1 and raw == False,
+                          str or byte if raw == True
+        :param num_words: the amount of words to write
+        :param raw:       whether to write in raw mode
+        :return: True on success, False otherwise
+        """
         if raw:
             raw_mem = val
         else:
@@ -136,20 +197,38 @@ class UnicornProtocol(object):
     # Register protocol
 
     def write_register(self, reg, value):
+        """Write a register.
+
+        :param reg:   name of the register to write
+        :param value: value to write
+        """
         self.uc.reg_write(self._arch.unicorn_registers[reg], value)
 
     def read_register(self, reg):
+        """Read a register.
+
+        :param reg: name of the register to read
+        :return: read value
+        """
         return self.uc.reg_read(self._arch.unicorn_registers[reg])
 
     # Remote memory protocol
 
     def send_response(self, id, value, success):
+        """Handle a remote memory response.
+
+        :param id:      the request ID
+        :param value:   read value, if it was a read request
+        :param success: True if the request was successful, False otherwise
+        :return: True if the response was handled successfully, False otherwise
+        """
         self._rmp_queue.put((value, success))
         return True
 
     # ---
 
     def _forward_hook(self, uc, access, address, size, value, user_data):
+        """Unicorn hook for memory forwarding."""
         pc = self.read_register(self._arch.pc_name)
         if access == unicorn.UC_MEM_READ or access == unicorn.UC_MEM_FETCH:
             msg = RemoteMemoryReadMessage(self._origin, 0, pc, address, size)
@@ -168,20 +247,26 @@ class UnicornProtocol(object):
             self.log.debug('Failed to write back remote memory')
 
     def _breakpoint_hook(self, address, size, user_data):
+        """Unicorn hook for breakpoints."""
         self.stop()
 
     def _watchpoint_hook(self, access, address, size, value, user_data):
+        """Unicorn hook for watchpoints."""
         self.stop()
 
     def _worker_emu_start(self, *args, **kwargs):
+        """Start the emulation inside the worker."""
         self._worker_queue.put((args, kwargs))
 
-    def _fixup_pc(self, pc):
+    def _fixup_thumb_pc(self, pc):
+        """Fix the PC for emu_start in Thumb mode."""
         # TODO what if a thumb target is in ARM mode?
         return pc | 1 if self._arch.unicorn_mode == unicorn.UC_MODE_THUMB else pc
 
 
 class UnicornWorker(Thread):
+    """Worker class for the Unicorn protocol."""
+
     def __init__(self, origin, uc, worker_queue, avatar_queue):
         self._origin = origin
         self._uc = uc
