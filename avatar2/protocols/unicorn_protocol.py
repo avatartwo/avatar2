@@ -9,17 +9,35 @@ import unicorn
 import logging
 
 from threading import Thread
+from collections import namedtuple
 
-from avatar2.message import UpdateStateMessage, RemoteMemoryReadMessage, RemoteMemoryWriteMessage
+from avatar2.message import UpdateStateMessage, RemoteMemoryReadMessage, \
+    RemoteMemoryWriteMessage, BreakpointHitMessage
 from avatar2.targets import TargetStates
 from avatar2.archs.arm import ARM
+
+
+class UnicornBreakpoint(object):
+    __slots__ = ('hooks', 'temporary', 'ignore_count')
+
+    def __init__(self, hooks, temporary=False, ignore_count=0):
+        self.hooks = hooks
+        self.temporary = temporary
+        self.ignore_count = ignore_count
+
+
+UnicornWorkerEmuStartMessage = namedtuple('UnicornWorkerEmuStartMessage', ('single_step',))
+UnicornWorkerUpdateStateMessage = namedtuple('UnicornWorkerUpdateStateMessage', ('state',))
+UnicornWorkerBreakpointMessage = namedtuple('UnicornWorkerBreakpointMessage', ('bkptno', 'address'))
 
 
 class UnicornProtocol(object):
     """Main class for the Unicorn protocol.
 
-    :ivar uc:  the Unicorn instance
-    :ivar log: this protocol's logger
+    :ivar uc:         the Unicorn instance
+    :ivar log:        this protocol's logger
+    :ivar arch:       this protocol's architecture
+    :ivar pending_bp: set of pending breakpoint numbers
     """
 
     def __init__(self, avatar, arch=ARM, origin=None):
@@ -32,11 +50,12 @@ class UnicornProtocol(object):
         self.uc = unicorn.Uc(arch.unicorn_arch, arch.unicorn_mode)
         self.log = logging.getLogger((origin.log.name + '.' if origin is not None else '') +
                                      self.__class__.__name__)
+        self.arch = arch
+        self.pending_bp = set()
         self._avatar_queue = avatar.queue
         self._avatar_fast_queue = avatar.fast_queue
-        self._arch = arch
         self._origin = origin
-        self._hooks = []
+        self._breakpoints = []
         self._rmp_queue = queue.Queue()
         self._alive = True
 
@@ -62,7 +81,9 @@ class UnicornProtocol(object):
         self._avatar_fast_queue.put(UpdateStateMessage(self._origin, TargetStates.INITIALIZED))
 
         self._worker_queue = queue.Queue()
-        self._worker = UnicornWorker(self._origin, self.uc, self._worker_queue,
+        self._worker_queue.put(UnicornWorkerUpdateStateMessage(TargetStates.STOPPED))
+
+        self._worker = UnicornWorker(self._origin, self, self.uc, self._worker_queue,
                                      self._avatar_fast_queue)
         self._worker.start()
 
@@ -72,7 +93,7 @@ class UnicornProtocol(object):
     def shutdown(self):
         """Shutdown the protocol."""
         if self._alive:
-            self._worker_queue.put((None, None))
+            self._worker_queue.put(None)
             self.stop()
             self._worker.join()
             self._alive = False
@@ -81,36 +102,44 @@ class UnicornProtocol(object):
 
     def cont(self):
         """Continue execution."""
-        pc = self._fixup_thumb_pc(self.read_register(self._arch.pc_name))
-        self._worker_emu_start(pc, 0)  # TODO 0 could be a valid address
+        self._worker_emu_start()
 
     def stop(self):
         """Stop execution."""
-        self.uc.emu_stop()
+        self._worker_emu_stop()
 
     def step(self):
         """Execute one instruction and stop."""
-        pc = self._fixup_thumb_pc(self.read_register(self._arch.pc_name))
-        self._worker_emu_start(pc, 0, count=1)  # TODO 0 could be a valid address
+        self._worker_emu_start(single_step=True)
 
-    def set_breakpoint(self, line, hardware=False, temporary=False, regex=False, condition=None,
+    def set_breakpoint(self, line, hardware=True, temporary=False, regex=False, condition=None,
                        ignore_count=0, thread=0):
         """Insert a breakpoint.
 
         :param line:         address to break at
-        :param hardware:     ignored
-        :param temporary:    ignored
-        :param regex:        ignored
-        :param condition:    ignored
-        :param ignore_count: ignored
-        :param thread:       ignored
+        :param hardware:     whether this breakpoint is hardware (ignored, always True)
+        :param temporary:    whether this breakpoint is temporary (one shot)
+        :param regex:        not supported
+        :param condition:    not supported
+        :param ignore_count: amount of times the breakpoint should be ignored before firing
+        :param thread:       not supported
         :return: breakpoint number
         """
-        # TODO support more kwargs, warn for others
+        if not hardware:
+            self.log.warning('Software breakpoints are not supported, falling back to hardware')
+        if regex:
+            self.log.warning('Regex breakpoints are not supported, ignoring regex')
+        if condition is not None:
+            self.log.warning('Conditional breakpoints are not supported, ignoring condition')
+        if thread:
+            self.log.warning('Thread-specific breakpoints are not supported, ignoring thread')
         # TODO line <-> addr
-        hook = self.uc.hook_add(unicorn.UC_HOOK_CODE, self._breakpoint_hook, begin=line, end=line)
-        self._hooks.append([hook])
-        return len(self._hooks) - 1
+        bkptno = len(self._breakpoints)
+        hook = self.uc.hook_add(unicorn.UC_HOOK_CODE, self._breakpoint_hook, begin=line,
+                                end=line, user_data=bkptno)
+        self._breakpoints.append(UnicornBreakpoint(hooks=[hook], temporary=temporary,
+                                                   ignore_count=ignore_count))
+        return bkptno
 
     def set_watchpoint(self, variable, write=True, read=False):
         """Insert a watchpoint.
@@ -121,23 +150,25 @@ class UnicornProtocol(object):
         :return: watchpoint number
         """
         # TODO variable <-> addr
+        bkptno = len(self._breakpoints)
         hooks = []
         if write is True:
             hooks.append(self.uc.hook_add(unicorn.UC_HOOK_MEM_WRITE, self._watchpoint_hook,
-                                    begin=variable, end=variable))
+                                          begin=variable, end=variable, user_data=bkptno))
         if read is True:
             hooks.append(self.uc.hook_add(unicorn.UC_HOOK_MEM_READ, self._watchpoint_hook,
-                                     begin=variable, end=variable))
-        self._hooks.append(hooks)
-        return len(self._hooks) - 1
+                                          begin=variable, end=variable, user_data=bkptno))
+        self._breakpoints.append(UnicornBreakpoint(hooks=hooks))
+        return bkptno
 
     def remove_breakpoint(self, bkptno):
         """Remove a breakpoint or watchpoint.
 
         :param bkptno: breakpoint/watchpoint number
         """
-        for hook in self._hooks[bkptno]:
+        for hook in self._breakpoints[bkptno].hooks:
             self.uc.hook_del(hook)
+        self._breakpoints[bkptno] = None
 
     # Memory protocol
 
@@ -202,7 +233,7 @@ class UnicornProtocol(object):
         :param reg:   name of the register to write
         :param value: value to write
         """
-        self.uc.reg_write(self._arch.unicorn_registers[reg], value)
+        self.uc.reg_write(self.arch.unicorn_registers[reg], value)
 
     def read_register(self, reg):
         """Read a register.
@@ -210,7 +241,7 @@ class UnicornProtocol(object):
         :param reg: name of the register to read
         :return: read value
         """
-        return self.uc.reg_read(self._arch.unicorn_registers[reg])
+        return self.uc.reg_read(self.arch.unicorn_registers[reg])
 
     # Remote memory protocol
 
@@ -229,7 +260,7 @@ class UnicornProtocol(object):
 
     def _forward_hook(self, uc, access, address, size, value, user_data):
         """Unicorn hook for memory forwarding."""
-        pc = self.read_register(self._arch.pc_name)
+        pc = self.read_register(self.arch.pc_name)
         if access == unicorn.UC_MEM_READ or access == unicorn.UC_MEM_FETCH:
             msg = RemoteMemoryReadMessage(self._origin, 0, pc, address, size)
             write_back = True
@@ -246,45 +277,98 @@ class UnicornProtocol(object):
         elif write_back and not self.write_memory(address, size, value):
             self.log.debug('Failed to write back remote memory')
 
-    def _breakpoint_hook(self, address, size, user_data):
+    def _breakpoint_hook(self, uc, address, size, bkptno):
         """Unicorn hook for breakpoints."""
-        self.stop()
+        if bkptno in self.pending_bp:
+            return
+        bp = self._breakpoints[bkptno]
+        if bp.ignore_count > 0:
+            bp.ignore_count -= 1
+            return
 
-    def _watchpoint_hook(self, access, address, size, value, user_data):
+        self.pending_bp.add(bkptno)
+        self._worker_queue.put(UnicornWorkerBreakpointMessage(bkptno, address))
+        self.uc.emu_stop()
+
+        if bp.temporary:
+            self.remove_breakpoint(bkptno)
+
+    def _watchpoint_hook(self, uc, access, address, size, value, bkptno):
         """Unicorn hook for watchpoints."""
+        if bkptno in self.pending_bp:
+            return
+        self.pending_bp.add(bkptno)
         self.stop()
 
-    def _worker_emu_start(self, *args, **kwargs):
+    def _worker_emu_start(self, single_step=False):
         """Start the emulation inside the worker."""
-        self._worker_queue.put((args, kwargs))
+        self._worker_queue.put(UnicornWorkerEmuStartMessage(single_step))
 
-    def _fixup_thumb_pc(self, pc):
-        """Fix the PC for emu_start to take ARM Thumb mode into account."""
-        # If the arch mode is UC_MODE_THUMB, force Thumb.
-        # Otherwise, check Thumb bit in CPSR.
-        if self._arch.unicorn_arch == unicorn.UC_ARCH_ARM and \
-                (self._arch.unicorn_mode == unicorn.UC_MODE_THUMB or
-                 self.read_register(self._arch.sr_name) & 0x20):
-            pc |= 1
-        return pc
+    def _worker_emu_stop(self):
+        """Stop the emulation inside the worker."""
+        self._worker_queue.put(UnicornWorkerUpdateStateMessage(TargetStates.STOPPED))
+        self.uc.emu_stop()
 
 
 class UnicornWorker(Thread):
     """Worker class for the Unicorn protocol."""
 
-    def __init__(self, origin, uc, worker_queue, avatar_queue):
+    def __init__(self, origin, protocol, uc, worker_queue, avatar_queue):
         self._origin = origin
+        self._protocol = protocol
         self._uc = uc
         self._worker_queue = worker_queue
         self._avatar_queue = avatar_queue
         super(UnicornWorker, self).__init__()
 
     def run(self):
-        self._avatar_queue.put(UpdateStateMessage(self._origin, TargetStates.STOPPED))
         while True:
-            args, kwargs = self._worker_queue.get()
-            if args is None:
+            msg = self._worker_queue.get()
+            if msg is None:
                 break
-            self._avatar_queue.put(UpdateStateMessage(self._origin, TargetStates.RUNNING))
-            self._uc.emu_start(*args, **kwargs)
-            self._avatar_queue.put(UpdateStateMessage(self._origin, TargetStates.STOPPED))
+            if isinstance(msg, UnicornWorkerEmuStartMessage):
+                self._avatar_queue.put(UpdateStateMessage(self._origin, TargetStates.RUNNING))
+                if self._protocol.pending_bp:
+                    # Single-step over pending breakpoints, the hook will ignore them
+                    old_pending_bp = self._protocol.pending_bp.copy()
+                    self._uc.emu_start(self._get_next_pc(), self._EMU_END_ADDRESS, count=1)
+                    if self._protocol.pending_bp == old_pending_bp:
+                        # We did not hit another breakpoint during the step, empty the pending set
+                        self._protocol.pending_bp.clear()
+                    if msg.single_step:
+                        # We already stepped: done
+                        continue
+                if not self._protocol.pending_bp:
+                    # Either there was no pending breakpoint, or we didn't hit
+                    # another breakpoint while single stepping: keep running
+                    count = 1 if msg.single_step else 0
+                    self._uc.emu_start(self._get_next_pc(), self._EMU_END_ADDRESS, count=count)
+            elif isinstance(msg, UnicornWorkerUpdateStateMessage):
+                self._avatar_queue.put(UpdateStateMessage(self._origin, msg.state))
+            elif isinstance(msg, UnicornWorkerBreakpointMessage):
+                # When stopping from a hook, Unicorn resets the PC to the beginning of the basic
+                # block that contains the instruction that triggered the hook.
+                # The register state, however, isn't rolled back.
+                # As a workaround, we set the PC here to the breakpoint address.
+                # See https://github.com/unicorn-engine/unicorn/issues/969
+                self._protocol.write_register(self._protocol.arch.pc_name, msg.address)
+                self._avatar_queue.put(BreakpointHitMessage(self._origin, msg.bkptno, msg.address))
+            else:
+                raise Exception('Unknown message in Unicorn worker queue: {}'.format(msg))
+
+    def _get_next_pc(self):
+        """Get the PC to start emulation at."""
+        pc = self._protocol.read_register(self._protocol.arch.pc_name)
+        return self._fixup_thumb_pc(pc)
+
+    def _fixup_thumb_pc(self, pc):
+        """Fix the PC for emu_start to take ARM Thumb mode into account."""
+        # If the arch mode is UC_MODE_THUMB, force Thumb.
+        # Otherwise, check Thumb bit in CPSR.
+        if self._protocol.arch.unicorn_arch == unicorn.UC_ARCH_ARM and \
+                (self._protocol.arch.unicorn_mode == unicorn.UC_MODE_THUMB or
+                 self._protocol.read_register(self._protocol.arch.sr_name) & 0x20):
+            pc |= 1
+        return pc
+
+    _EMU_END_ADDRESS = 0  # TODO: 0 could be a valid address

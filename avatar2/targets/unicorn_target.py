@@ -10,3 +10,8 @@ class UnicornTarget(Target):
         proto = UnicornProtocol(self.avatar, arch=self._arch, origin=self)
         self.protocols.set_all(proto)
         self.protocols.remote_memory = proto
+
+    def set_breakpoint(self, line, **kwargs):
+        if 'hardware' not in kwargs:
+            kwargs['hardware'] = True
+        self.protocols.execution.set_breakpoint(line, **kwargs)
