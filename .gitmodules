@@ -1,7 +1,6 @@
 [submodule "targets/src/avatar-qemu"]
 	path = targets/src/avatar-qemu
-	url = git@github.com:mariusmue/avatar2-pretender.git
-    branch = inject_interrupts		
+	url = git@github.com:mariusmue/avatar-qemu-pretender.git
 [submodule "targets/src/avatar-panda"]
 	path = targets/src/avatar-panda
 	url = ../avatar-panda.git
