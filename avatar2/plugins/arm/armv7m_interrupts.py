@@ -41,7 +41,7 @@ def forward_interrupt(self, message): #, **kwargs):
             self._irq_dst.protocols.interrupts.inject_interrupt(irq_num)
 
 
-def continue_execution(self, message, **kwargs):
+def gontinue_execution(self, message, **kwargs):
     target = message.origin
     if message.address == message.origin.protocols.interrupts._monitor_stub_isr -1:
         target.cont()
@@ -95,7 +95,7 @@ def _handle_remote_interrupt_enter_message(self, message):
     self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,True)
     self.log.info("Restarting " + repr(self._irq_src))
     try:
-        self._irq_src.cont()
+        self._irq_src.cont(blocking=False)
     except:
         self.log.exception(" ")
 
