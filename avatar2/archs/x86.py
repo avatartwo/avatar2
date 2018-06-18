@@ -22,6 +22,7 @@ class X86(Architecture):
                  'esi': 6,
                  'edi': 7,
                  'eip': 8,
+                 'pc': 8,
                  'eflags': 9,
                  'cs': 10,
                  'ss': 11,
