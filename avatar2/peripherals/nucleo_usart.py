@@ -9,7 +9,7 @@ SR_TC = 0x40
 
 
 class NucleoRTC(AvatarPeripheral):
-    def nop_read(self, size):
+    def nop_read(self, offset, size):
         return 0x00
 
     def __init__(self, name, address, size, **kwargs):
@@ -18,10 +18,10 @@ class NucleoRTC(AvatarPeripheral):
 
 
 class NucleoTIM(AvatarPeripheral):
-    def nop_read(self, size):
+    def nop_read(self, offset, size):
         return 0x00
 
-    def nop_write(self, size, value):
+    def nop_write(self, offset, size, value):
         return True
 
     def __init__(self, name, address, size, **kwargs):
@@ -31,13 +31,13 @@ class NucleoTIM(AvatarPeripheral):
 
 
 class NucleoUSART(AvatarPeripheral, Thread):
-    def read_status_register(self, size):
+    def read_status_register(self, offset, size):
         self.lock.acquire(True)
         ret = self.status_register
         self.lock.release()
         return ret
 
-    def read_data_register(self, size):
+    def read_data_register(self, offset, size):
         self.lock.acquire(True)
         ret = self.data_buf[0]
         self.data_buf = self.data_buf[1:]
@@ -46,16 +46,16 @@ class NucleoUSART(AvatarPeripheral, Thread):
         self.lock.release()
         return ret
 
-    def write_data_register(self, size, value):
+    def write_data_register(self, offset, size, value):
         if self.connected:
             self.conn.send(bytes((chr(value).encode('utf-8'))))
 
         return True
 
-    def nop_read(self, size):
+    def nop_read(self, offset, size):
         return 0x00
 
-    def nop_write(self, size, value):
+    def nop_write(self, offset, size, value):
         return True
 
     def __init__(self, name, address, size, nucleo_usart_port=5656, **kwargs):

@@ -99,12 +99,12 @@ from avatar2 import *
 
 class HelloWorldPeripheral(AvatarPeripheral):
 
-    def hw_read(self, size):         
+    def hw_read(self, offset, size):         
         ret = self.hello_world[:size]
         self.hello_world = self.hello_world[size:] + self.hello_world[:size]
         return ret
 
-    def nop_write(self, size, value):
+    def nop_write(self, offset, size, value):
         return True    
 
     def __init__(self, name, address, size, **kwargs):
