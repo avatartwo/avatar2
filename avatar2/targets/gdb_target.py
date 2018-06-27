@@ -89,7 +89,7 @@ class GDBTarget(Target):
                                                   'on')
 
     @action_valid_decorator_factory(TargetStates.INITIALIZED, 'execution')
-    def disable_aslr(self):
+    def enable_aslr(self):
         self.protocols.execution.set_gdb_variable('disable-randomization',
                                                   'off')
     
