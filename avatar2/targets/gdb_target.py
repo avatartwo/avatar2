@@ -79,7 +79,7 @@ class GDBTarget(Target):
 
     def cont(self, blocking=True):
         if self.state != TargetStates.INITIALIZED:
-            super(GDBTarget, self).cont()
+            super(GDBTarget, self).cont(blocking=blocking)
         else:
             self.run()
 
