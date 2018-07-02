@@ -4,4 +4,4 @@ from .openocd_target import *
 from .gdb_target import *
 from .qemu_target import *
 from .panda_target import *
-
+from .unicorn_target import *

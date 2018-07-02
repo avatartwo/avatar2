@@ -2,6 +2,8 @@
 
 from capstone import *
 from keystone import *
+from unicorn import *
+from unicorn.arm_const import *
 from .architecture import Architecture
 import avatar2
 
@@ -22,12 +24,21 @@ class ARM(Architecture):
                  'r7': 7, 'r8': 8, 'r9': 9, 'r10': 10, 'r11': 11, 'r12': 12,
                  'sp': 13, 'lr': 14, 'pc': 15, 'cpsr': 25,
                  }
+    unicorn_registers = {'r0': UC_ARM_REG_R0, 'r1': UC_ARM_REG_R1, 'r2': UC_ARM_REG_R2,
+                         'r3': UC_ARM_REG_R3, 'r4': UC_ARM_REG_R4, 'r5': UC_ARM_REG_R5,
+                         'r6': UC_ARM_REG_R6, 'r7': UC_ARM_REG_R7, 'r8': UC_ARM_REG_R8,
+                         'r9': UC_ARM_REG_R9, 'r10': UC_ARM_REG_R10, 'r11': UC_ARM_REG_R11,
+                         'r12': UC_ARM_REG_R12, 'sp': UC_ARM_REG_SP, 'lr': UC_ARM_REG_LR,
+                         'pc': UC_ARM_REG_PC, 'cpsr': UC_ARM_REG_CPSR}
+    pc_name = 'pc'
     sr_name = 'cpsr'
     unemulated_instructions = ['mcr', 'mrc']
     capstone_arch = CS_ARCH_ARM
     capstone_mode = CS_MODE_LITTLE_ENDIAN
     keystone_arch = KS_ARCH_ARM
     keystone_mode = KS_MODE_ARM
+    unicorn_arch = UC_ARCH_ARM
+    unicorn_mode = UC_MODE_ARM
 
 
 class ARM_CORTEX_M3(ARM):
@@ -39,6 +50,8 @@ class ARM_CORTEX_M3(ARM):
     capstone_mode = CS_MODE_LITTLE_ENDIAN | CS_MODE_THUMB | CS_MODE_MCLASS
     keystone_arch = KS_ARCH_ARM
     keystone_mode = KS_MODE_LITTLE_ENDIAN | KS_MODE_THUMB
+    unicorn_arch = UC_ARCH_ARM
+    unicorn_mode = UC_MODE_LITTLE_ENDIAN | UC_MODE_THUMB
 
 
     @staticmethod
