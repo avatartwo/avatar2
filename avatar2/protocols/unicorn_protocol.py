@@ -143,6 +143,8 @@ class UnicornProtocol(object):
 
     def set_watchpoint(self, variable, write=True, read=False):
         """Insert a watchpoint.
+        This is currently NOT WORKING because of a bug in Unicorn.
+        See https://github.com/unicorn-engine/unicorn/issues/972 for further details.
 
         :param variable: address to watch
         :param write:    whether to watch writes
