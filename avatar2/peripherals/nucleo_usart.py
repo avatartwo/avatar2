@@ -44,12 +44,13 @@ class NucleoUSART(AvatarPeripheral, Thread):
         if len(self.data_buf) == 0:
             self.status_register &= ~SR_RXNE
         self.lock.release()
+        print ">>> %s" % hex(ret)
         return ret
 
     def write_data_register(self, size, value):
         if self.connected:
             self.conn.send(bytes((chr(value).encode('utf-8'))))
-
+        print "<<< %s" % hex(value)
         return True
 
     def nop_read(self, size):
@@ -90,6 +91,13 @@ class NucleoUSART(AvatarPeripheral, Thread):
 
         if self.sock:
             self.sock.close()
+
+    # Pretender compat layer.
+    def read(self, address, size):
+        return self.read_memory(address, size)
+
+    def write(self, address, size, value):
+        return self.write_memory(address, size, value)
 
     def run(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
