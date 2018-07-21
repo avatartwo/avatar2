@@ -125,7 +125,8 @@ class CoreSightProtocol(Thread):
         print("Implementer %#08x, Variant %#08x, Part %#08x, Rev %#08x" % (impl, vari, part, rev))
 
     def shutdown(self):
-        self.stop()
+        if self.is_alive() is True:
+            self.stop()
 
     def connect(self):
         if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
