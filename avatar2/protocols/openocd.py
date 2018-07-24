@@ -310,6 +310,8 @@ class OpenOCDProtocol(Thread):
             write_addr = hex(address + i).rstrip("L")
             if wordsize == 1:
                 self.execute_command('mwb %s %s' % (write_addr, write_val))
+            elif wordsize == 2:
+                self.execute_command('mwh %s %s' % (write_addr, write_val))
             else:
                 self.execute_command('mww %s %s' % (write_addr, write_val))
 
@@ -331,6 +333,8 @@ class OpenOCDProtocol(Thread):
             read_addr = hex(address + i).rstrip('L')
             if wordsize == 1:
                 resp = self.execute_command('mrb %s' % read_addr)
+            elif wordsize == 2:
+                resp = self.execute_command("mrh %s" % read_addr)
             else:
                 resp = self.execute_command('mrw %s' % read_addr)
             if resp:
