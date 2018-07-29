@@ -102,14 +102,20 @@ class CoreSightProtocol(Thread):
     def get_vtor(self):
         return self._origin.read_memory(SCB_VTOR, 4)
     
+    def get_ivt_addr(self):
+        if self._origin.ivt_address:
+            return self._origin.ivt_address
+        else:
+           return self.get_vtor()
+
     def set_vtor(self, addr):
         return self._origin.write_memory(SCB_VTOR, 4, addr)
     
     def get_isr(self, interrupt_num):
-        return self._origin.read_memory(self.get_vtor() + (interrupt_num * 4), 4)
+        return self._origin.read_memory(self.get_ivt_addr() + (interrupt_num * 4), 4)
 
     def set_isr(self, interrupt_num, addr):
-        return self._origin.write_memory(self.get_vtor() + (interrupt_num * 4), 4, addr)
+        return self._origin.write_memory(self.get_ivt_addr() + (interrupt_num * 4), 4, addr)
 
     def cpuid(self):
         c = self._origin.read_memory(SCB_CPUID, 4, 1)
@@ -261,14 +267,20 @@ class CoreSightProtocol(Thread):
         self._monitor_stub_loop = addr + 12
         self._monitor_stub_isr = addr + 25
         self._monitor_stub_writeme = addr + 8
-        # Pivot VTOR
-        if self.get_vtor() == 0:
-            self.set_vtor(vtor)
-
+        # Pivot VTOR, if needed
+        # On CM0, you can't, so don't.
+        if self._origin.ivt_address is None:
+            if self.get_vtor() == 0:
+                self.set_vtor(vtor)
+        # Sometimes, we need to gain access to the IVT (make it writable). Do that here.
+        if self._origin.ivt_unlock is not None:
+            unlock_addr, unlock_val = self._origin.ivt_unlock
+            self._origin.write_memory(unlock_addr, 4, unlock_val)
         # put the stub
         self._origin.inject_asm(self.MONITOR_STUB, self._monitor_stub_base)
         # wreck the IVT
-        for x in range(0, 254):
+        # ...oh but don't wipe out the 0'th position.
+        for x in range(1, 254):
             self.set_isr(x, self._monitor_stub_isr)
         if self._origin.state != TargetStates.STOPPED:
             self.log.warning("Not setting PC to the monitor stub; Target not stopped")
