@@ -74,13 +74,13 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
        {RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic}
     )
 
-    from_target.protocols.interrupts.enable_interrupts()
+    if from_target:
+        from_target.protocols.interrupts.enable_interrupts()
+        isr_addr = from_target.protocols.interrupts._monitor_stub_isr - 1
+        self.log.info("ISR breakpoint at %#08x" % isr_addr)
+        from_target.set_breakpoint(isr_addr, hardware=True)
     if to_target:
         to_target.protocols.interrupts.enable_interrupts()
-
-    isr_addr = from_target.protocols.interrupts._monitor_stub_isr - 1
-    self.log.info("ISR breakpoint at %#08x" % isr_addr)
-    from_target.set_breakpoint(isr_addr, hardware=True)
 
     # OpenOCDProtocol does not emit breakpointhitmessages currently,
     # So we listen on state-updates and figure out the rest on our own
@@ -123,7 +123,7 @@ def _handle_remote_interrupt_exit_message(self, message):
 def _handle_remote_memory_write_message_nvic(self, message):
 
     # NVIC address according to coresight manual
-    if message.address < 0xe000e000 or message.address > 0xe000f000:
+    if message.address < 0xe000e000 or message.address > 0xe000f000 or self._irq_src is None:
         return self._handle_remote_memory_write_message(message)
 
     # Discard writes to the vector table offset registers
