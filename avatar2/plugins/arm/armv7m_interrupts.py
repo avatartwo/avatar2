@@ -48,9 +48,18 @@ def gontinue_execution(self, message, **kwargs):
 
 
 def enable_interrupt_forwarding(self, from_target, to_target=None,
-                                disabled_irqs=None):
+                                disabled_irqs=None, semi_forwarding=False):
+    """
+    Semi forwarding is a special mode developed for pretender.
+    It allows that irqs are taken from from_target and external calls to
+    inject_interrupt. However, no information about to_targets irq-state is
+    given back to from_target. Nevertheless, memory requests from to_target to
+    from_target are forwarded.
+    Confused yet? So are we, this is a huge hack.
+    """
     self._irq_src = from_target
     self._irq_dst = to_target
+    self._irq_semi_forwarding = semi_forwarding
     self._irq_ignore = [] if disabled_irqs is None else disabled_irqs
 
     self._handle_remote_interrupt_enter_message = MethodType(_handle_remote_interrupt_enter_message, self)
@@ -90,9 +99,9 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
 
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
-    if not self._irq_dst:
-        return
     self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,True)
+    if self._irq_src is None or self._irq_semi_forwarding is True:
+        return
     self.log.info("Restarting " + repr(self._irq_src))
     try:
         self._irq_src.cont(blocking=False)
@@ -103,7 +112,7 @@ def _handle_remote_interrupt_enter_message(self, message):
 @watch('RemoteInterruptExit')
 def _handle_remote_interrupt_exit_message(self, message):
 
-    if self._irq_dst and self._irq_src:
+    if self._irq_src is not None and self._irq_semi_forwarding is False:
         # We are forwarding, make sure to forward the return
         self._irq_src.protocols.interrupts.inject_exc_return(message.transition_type)
         #self._irq_src.cont()
