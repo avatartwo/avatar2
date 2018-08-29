@@ -34,15 +34,17 @@ class PandaTarget(QemuTarget):
         # self.protocols.monitor._sync_request('monitor end_record', 'done')
 
     @action_valid_decorator_factory(TargetStates.STOPPED, 'monitor')
-    def begin_replay(self, replay_name):
+    def begin_replay(self, replay_name, cont=True):
         """
         Starts replaying a captured replay
 
         :param replay_name: The name of the file to be replayed
+        :param cont: Whether execution shall automatically be resumed (default True)
         """
         self.protocols.monitor.execute_command('begin_replay',
                                                {'file_name': replay_name})
-        self.cont()
+        if cont is True:
+            self.cont()
 
     @action_valid_decorator_factory(TargetStates.STOPPED, 'monitor')
     def end_replay(self):
