@@ -141,7 +141,7 @@ class QemuTarget(Target):
         # self._memory_mapping[mr.address: mr.address + mr.size] = mr
         # TODO: add qemu specific properties to the memory region object
 
-    def init(self):
+    def init(self, cmd_line=None):
         """
         Spawns a Qemu process and connects to it
         """
@@ -152,7 +152,8 @@ class QemuTarget(Target):
             else:
                 self.log.warning('No cpu_model specified - are you sure?')
 
-        cmd_line = self.assemble_cmd_line()
+        if cmd_line is None:
+            cmd_line = self.assemble_cmd_line()
 
         with open("%s/%s" % (self.avatar.output_directory,
                              self.QEMU_CONFIG_FILE), "w") as conf_file:
