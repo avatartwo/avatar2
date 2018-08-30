@@ -2,7 +2,7 @@ import logging
 from functools import wraps
 from threading import Event
 
-from enum import Enum
+from enum import IntEnum
 
 from ..watchmen import watch
 
@@ -83,7 +83,7 @@ def synchronize_state(*states, **kwargs):
     return decorator
 
 
-class TargetStates(Enum):
+class TargetStates(IntEnum):
     """
     A simple Enum for the different states a target can be in.
     """
@@ -368,7 +368,7 @@ class Target(object):
 
     @watch('TargetWait')
     def wait(self, state=TargetStates.STOPPED):
-        while self.state != state:
+        while self.state & state == 0:
             pass
 
     def get_status(self):
