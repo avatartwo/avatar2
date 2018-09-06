@@ -128,5 +128,5 @@ static int banked_gdb_get_reg(CPUARMState *env, uint8_t *buf, int reg)
 void avatar_add_banked_registers(ARMCPU *cpu){
     CPUState *cs = CPU(cpu);
     gdb_register_coprocessor(cs, banked_gdb_get_reg, banked_gdb_set_reg,
-            21, "arm-banked.xml", 0);
+            22, "arm-banked.xml", 0);
 }
