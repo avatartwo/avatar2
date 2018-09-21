@@ -139,8 +139,9 @@ class Avatar(Thread):
             t[1].init()
 
     def add_memory_range(self, address, size, name=None, permissions='rwx',
-                         file=None, forwarded=False, forwarded_to=None,
-                         emulate=None, **kwargs):
+                         file=None, file_offset=None, file_bytes=None,
+                         forwarded=False, forwarded_to=None,emulate=None,
+                         **kwargs):
         """
         Adds a memory range to avatar
 
@@ -148,6 +149,8 @@ class Avatar(Thread):
         :param address:      Base-Address of the Range
         :param size:         Size of the range
         :param file:         A file backing this range, if applicable
+        :param file_offset:  The offset within the file
+        :param file_bytes:   Bytes of the file to be copied into memory
         :param forwarded:    Whether this range should be forwarded
         :param forwarded_to: If forwarded is true, specify the forwarding target
         """
@@ -160,7 +163,8 @@ class Avatar(Thread):
         if forwarded:
             kwargs.update({'qemu_name': 'avatar-rmemory'})
         m = MemoryRange(address, size, name=name, permissions=permissions,
-                        file=file, forwarded=forwarded,
+                        file=file, file_offset=file_offset,
+                        file_bytes=file_bytes, forwarded=forwarded,
                         forwarded_to=forwarded_to, **kwargs)
         self.memory_ranges[address:address + size] = m
         return m
