@@ -118,6 +118,10 @@ class QemuTarget(Target):
                         mr_dict['properties'].append(mr.qemu_properties)
             elif hasattr(mr, 'file') and mr.file is not None:
                 mr_dict['file'] = mr.file
+                if hasattr(mr, 'file_offset') and mr.file_offset is not None:
+                    mr_dict['file_offset'] = mr.file_offset
+                if hasattr(mr, 'file_bytes') and mr.file_bytes is not None:
+                    mr_dict['file_bytes'] = mr.file_bytes
             ret.append(mr_dict)
         return ret
 
