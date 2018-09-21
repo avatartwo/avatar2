@@ -48,8 +48,8 @@ class QemuTarget(Target):
         self._entry_address = entry_address
         self._memory_mapping = avatar.memory_ranges
 
-        self.rmem_rx_queue_name = '/%s_rx_queue'.format(self.name)
-        self.rmem_tx_queue_name = '/%s_tx_queue'.format(self.name)
+        self.rmem_rx_queue_name = '/{:s}_rx_queue'.format(self.name)
+        self.rmem_tx_queue_name = '/{:s}_tx_queue'.format(self.name)
 
 
     def assemble_cmd_line(self):
