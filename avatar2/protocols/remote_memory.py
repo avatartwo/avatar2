@@ -133,14 +133,14 @@ class RemoteMemoryProtocol(object):
             self._rx_queue = MessageQueue(self.rx_queue_name, flags=O_RDONLY,
                                           read=True, write=False)
         except Exception as e:
-            self.log.error("Unable to create rx_queue: %s" % e)
+            self.log.exception("Unable to create rx_queue:")
             return False
 
         try:
             self._tx_queue = MessageQueue(self.tx_queue_name, flags=O_WRONLY,
                                           read=False, write=True)
         except Exception as e:
-            self.log.error("Unable to create tx_queue: %s" % e)
+            self.log.exception("Unable to create tx_queue:")
             self._rx_queue.close()
             return False
         self._rx_listener = RemoteMemoryRequestListener(self._rx_queue,
