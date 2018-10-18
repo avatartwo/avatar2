@@ -104,7 +104,7 @@ class HelloWorldPeripheral(AvatarPeripheral):
         self.hello_world = self.hello_world[size:] + self.hello_world[:size]
         
         # Convert the return value to an integer (py2/py3-compatible)
-        # Python >3.2 could just call int.from_bytes(ret, byteorder='little)
+        # Python >3.2 could just call int.from_bytes(ret, byteorder='little')
         s2fmt = {1: 'B', 2: 'H', 4: 'I', 8: 'Q')
         ret = struct.unpack('<' + s2fmt[size], ret)[0]
 
