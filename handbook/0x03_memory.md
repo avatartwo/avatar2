@@ -116,7 +116,7 @@ class HelloWorldPeripheral(AvatarPeripheral):
     def __init__(self, name, address, size, **kwargs):
         AvatarPeripheral.__init__(self, name, address, size)
         
-        self.hello_world='Hello World'
+        self.hello_world=b'Hello World'
         
         self.read_handler[0:size] = self.hw_read 
         self.write_handler[0:size] = self.nop_write
