@@ -254,8 +254,12 @@ class Avatar(Thread):
 
         try:
             mem = range.forwarded_to.read_memory(message.address, message.size)
+            if not isinstance(mem, int):
+                raise Exception(("Forwarded read returned data of type %s "
+                                 "(expected: int)" % type(mem)))
             success = True
-        except:
+        except Exception as e:
+            self.log.exception("RemoteMemoryRead failed:")
             mem = -1
             success = False
         message.origin.protocols.remote_memory.send_response(message.id, mem,
