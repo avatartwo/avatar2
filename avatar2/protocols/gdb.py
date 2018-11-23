@@ -307,6 +307,18 @@ class GDBProtocol(object):
             ret = None
         return ret, response
 
+    def set_abi(self, abi):
+        req = ['-gdb-set', self._arch.gdb_name, 'abi', abi]
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+
+        if not ret:
+            self.log.critical(
+                "Unable to set abi to %s, received response: %s" %
+                (abi, resp))
+            raise Exception("GDBProtocol was unable to set ABI")
+
+        return ret
+
     def remote_connect(self, ip='127.0.0.1', port=3333):
         """
         connect to a remote gdb server
@@ -326,12 +338,19 @@ class GDBProtocol(object):
 
         req = ['-gdb-set', 'architecture', self._arch.gdb_name]
         ret, resp = self._sync_request(req, GDB_PROT_DONE)
+
+
         if not ret:
             self.log.critical(
                 "Unable to set architecture, received response: %s" %
                 resp)
             raise Exception(("GDBProtocol was unable to set the architecture\n"
                              "Did you select the right gdb_executable?"))
+
+        # if we are on ARM, set abi to AAPPCS to avoid bugs due to
+        # fp-derefencation (https://github.com/avatartwo/avatar2/issues/19)
+        if self._arch.gdb_name == 'arm':
+            self.set_abi('AAPCS')
 
         req = ['-target-select', 'remote', '%s:%d' % (ip, int(port))]
         ret, resp = self._sync_request(req, GDB_PROT_CONN)
