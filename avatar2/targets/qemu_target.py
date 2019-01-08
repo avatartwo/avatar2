@@ -24,10 +24,12 @@ class QemuTarget(Target):
                  additional_args=None, gdb_additional_args=None,
                  qmp_port=3334,
                  entry_address=0x00,
+                 system_clock_scale=None,
                  **kwargs):
         super(QemuTarget, self).__init__(avatar, **kwargs)
 
         # Qemu parameters
+        self.system_clock_scale = system_clock_scale
         if hasattr(self, 'executable') is False: # May be initialized by subclass
             self.executable = (executable if executable is not None
                                else self._arch.get_qemu_executable())
@@ -128,6 +130,9 @@ class QemuTarget(Target):
         Generates the configuration passed to avatar-qemus configurable machine
         """
         conf_dict = {}
+        if self.system_clock_scale is not None:
+            conf_dict['system_clock_scale'] = self.system_clock_scale
+
         if self.cpu_model is not None:
             conf_dict['cpu_model'] = self.cpu_model
         if self.fw is not None:
