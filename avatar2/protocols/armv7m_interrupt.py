@@ -10,9 +10,11 @@ from avatar2.message import RemoteInterruptEnterMessage
 from avatar2.message import RemoteInterruptExitMessage
 from avatar2.targets import QemuTarget
 
+
 class RINOperation(Enum):
     ENTER = 0
     EXIT = 1
+
 
 class V7MRemoteInterruptNotification(Structure):
     _fields_ = [
@@ -77,22 +79,24 @@ class ARMV7MInterruptProtocol(Thread):
             except:
                 continue
 
-            req_struct = V7MRemoteInterruptNotification.from_buffer_copy(request[0])
+            req_struct = V7MRemoteInterruptNotification.from_buffer_copy(
+                request[0])
 
             if RINOperation(req_struct.operation) == RINOperation.ENTER:
-                msg = RemoteInterruptEnterMessage(self._origin, req_struct.id, 
-                                                 req_struct.num_irq)
+                msg = RemoteInterruptEnterMessage(self._origin, req_struct.id,
+                                                  req_struct.num_irq)
             elif RINOperation(req_struct.operation) == RINOperation.EXIT:
-                msg = RemoteInterruptExitMessage(self._origin, req_struct.id, 
+                msg = RemoteInterruptExitMessage(self._origin, req_struct.id,
                                                  req_struct.type,
                                                  req_struct.num_irq)
-                self.log.debug("Received an InterruptExitRequest for irq %d (%x)" %
-                               (req_struct.num_irq, req_struct.type))
+                self.log.debug(
+                    "Received an InterruptExitRequest for irq %d (%x)" %
+                    (req_struct.num_irq, req_struct.type))
 
             else:
                 msg = None
                 raise Exception(("Received V7MRemoteInterrupt Notification with"
-                                "unknown operation type %d") %
+                                 "unknown operation type %d") %
                                 req_struct.operation)
 
             self._avatar_queue.put(msg)
@@ -103,25 +107,24 @@ class ARMV7MInterruptProtocol(Thread):
         self._close.set()
         self._closed.wait()
 
-
     def enable_interrupts(self):
         if isinstance(self._origin, QemuTarget):
-            #TODO: Make this more clean, i.e., check for remote memory
+            # TODO: Make this more clean, i.e., check for remote memory
             rmem_rx_qname = self._origin.protocols.remote_memory.rx_queue_name
             rmem_tx_qname = self._origin.protocols.remote_memory.tx_queue_name
             # the tx-queue for qemu is the rx-queue for avatar and vice versa
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-enable-irq',
-                 {'irq_rx_queue_name': self._tx_queue_name,
-                  'irq_tx_queue_name': self._rx_queue_name,
-                  'rmem_rx_queue_name': rmem_tx_qname,
-                  'rmem_tx_queue_name': rmem_rx_qname
+                {'irq_rx_queue_name': self._tx_queue_name,
+                 'irq_tx_queue_name': self._rx_queue_name,
+                 'rmem_rx_queue_name': rmem_tx_qname,
+                 'rmem_tx_queue_name': rmem_rx_qname
                  }
             )
         else:
             raise Exception("V7MInterruptProtocol is not implemented for %s" %
                             self._origin.__class__)
-                        
+
         try:
             self._rx_queue = MessageQueue(self._rx_queue_name, flags=O_RDONLY,
                                           read=True, write=False)
@@ -142,22 +145,22 @@ class ARMV7MInterruptProtocol(Thread):
         self.log.info("Enabled Interrupt Forwarding for %s" % self._origin)
         return True
 
-
     def ignore_interrupt_return(self, interrupt_number):
         if isinstance(self._origin, QemuTarget):
-            self.log.info("Disable handling of irq return for %d" % interrupt_number)
+            self.log.info(
+                "Disable handling of irq return for %d" % interrupt_number)
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-ignore-irq-return',
-                 {'num_irq': interrupt_number}
+                {'num_irq': interrupt_number}
             )
-
 
     def unignore_interrupt_return(self, interrupt_number):
         if isinstance(self._origin, QemuTarget):
-            self.log.info("Re-enable handling of irq return for %d" % interrupt_number)
+            self.log.info(
+                "Re-enable handling of irq return for %d" % interrupt_number)
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-unignore-irq-return',
-                 {'num_irq': interrupt_number}
+                {'num_irq': interrupt_number}
             )
 
     def inject_interrupt(self, interrupt_number, cpu_number=0):
@@ -165,7 +168,7 @@ class ARMV7MInterruptProtocol(Thread):
             self.log.info("Injecting interrupt %d" % interrupt_number)
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-inject-irq',
-                 {'num_irq': interrupt_number, 'num_cpu': cpu_number}
+                {'num_irq': interrupt_number, 'num_cpu': cpu_number}
             )
 
     def set_vector_table_base(self, base, cpu_number=0):
@@ -173,18 +176,19 @@ class ARMV7MInterruptProtocol(Thread):
             self.log.info("Setting vector table base to 0x%x" % base)
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-set-vector-table-base',
-                 {'base': base, 'num_cpu': cpu_number}
+                {'base': base, 'num_cpu': cpu_number}
             )
+
     def send_interrupt_exit_response(self, id, success):
-        response =  V7MInterruptNotificationAck(id, success,
-                                                RINOperation.EXIT.value)
+        response = V7MInterruptNotificationAck(id, success,
+                                               RINOperation.EXIT.value)
         try:
             self._tx_queue.send(response)
             self.log.debug("Send RemoteInterruptExitResponse with id %d" % id)
             return True
         except Exception as e:
             self.log.error("Unable to send response: %s" % e)
-            return False 
+            return False
 
     def send_interrupt_enter_response(self, id, success):
         response = V7MInterruptNotificationAck(id, success,
@@ -195,8 +199,8 @@ class ARMV7MInterruptProtocol(Thread):
             return True
         except Exception as e:
             self.log.error("Unable to send response: %s" % e)
-            return False 
-        
+            return False
+
     def __del__(self):
         self.shutdown()
 
@@ -216,5 +220,3 @@ class ARMV7MInterruptProtocol(Thread):
                 self._tx_queue = None
             except ExistentialError:
                 self.log.warning("Tried to close/unlink non existent tx_queue")
-
-
