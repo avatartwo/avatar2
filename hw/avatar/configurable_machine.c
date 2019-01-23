@@ -434,6 +434,9 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
     Object *cpuobj;
     ARMCPU *cpuu;
     CPUState *env;
+    DeviceState *dstate; //generic device if CPU can be initiliazed via qdev-API
+    int num_irq = 64;
+
 
     if (qdict_haskey(conf, "cpu_model"))
     {
@@ -445,16 +448,40 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
 
     printf("Configurable: Adding processor %s\n", cpu_model);
 
-    cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, cpu_model);
-    if (!cpu_oc) {
-        fprintf(stderr, "Unable to find CPU definition\n");
-        exit(1);
+    //create armv7m cpus together with nvic
+    if (!strcmp(cpu_model, "cortex-m3"))
+    {
+
+        if (qdict_haskey(conf, "num_irq"))
+        {
+            num_irq = qdict_get_int(conf, "num_irq");
+            g_assert(num_irq);
+        } 
+
+        dstate = qdev_create(NULL, "armv7m");
+        qdev_prop_set_uint32(dstate, "num-irq", num_irq);
+        qdev_prop_set_string(dstate, "cpu-type", ARM_CPU_TYPE_NAME("cortex-m3"));
+        object_property_set_link(OBJECT(dstate), OBJECT(get_system_memory()),
+                "memory", &error_abort);
+        qdev_init_nofail(dstate);
+
+        cpuu = ARM_CPU(first_cpu);
+
     }
+    else
+    {
+        cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, cpu_model);
+        if (!cpu_oc) {
+            fprintf(stderr, "Unable to find CPU definition\n");
+            exit(1);
+        }
 
     cpuobj = object_new(object_class_get_name(cpu_oc));
 
     object_property_set_bool(cpuobj, true, "realized", &error_fatal);
     cpuu = ARM_CPU(cpuobj);
+    }
+
     env = (CPUState *) &(cpuu->env);
     if (!env)
     {
