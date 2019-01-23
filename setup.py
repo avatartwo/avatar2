@@ -4,7 +4,7 @@ from sys import version_info
 
 setup(
     name='avatar2',
-    version='1.1.1',
+    version='1.2.0',
     packages=['avatar2',
               'avatar2/archs',
               'avatar2/targets',
@@ -24,11 +24,10 @@ setup(
         'configparser',
         'npyscreen',
         'enum34',
-        'unicorn'
-    ],
-    dependency_links=[
-        'https://github.com/jonathanslenders/python-prompt-toolkit/tarball/2.0#egg=prompt-toolkit-2.0.0'
+        'unicorn',
     ],
     url='http://www.s3.eurecom.fr/tools/avatar/',
-    description='Dynamic firmware analysis'
+    description='A Dynamic Multi-Target Orchestration Framework',
+    maintainer='Marius Muench',
+    maintainer_email='marius.muench@eurecom.fr'
 )

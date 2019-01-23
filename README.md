@@ -1,3 +1,4 @@
+[![PyPI version](https://badge.fury.io/py/avatar2.svg)](https://badge.fury.io/py/avatar2)
 [![Build Status](https://travis-ci.org/avatartwo/avatar2.svg?branch=master)](https://travis-ci.org/avatartwo/avatar2)
 
 Welcome to avatar², the target orchestration framework with focus on dynamic
@@ -15,7 +16,24 @@ First, make sure that all the dependencies are present:
 sudo apt-get install python-pip python-setuptools python-dev cmake
 ```
 
-Afterwards, the following three commands are enough to install the core.
+Afterwards, use python-pip to install avatar2:
+
+```
+pip install avatar2
+```
+
+Now you are all ready to go. Additionally, if you want to install specific
+target entpoints, please run the avatar2-installer, which tries to fetch and
+install the endpoints automatically.
+
+```
+python -m avatar2.installer
+```
+
+### Building manually
+
+Avatar² can also be built manually.
+The following three commands are enough to install the core.
 ```
 $ git clone https://github.com/avatartwo/avatar2.git
 $ cd avatar2
@@ -29,6 +47,11 @@ work with slight modifications on other distributions as well.
 $ cd targets
 $ ./build_*.sh
 ```
+
+**Please Note:** These scripts add the restricted repository
+`/etc/apt/sources.list` to fetch the dependencies. If you are not comfortable
+with this, please consider building avatar² in a VM or install the dependencies
+manually and adjust the scripts.
 
 # Getting started
 For discovering the power of avatar² and getting a feeling of its usage,
