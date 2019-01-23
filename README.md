@@ -48,10 +48,10 @@ $ cd targets
 $ ./build_*.sh
 ```
 
-**Please Note:** These scripts add the restricted repository
-`/etc/apt/sources.list` to fetch the dependencies. If you are not comfortable
-with this, please consider building avatar² in a VM or install the dependencies
-manually and adjust the scripts.
+**Please Note:** These scripts add the restricted repository to
+`/etc/apt/sources.list` for fetching the dependencies. If you are not comfortable
+with this, please consider building avatar² in a VM/Container or install the 
+dependencies manually and adjust the scripts.
 
 # Getting started
 For discovering the power of avatar² and getting a feeling of its usage,
