@@ -4,7 +4,7 @@ from sys import version_info
 
 setup(
     name='avatar2',
-    version='1.2.0',
+    version='1.2.1',
     packages=['avatar2',
               'avatar2/archs',
               'avatar2/targets',
@@ -26,7 +26,7 @@ setup(
         'enum34',
         'unicorn',
     ],
-    url='http://www.s3.eurecom.fr/tools/avatar/',
+    url='https://github.com/avatartwo/avatar2',
     description='A Dynamic Multi-Target Orchestration Framework',
     maintainer='Marius Muench',
     maintainer_email='marius.muench@eurecom.fr'
