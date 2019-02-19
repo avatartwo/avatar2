@@ -217,6 +217,12 @@ class Avatar(Thread):
                 if hasattr(to_target, 'regs') and hasattr(from_target, 'regs')
                 else self.arch.registers)
            
+
+            # ARM may have banked registers; Apparantly, the order in which we
+            # write them is important to QEMU and could to lead bugs otherwise.
+            if self.arch == ARM:
+                regs = sorted(regs, key=lambda x: x[::-1])
+
             # The status register can cause a mode-switch, let's update it first
             if self.arch.sr_name in regs:
                 regs = ([self.arch.sr_name]
