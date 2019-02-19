@@ -105,4 +105,4 @@ def load_plugin(avatar):
 
     avatar.watchmen.add_watchman('RemoteMemoryWrite', when=BEFORE,
                                  callback=find_coresight_magic_value,
-                                 async=True)
+                                 is_async=True)
