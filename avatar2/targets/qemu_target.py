@@ -23,6 +23,8 @@ class QemuTarget(Target):
                  gdb_verbose=False,
                  qmp_port=3334,
                  entry_address=0x00,
+                 log_items=None,
+                 log_file=None,
                  **kwargs):
         super(QemuTarget, self).__init__(avatar, **kwargs)
 
@@ -54,6 +56,10 @@ class QemuTarget(Target):
         self.rmem_tx_queue_name = '/{:s}_tx_queue'.format(self.name)
 
 
+        self.log_items = log_items
+        self.log_file  = log_file
+
+
     def assemble_cmd_line(self):
         if isfile(self.executable + self._arch.qemu_name):
             executable_name = [self.executable + self._arch.qemu_name]
@@ -72,8 +78,30 @@ class QemuTarget(Target):
         nographic = ["-nographic"]  # , "-monitor", "/dev/null"]
         qmp = ['-qmp', 'tcp:127.0.0.1:%d,server,nowait' % self.qmp_port]
 
-        return executable_name + machine + kernel + gdb_option \
+        cmd_line = executable_name + machine + kernel + gdb_option \
                + stop_on_startup + self.additional_args + nographic + qmp
+        
+        if self.log_items is not None:
+            if isinstance(self.log_items, str):
+                log_items = ['-d', self.log_items]
+            elif isinstance(self.log_items, list):
+                log_items = ['-d', ','.join([i for i in self.log_items])]
+            else:
+                self.log.warn('Got unsupported type for log_items: %s' %
+                              type(self.log_items))
+                return cmd_line
+
+            if self.log_file is not None:
+                log_file = ['-D', '%s/%s' % (self.avatar.output_directory,
+                                             self.log_file)]
+            else:
+                log_file = ['-D', '%s/%s_log.txt' % 
+                            (self.avatar.output_directory, self.name)]
+
+            cmd_line += log_items + log_file
+
+        return cmd_line
+
 
     def shutdown(self):
         if self._process is not None:
