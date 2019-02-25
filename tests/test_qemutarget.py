@@ -74,7 +74,7 @@ def setup():
     global avatar
     avatar = FakeAvatar()
     qemu = QemuTarget(avatar, name='qemu_test',
-                      gdb_executable="arm-none-eabi-gdb",
+                      gdb_executable="gdb-multiarch",
                       firmware="./tests/binaries/qemu_arm_test",
                       executable="targets/build/qemu/arm-softmmu/qemu-system-")
     fake_target = FakeTarget()

@@ -7,8 +7,8 @@ services:
     - docker
 
 before_install:
-    - docker pull ubuntu:17.10
-    - docker run -v /home/travis/build/$TRAVIS_REPO_SLUG:/avatar2 --name ubuntu -dit ubuntu:17.10
+    - docker pull ubuntu:18.04
+    - docker run -v /home/travis/build/$TRAVIS_REPO_SLUG:/avatar2 --name ubuntu -dit ubuntu:18.04
     - docker exec ubuntu apt-get update
     - docker exec ubuntu apt-get install -y sudo
 
@@ -22,7 +22,7 @@ install:
     - docker exec ubuntu apt-get install -y libc6-i386 
     - docker exec ubuntu apt-get install -y gdb 
     - docker exec ubuntu apt-get install -y pkg-config 
-    - docker exec ubuntu apt-get install -y gdb-arm-none-eabi
+    - docker exec ubuntu apt-get install -y gdb-multiarch
     - docker exec ubuntu apt-get install -y libcapstone3 
     - docker exec ubuntu apt-get install -y libcapstone-dev
     - docker exec ubuntu pip2 install --upgrade pip
