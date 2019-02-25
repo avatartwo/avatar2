@@ -40,7 +40,7 @@ $ cd avatar2
 $ sudo python setup.py install
 ```
 Afterwards, the different target endpoints can be built, such as QEmu or PANDA.
-For doing so, we are providing build-scripts for Ubuntu 16.04 - while other
+For doing so, we are providing build-scripts for Ubuntu 18.04 - while other
 distributions are not officially supported (yet), the scripts are known to
 work with slight modifications on other distributions as well.
 ```
@@ -66,12 +66,12 @@ Additionally, another good way to get started with avatar² is to read the offic
 [avatar² paper](http://s3.eurecom.fr/docs/bar18_muench.pdf) or to watch the
 [34c3-talk](https://media.ccc.de/v/34c3-9195-avatar).
 
-For further support or follow-up questions, feel free to contact us via IRC
-in #avatar2 on freenode, or to send a mail to avatar2 [at] lists.eurecom.fr, 
-our public mailing list.
+For further support or follow-up questions, feel free to send a mail to
+avatar2 [at] lists.eurecom.fr, our public mailing list, on which you can
+subscribe [here](https://lists.eurecom.fr/sympa/subscribe/avatar2).
 
-Additionally, you can subscribe to the list 
-[here](https://lists.eurecom.fr/sympa/subscribe/avatar2).
+Additionally, you can find us on [slack](https://avatartwo.slack.com/) for more
+vivid means of communication - if you want an invite, just send us a mail!
 
 
 # Publications
