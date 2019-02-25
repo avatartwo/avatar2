@@ -43,7 +43,7 @@ script:
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-3.4 ./tests/test_remote_memoryprotocol.py'
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-3.4 ./tests/test_gdbprotocol.py'
 
-    - docker exec ubuntu bash -c 'cd avatar2/ && bash ./targets/build_qemu.sh'
+    - docker exec ubuntu bash -c 'cd avatar2/ && echo Yes | bash ./targets/build_qemu.sh'
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-2.7 ./tests/test_qemutarget.py'
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-3.4 ./tests/test_qemutarget.py'
 
