@@ -5,11 +5,11 @@ import logging
 
 GDB_SERVER_IP = "127.0.0.1"
 GDB_SERVER_PORT = "2222"
-binary_path = "/home/chris/Documents/phd/hw_symb/angr/"
+binary_path = "%s/tests/binaries/" % os.getcwd()
 binary = binary_path + "fauxware"
 bp_func = "print_test"
 
-ava = avatar2.Avatar(arch=avatar2.archs.X86_64,output_directory="/home/chris/Documents/phd/hw_symb/angr")
+ava = avatar2.Avatar(arch=avatar2.archs.X86_64,output_directory="/tmp/avatar_angr")
 ava.load_plugin("gdb_memory_map_loader")
 # Set log level
 ava.log.setLevel(logging.DEBUG)

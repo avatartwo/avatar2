@@ -5,7 +5,7 @@ from angr import sim_options as o
 from cle import Clemory
 
 import logging
-import Queue as queue
+import queue 
 
 import angr
 from angr.storage.paged_memory import Page, SimPagedMemory, TreePage
