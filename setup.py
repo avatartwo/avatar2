@@ -18,7 +18,7 @@ setup(
               'avatar2/peripherals',
               'avatar2/plugins',
               'avatar2/plugins/arm',
-              'avatar2/installer'
+              'avatar2/installer',
               'avatar2/plugins/x86'
               ],
     install_requires=[
@@ -32,6 +32,7 @@ setup(
         'npyscreen',
         'enum34',
         'unicorn',
+        'angr'
     ],
     url='https://github.com/avatartwo/avatar2',
     description='A Dynamic Multi-Target Orchestration Framework',
