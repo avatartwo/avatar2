@@ -210,6 +210,7 @@ class Avatar(Thread):
                              but target_states are (%s, %s)" %
                             (from_target.state, to_target.state))
 
+
         if sync_regs:
             # Test if we can take registers from TargetRegs-objects
             regs = (

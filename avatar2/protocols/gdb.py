@@ -779,7 +779,7 @@ class GDBProtocol(object):
             regex = re.compile("(0x[0-9a-f]*)[ .]")
             resp = regex.findall(resp)
             if len(resp) == 1:
-                resp = long(resp[0], 16)
+                resp = int(resp[0], 16)
             else:
                 resp = -1
                 ret = False

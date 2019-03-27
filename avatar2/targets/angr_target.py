@@ -45,6 +45,8 @@ class AvatarPage(TreePage):
 
 
     def copy(self):
+        # TODO: FIND ROOTCAUSE: page_addr is float, why?
+        self._page_addr = int(self._page_addr)
         self.log.debug("AvatarPage at %x is being copied" % self._page_addr)
         return AvatarPage(self._page_addr, self._page_size,
                           **self._copy_args())
@@ -58,13 +60,16 @@ class AvatarPage(TreePage):
 
     def fill_page_from_remote(self, state):
         AvatarPage.cnt += 1
+        # TODO: FIND ROOTCAUSE: page_addr is float, why?
+        self._page_addr = int(self._page_addr)
         self.log.debug("Loading page at %x from remote" % self._page_addr)
         start_addr = self._page_addr
         end_addr = self._page_addr + self._page_size
-        for x in xrange(start_addr, end_addr, state.arch.bytes):
+        for x in range(start_addr, end_addr, state.arch.bytes):
             start, value = self._read_memory(state, x,
                                              x+state.arch.bytes)[0]
             value._object = value.object.reversed
+            value.object = value.object.reversed
             super(self.__class__, self).store_mo(state, value, overwrite=True)
 
     def store_mo(self, state, new_mo, overwrite=True):
@@ -144,13 +149,13 @@ def avatar_state(angr_factory, angr_target, options=frozenset(),
     if remove_options is not None:
         options -= remove_options
 
-    permissions_backer = angr_factory._project.loader.memory 
+    permissions_backer = angr_factory.project.loader.memory 
     
     if memory_backer is None:
-        memory_backer = angr_factory._project.loader.memory
+        memory_backer = angr_factory.project.loader.memory
 
     permissions_backer = generate_permissions_backer()
-    page_size = angr_factory._project.loader.page_size
+    page_size = angr_factory.project.loader.page_size
 
     #SimPagedMemory requires both pages and symbolic_addresses to be dicts
     #with the same keys
@@ -184,7 +189,7 @@ def avatar_state(angr_factory, angr_target, options=frozenset(),
     if plugins is None:
         plugins = {}
 
-    if plugins.has_key('memory'):
+    if plugins.get('memory') is not None:
         l.warning('Discarding user-defined memory plugin for avatar state')
     plugins['memory'] = sim_memory
 
