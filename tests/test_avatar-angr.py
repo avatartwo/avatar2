@@ -16,6 +16,7 @@ ava.load_plugin("gdb_memory_map_loader")
 ava.load_plugin("x86.segment_registers")
 # Set log level
 #ava.log.setLevel(logging.DEBUG)
+ava.log.setLevel(logging.INFO)
 print("[+] Creating the GDBTarget")
 
 angr = ava.add_target(avatar2.AngrTarget, binary=binary,
@@ -27,7 +28,11 @@ gdb = ava.add_target(avatar2.GDBTarget, local_binary=binary)
 print("[+] Initializing the targets")
 ava.init_targets()
 
-gdb.disable_aslr()
+
+cmd = "set environ LD_BIND_NOW=1"
+gdb.protocols.execution.console_command(cmd)
+
+#gdb.disable_aslr()
 
 print("[+] Running binary until breakpoint")
 gdb.bp(bp_func)
@@ -43,18 +48,20 @@ ava.load_memory_mappings(gdb, forward=True)
 
 
 
+
 options = a.options.common_options | set([a.options.STRICT_PAGE_ACCESS])
 s = angr.angr.factory.avatar_state(angr, load_register_from=gdb, options=options)
 #s = angr.angr.factory.avatar_state(angr, load_register_from=gdb)
 
 sm = angr.angr.factory.simgr(s)
 
+#angr.hook_symbols(gdb)
 #sm.explore()
 #while len(sm.active) > 0:
     #print(sm.active[0].regs.pc)
     #print(len(sm.active))
     #sm.step()
-
+#
 import IPython; IPython.embed()
 
 

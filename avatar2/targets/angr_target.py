@@ -323,8 +323,9 @@ class AngrTarget(Target):
                 prot = from_target.protocols.execution
                 exists, addr = prot.get_symbol(symbol[0])
                 if exists:
-                    self.log.debug("Hooking the symbol %s" % symbol[0])
-                    self.angr.hook(addr, symbol[1])
+                    self.log.info("Hooking the symbol %s at %x" % 
+                                   (symbol[0], addr))
+                    self.angr.hook(addr, symbol[1]())
 
     def send_response(self, id, value, success):
         self.response_queue.put((id, value, success))
