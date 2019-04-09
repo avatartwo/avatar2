@@ -1,7 +1,7 @@
 # from capstone import CS_ARCH_ARM, CS_MODE_LITTLE_ENDIAN, CS_MODE_BIG_ENDIAN
 
 from capstone import *
-from keystone import *
+from keystone.keystone_const import *
 from unicorn import *
 from unicorn.arm_const import *
 from .architecture import Architecture
