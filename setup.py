@@ -25,6 +25,7 @@ setup(
         'npyscreen',
         'enum34',
         'unicorn',
+        'pylink',
     ],
     url='https://github.com/avatartwo/avatar2',
     description='A Dynamic Multi-Target Orchestration Framework',
