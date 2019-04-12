@@ -64,6 +64,8 @@ static inline void set_feature(CPUARMState *env, int feature)
     env->features |= 1ULL << feature;
 }
 
+// For now, this function is unused so let's prevent the compiler from failing.
+static inline void unset_feature(CPUARMState *env, int feature) __attribute__ ((unused));
 static inline void unset_feature(CPUARMState *env, int feature)
 {
     env->features &= ~(1ULL << feature);
