@@ -273,7 +273,9 @@ class Target(object):
         Continues the execution of the target
         :param blocking: if True, block until the target is RUNNING
         """
-        return self.protocols.execution.file(elf)
+        if not hasattr(self.protocols.execution, 'set_file'):
+            self.log.error('Protocol "' + type(self.protocols.execution).__name__ + '" does not support "set_file"')
+            return False
 
         return self.protocols.execution.set_file(elf)
 
@@ -284,6 +286,10 @@ class Target(object):
         Continues the execution of the target
         :param blocking: if True, block until the target is RUNNING
         """
+        if not hasattr(self.protocols.execution, 'download'):
+            self.log.error('Protocol "' + type(self.protocols.execution).__name__ + '" does not support "download"')
+            return False
+
         return self.protocols.execution.download()
 
     @watch('TargetGetSymbol')
