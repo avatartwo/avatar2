@@ -1,7 +1,11 @@
+# Version 1.2.3 (TBD)
+* Features:
+    * Enhancement for targets using GDBProtocol (set_file, download, get_symbol)
+
 # Version 1.2.2 (April 11, 2019)
 * Features:
     * CHANGELOG for keeping track of changes
-    * Jlink Target
+    * Jlink Target (thanks @subwire)
 * Improvements:
     * log_items and log_file kwargs for Qemu-Target
     * Migration to Ubuntu 18.04 as test platform
