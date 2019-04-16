@@ -266,15 +266,16 @@ class Target(object):
         """
         return self.protocols.execution.step()
 
-    @watch('File')
+    @watch('TargetSetFile')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
-    def file(self, elf, blocking=True):
+    def set_file(self, elf):
         """
         Continues the execution of the target
         :param blocking: if True, block until the target is RUNNING
         """
         return self.protocols.execution.file(elf)
 
+        return self.protocols.execution.set_file(elf)
 
     @watch('TargetDownload')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')

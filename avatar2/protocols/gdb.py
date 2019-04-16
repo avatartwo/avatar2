@@ -744,7 +744,7 @@ class GDBProtocol(object):
             resp)
         return ret
 
-    def file(self, elf=''):
+    def set_file(self, elf=''):
         """Load an ELF file
         :returns: True on success"""
         ret, resp = self._sync_request(["-file-exec-and-symbols", elf], GDB_PROT_DONE)

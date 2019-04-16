@@ -25,7 +25,7 @@ class WatchedTypes(object):
         'TargetSetWatchPoint',
         'TargetRemovebreakpoint',
         'TargetWait',
-        'File',
+        'TargetSetFile',
         'TargetDownload'
     ]
 
