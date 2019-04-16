@@ -276,6 +276,15 @@ class Target(object):
         return self.protocols.execution.file(elf)
 
 
+    @watch('TargetDownload')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
+    def download(self, blocking=True):
+        """
+        Continues the execution of the target
+        :param blocking: if True, block until the target is RUNNING
+        """
+        return self.protocols.execution.download()
+
     @watch('TargetGetSymbol')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
     def get_symbol(self, symbol):

@@ -754,6 +754,16 @@ class GDBProtocol(object):
             resp)
         return ret
 
+    def download(self):
+        """Download code to target
+        :returns: True on success"""
+        ret, resp = self._sync_request(["-target-download"], GDB_PROT_DONE, timeout=60)
+
+        self.log.debug(
+            "Attempted to download code to target. Received response: %s" %
+            resp)
+        return ret
+
     def set_endianness(self, endianness='little'):
         req = ['-gdb-set', 'endian', '%s' % endianness]
         ret, resp = self._sync_request(req, GDB_PROT_DONE)

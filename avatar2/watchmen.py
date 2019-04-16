@@ -26,6 +26,7 @@ class WatchedTypes(object):
         'TargetRemovebreakpoint',
         'TargetWait',
         'File',
+        'TargetDownload'
     ]
 
     def __init__(self):
