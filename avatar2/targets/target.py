@@ -270,8 +270,10 @@ class Target(object):
     @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
     def set_file(self, elf):
         """
-        Continues the execution of the target
-        :param blocking: if True, block until the target is RUNNING
+        Load an ELF file
+
+        :param elf: ELF file to load
+        :returns: True on success else False
         """
         if not hasattr(self.protocols.execution, 'set_file'):
             self.log.error('Protocol "' + type(self.protocols.execution).__name__ + '" does not support "set_file"')
@@ -281,10 +283,11 @@ class Target(object):
 
     @watch('TargetDownload')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
-    def download(self, blocking=True):
+    def download(self):
         """
-        Continues the execution of the target
-        :param blocking: if True, block until the target is RUNNING
+        Download the loaded code to the Target
+
+        :returns: True on success else False
         """
         if not hasattr(self.protocols.execution, 'download'):
             self.log.error('Protocol "' + type(self.protocols.execution).__name__ + '" does not support "download"')
