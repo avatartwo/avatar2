@@ -266,6 +266,16 @@ class Target(object):
         """
         return self.protocols.execution.step()
 
+    @watch('File')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
+    def file(self, elf, blocking=True):
+        """
+        Continues the execution of the target
+        :param blocking: if True, block until the target is RUNNING
+        """
+        return self.protocols.execution.file(elf)
+
+
     @watch('TargetGetSymbol')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
     def get_symbol(self, symbol):

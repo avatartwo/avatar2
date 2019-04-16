@@ -744,6 +744,16 @@ class GDBProtocol(object):
             resp)
         return ret
 
+    def file(self, elf=''):
+        """Load an ELF file
+        :returns: True on success"""
+        ret, resp = self._sync_request(["-file-exec-and-symbols", elf], GDB_PROT_DONE)
+
+        self.log.debug(
+            "Attempted to load elf file. Received response: %s" %
+            resp)
+        return ret
+
     def set_endianness(self, endianness='little'):
         req = ['-gdb-set', 'endian', '%s' % endianness]
         ret, resp = self._sync_request(req, GDB_PROT_DONE)
