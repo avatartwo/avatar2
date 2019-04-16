@@ -266,6 +266,17 @@ class Target(object):
         """
         return self.protocols.execution.step()
 
+    @watch('TargetGetSymbol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
+    def get_symbol(self, symbol):
+        """
+        Get the address of a symbol
+
+        :param symbol:    The name of a symbol whose address is wanted
+        :returns:         (True, Address) on success else False
+        """
+        return self.protocols.memory.get_symbol(symbol)
+
     @watch('TargetWriteMemory')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
     def write_memory(self, address, size, value, num_words=1, raw=False):

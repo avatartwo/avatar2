@@ -16,6 +16,7 @@ class WatchedTypes(object):
         'TargetCont',
         'TargetStop',
         'TargetStep',
+        'TargetGetSymbol',
         'TargetWriteMemory',
         'TargetReadMemory',
         'TargetRegisterWrite',
