@@ -283,7 +283,7 @@ class GDBProtocol(object):
             self._gdbmi.exit()
             self._gdbmi = None
 
-    def _sync_request(self, request, rexpect):
+    def _sync_request(self, request, rexpect, timeout=5):
         """ Generic method to send a syncronized request
 
         :param request: the request as list
@@ -300,7 +300,7 @@ class GDBProtocol(object):
 
         self._gdbmi.write(req, read_response=False, timeout_sec=0)
         try:
-            response = self._communicator.get_sync_response(token)
+            response = self._communicator.get_sync_response(token, timeout=timeout)
             ret = True if response['message'] == rexpect else False
         except:
             response = None
