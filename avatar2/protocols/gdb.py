@@ -283,7 +283,7 @@ class GDBProtocol(object):
             self._gdbmi.exit()
             self._gdbmi = None
 
-    def _sync_request(self, request, rexpect):
+    def _sync_request(self, request, rexpect, timeout=5):
         """ Generic method to send a syncronized request
 
         :param request: the request as list
@@ -300,7 +300,7 @@ class GDBProtocol(object):
 
         self._gdbmi.write(req, read_response=False, timeout_sec=0)
         try:
-            response = self._communicator.get_sync_response(token)
+            response = self._communicator.get_sync_response(token, timeout=timeout)
             ret = True if response['message'] == rexpect else False
         except:
             response = None
@@ -744,6 +744,26 @@ class GDBProtocol(object):
             resp)
         return ret
 
+    def set_file(self, elf=''):
+        """Load an ELF file
+        :returns: True on success"""
+        ret, resp = self._sync_request(["-file-exec-and-symbols", elf], GDB_PROT_DONE)
+
+        self.log.debug(
+            "Attempted to load elf file. Received response: %s" %
+            resp)
+        return ret
+
+    def download(self):
+        """Download code to target
+        :returns: True on success"""
+        ret, resp = self._sync_request(["-target-download"], GDB_PROT_DONE, timeout=60)
+
+        self.log.debug(
+            "Attempted to download code to target. Received response: %s" %
+            resp)
+        return ret
+
     def set_endianness(self, endianness='little'):
         req = ['-gdb-set', 'endian', '%s' % endianness]
         ret, resp = self._sync_request(req, GDB_PROT_DONE)
@@ -779,7 +799,7 @@ class GDBProtocol(object):
             regex = re.compile("(0x[0-9a-f]*)[ .]")
             resp = regex.findall(resp)
             if len(resp) == 1:
-                resp = long(resp[0], 16)
+                resp = int(resp[0], 16)
             else:
                 resp = -1
                 ret = False

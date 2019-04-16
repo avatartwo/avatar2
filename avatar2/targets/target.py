@@ -266,6 +266,46 @@ class Target(object):
         """
         return self.protocols.execution.step()
 
+    @watch('TargetSetFile')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
+    def set_file(self, elf):
+        """
+        Load an ELF file
+
+        :param elf: ELF file to load
+        :returns: True on success else False
+        """
+        if not hasattr(self.protocols.execution, 'set_file'):
+            self.log.error('Protocol "' + type(self.protocols.execution).__name__ + '" does not support "set_file"')
+            return False
+
+        return self.protocols.execution.set_file(elf)
+
+    @watch('TargetDownload')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
+    def download(self):
+        """
+        Download the loaded code to the Target
+
+        :returns: True on success else False
+        """
+        if not hasattr(self.protocols.execution, 'download'):
+            self.log.error('Protocol "' + type(self.protocols.execution).__name__ + '" does not support "download"')
+            return False
+
+        return self.protocols.execution.download()
+
+    @watch('TargetGetSymbol')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
+    def get_symbol(self, symbol):
+        """
+        Get the address of a symbol
+
+        :param symbol:    The name of a symbol whose address is wanted
+        :returns:         (True, Address) on success else False
+        """
+        return self.protocols.memory.get_symbol(symbol)
+
     @watch('TargetWriteMemory')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
     def write_memory(self, address, size, value, num_words=1, raw=False):

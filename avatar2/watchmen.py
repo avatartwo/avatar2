@@ -16,6 +16,7 @@ class WatchedTypes(object):
         'TargetCont',
         'TargetStop',
         'TargetStep',
+        'TargetGetSymbol',
         'TargetWriteMemory',
         'TargetReadMemory',
         'TargetRegisterWrite',
@@ -23,7 +24,9 @@ class WatchedTypes(object):
         'TargetSetBreakpoint',
         'TargetSetWatchPoint',
         'TargetRemovebreakpoint',
-        'TargetWait'
+        'TargetWait',
+        'TargetSetFile',
+        'TargetDownload'
     ]
 
     def __init__(self):
