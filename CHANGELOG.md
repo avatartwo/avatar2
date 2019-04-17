@@ -1,6 +1,9 @@
 # Version 1.2.3 (TBD)
 * Features:
     * Enhancement for targets using GDBProtocol (set_file, download, get_symbol)
+      (thanks @drizzin-novalabs)
+* Improvements:
+    * Allow avatar-qemu to build with -Werror -Wunused-function (#29)
 
 # Version 1.2.2 (April 11, 2019)
 * Features:
