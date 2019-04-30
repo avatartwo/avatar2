@@ -81,8 +81,35 @@ class Avatar(Thread):
         self.start()
 
 
-    def load_config(self, file_name='conf.json'):
-        pass
+    def load_config(self, file_name=None):
+        """
+        Populates the avatar object with targets and ranges saved in a config
+        json. Note that some changes on the targets may be lost, for instance
+        custom protocol configuration.
+        :ivar file_name: (Absolute) path to the config file
+        """
+        if file_name is None:
+            file_name = "%s/conf.json" % self.output_directory 
+        with open(file_name, 'r') as config_file:
+            config = json.load(config_file)
+
+        for t in config.pop('targets'):
+            module = __import__(t.pop('module'))
+            klass = getattr(module, t.pop('type'))
+            self.add_target(klass, **t)
+
+        for mr in config.pop('memory_mapping'):
+            # resolve forwarded_to to the target objects
+            tname = mr.get('forwarded_to')
+            if tname is not None:
+                mr['forwarded_to'] = self.targets[tname]
+            # TODO handle emulate
+            self.add_memory_range(mr.pop('address'),
+                                  mr.pop('size'),
+                                  **mr)
+        for k, v in config.items():
+            setattr(self, k, v)
+
 
     def generate_config(self):
         """
@@ -106,7 +133,7 @@ class Avatar(Thread):
     def save_config(self, file_name=None, config=None):
         if file_name is None:
             file_name = "%s/conf.json" % self.output_directory 
-        conf_dict = self.generate_config if config is None else config
+        conf_dict = self.generate_config() if config is None else config
         with open(file_name, "w") as conf_file:
             json.dump(conf_dict, conf_file)
 

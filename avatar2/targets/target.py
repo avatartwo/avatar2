@@ -226,7 +226,8 @@ class Target(object):
 
         ignore = ['state', 'status', 'regs', 'protocols', 'log', 'avatar']
         expected_types = (str, bool, int, list) 
-        t_dict = {'type': self.__class__.__name__}
+        t_dict = {'type': self.__class__.__name__,
+                  'module': self.__module__}
 
         for k, v in self.__dict__.items():
             if k in ignore: continue
