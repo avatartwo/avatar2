@@ -1,5 +1,7 @@
 # Version 1.2.3 (TBD)
 * Features:
+    * Avatar object can now load or save configuration files, specifying
+      targets and memory ranges
     * Enhancement for targets using GDBProtocol (set_file, download, get_symbol)
       (thanks @drizzin-novalabs)
 * Improvements:
