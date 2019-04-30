@@ -1,5 +1,6 @@
 from avatar2 import QemuTarget
 from avatar2 import MemoryRange
+from avatar2 import Avatar
 from avatar2.archs import ARM
 from avatar2.targets import Target, TargetStates
 from avatar2.message import *
@@ -19,51 +20,18 @@ QEMU_EXECUTABLE = os.environ.get("QEMU_EXECUTABLE",
 GDB_EXECUTABLE  = os.environ.get("GDB_EXECUTABLE", "gdb-multiarch")
 
 qemu = None
-fake_avatar = None
 
 
-class FakeQueue(object):
-    def __init__(self):
-        pass
-    def put(self, message):
-        if isinstance(message, UpdateStateMessage):
-            message.origin.update_state(message.state)
-        elif isinstance(message, RemoteMemoryReadMessage):
-            range = avatar.memory_ranges[message.address].pop().data
-            mem = range.forwarded_to.read_memory(message.address, message.size)
-            message.origin.protocols.remote_memory.send_response(message.id, mem,
-                                                                True)
 
 
-class FakeWatchmen(object):
-    def t(*args, **kwargs):
-        pass
-
-class FakeAvatar(object):
-
-    def __init__(self):
-        self.output_directory = tempfile.mkdtemp(suffix="_avatar")
-        self.arch = ARM
-        self.memory_ranges = intervaltree.IntervalTree()
-        self.log = logging.getLogger()
-        self.log.addHandler(logging.NullHandler())
-        self.queue = FakeQueue()
-        self.fast_queue = FakeQueue()
-        self.watchmen = FakeWatchmen()
-
-    def add_memory_range(self, address, size, name='', permissions='rwx', 
-                         file=None, forwarded=False, forwarded_to=None, **kwargs
-                        ):
-        m = MemoryRange(address, size, name=name, permissions=permissions, 
-                        file=file, forwarded=forwarded, 
-                        forwarded_to=forwarded_to, **kwargs)
-        self.memory_ranges[address:address+size] = m
-        return m
 
 
 class FakeTarget(object):
+    name = 'fake'
+
     def __init__(self):
         pass
+
 
     def read_memory(*args, **kwargs):
         return 0xdeadbeef
@@ -77,7 +45,7 @@ class FakeTarget(object):
 def setup():
     global qemu
     global avatar
-    avatar = FakeAvatar()
+    avatar = Avatar()
     qemu = QemuTarget(avatar, name='qemu_test',
                       firmware="./tests/binaries/qemu_arm_test",
                       gdb_executable=GDB_EXECUTABLE,
