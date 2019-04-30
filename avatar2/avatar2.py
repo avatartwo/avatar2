@@ -10,6 +10,7 @@ import tempfile
 import intervaltree
 import logging
 import signal
+import json
 
 from os import path, makedirs
 from threading import Thread, Event
@@ -32,7 +33,7 @@ class Avatar(Thread):
 
     """
 
-    def __init__(self, arch=ARM, output_directory=None):
+    def __init__(self, arch=ARM, cpu_model=None, output_directory=None):
         super(Avatar, self).__init__()
 
         
@@ -48,7 +49,10 @@ class Avatar(Thread):
         self.status = {}
         self.memory_ranges = intervaltree.IntervalTree()
         self.loaded_plugins = []
-
+        self.cpu_model = cpu_model
+        
+        if self.cpu_model is None and hasattr(self.arch, 'cpu_model'):
+            self.cpu_model = self.arch.cpu_model
         # Setup output-dir and logging
         self.output_directory = (tempfile.mkdtemp(suffix="_avatar")
                                  if output_directory is None
@@ -75,6 +79,37 @@ class Avatar(Thread):
         }
         self.daemon = True
         self.start()
+
+
+    def load_config(self, file_name='conf.json'):
+        pass
+
+    def generate_config(self):
+        """
+        Generates a configuration dictionary for storage based on the currently
+        defined targets and memory ranges
+        """
+        conf_dict = {}
+        if self.cpu_model is not None:
+            conf_dict['cpu_model'] = self.cpu_model
+        conf_dict['memory_mapping'] = []
+        for mr in self.memory_ranges:
+            conf_dict['memory_mapping'].append(mr.data.dictify())
+        
+        conf_dict['targets'] = []
+        for t in self.targets.values():
+            conf_dict['targets'].append(t.dictify())
+
+        return conf_dict
+
+
+    def save_config(self, file_name=None, config=None):
+        if file_name is None:
+            file_name = "%s/conf.json" % self.output_directory 
+        conf_dict = self.generate_config if config is None else config
+        with open(file_name, "w") as conf_file:
+            json.dump(conf_dict, conf_file)
+
 
     def shutdown(self):
         """

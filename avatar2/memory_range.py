@@ -15,11 +15,15 @@ class MemoryRange(object):
     :ivar file_bytes:   Bytes of the file to be copied into memory
     :ivar forwarded:    Enable or disable forwarding for this range
     :ivar forwarded_to: List of targets this range should be forwarded to
+    :ivar is_symbolic:  Consider this range as symbolic in certain targets
+    :ivar is_special:   Whether the range represents special memory which
+                        behaves unlike normal memory, e.g. MMIO
     """
 
     def __init__(self, address, size, name=None, permissions='rwx',
                  file=None, file_offset=None, file_bytes=None, forwarded=False,
-                 forwarded_to=None, **kwargs):
+                 forwarded_to=None, is_symbolic=False, is_special=False,
+                 **kwargs):
         self.address = address
         self.size = size
         self.name = (
@@ -33,3 +37,26 @@ class MemoryRange(object):
         self.forwarded = forwarded
         self.forwarded_to = forwarded_to
         self.__dict__.update(kwargs)
+
+
+    def dictify(self):
+        """
+        Returns the memory range as *printable* dictionary
+        """
+        # Assumption: dicts saved in mrs are of primitive types only
+        expected_types = (str, bool, int, dict) 
+        tmp_dict = dict(self.__dict__)
+        mr_dict = {}
+        while tmp_dict != {}:
+            k, v = tmp_dict.popitem()
+            if v is None or False: continue
+            elif k == 'forwarded_to': v = v.name
+            # TODO handle emulate
+            if not isinstance(v, expected_types):
+                raise Exception(
+                    "Unsupported value for dictifying %s for mem_range at 0x%x"
+                    % (k, self.address))
+            mr_dict[k] = v
+        return mr_dict
+
+
