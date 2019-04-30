@@ -51,8 +51,8 @@ class QemuTarget(Target):
         self._entry_address = entry_address
         self._memory_mapping = avatar.memory_ranges
 
-        self.rmem_rx_queue_name = '/{:s}_rx_queue'.format(self.name)
-        self.rmem_tx_queue_name = '/{:s}_tx_queue'.format(self.name)
+        self._rmem_rx_queue_name = '/{:s}_rx_queue'.format(self.name)
+        self._rmem_tx_queue_name = '/{:s}_tx_queue'.format(self.name)
 
 
         self.log_items = log_items
@@ -130,11 +130,11 @@ class QemuTarget(Target):
                                           'name': 'address'}
                     mr['properties'].append(address_properties)
                     rx_queue_properties = {'type': 'string',
-                                           'value': self.rmem_rx_queue_name,
+                                           'value': self._rmem_rx_queue_name,
                                            'name': 'rx_queue_name'}
                     mr['properties'].append(rx_queue_properties)
                     tx_queue_properties = {'type': 'string',
-                                           'value': self.rmem_tx_queue_name,
+                                           'value': self._rmem_tx_queue_name,
                                            'name': 'tx_queue_name'}
                     mr['properties'].append(tx_queue_properties)
 
@@ -184,8 +184,8 @@ class QemuTarget(Target):
         if 'avatar-rmemory' in [i[2].qemu_name for i in
                                 self._memory_mapping.iter() if
                                 hasattr(i[2], 'qemu_name')]:
-            rmp = RemoteMemoryProtocol(self.rmem_tx_queue_name,
-                                       self.rmem_rx_queue_name,
+            rmp = RemoteMemoryProtocol(self._rmem_tx_queue_name,
+                                       self._rmem_rx_queue_name,
                                        self.avatar.queue, self)
         else:
             rmp = None
