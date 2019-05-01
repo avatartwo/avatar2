@@ -13,7 +13,6 @@ class QemuTarget(Target):
     """
     """
 
-    QEMU_CONFIG_FILE = "conf.json"
 
     def __init__(self, avatar,
                  executable=None,
@@ -52,8 +51,8 @@ class QemuTarget(Target):
         self._entry_address = entry_address
         self._memory_mapping = avatar.memory_ranges
 
-        self.rmem_rx_queue_name = '/{:s}_rx_queue'.format(self.name)
-        self.rmem_tx_queue_name = '/{:s}_tx_queue'.format(self.name)
+        self._rmem_rx_queue_name = '/{:s}_rx_queue'.format(self.name)
+        self._rmem_tx_queue_name = '/{:s}_tx_queue'.format(self.name)
 
 
         self.log_items = log_items
@@ -71,8 +70,7 @@ class QemuTarget(Target):
                             )
 
         machine = ["-machine", "configurable"]
-        kernel = ["-kernel", "%s/%s" %
-                  (self.avatar.output_directory, self.QEMU_CONFIG_FILE)]
+        kernel = ["-kernel", self.qemu_config_file]
         gdb_option = ["-gdb", "tcp::" + str(self.gdb_port)]
         stop_on_startup = ["-S"]
         nographic = ["-nographic"]  # , "-monitor", "/dev/null"]
@@ -110,70 +108,43 @@ class QemuTarget(Target):
             self._process = None
         super(QemuTarget, self).shutdown()
 
-    def _serialize_memory_mapping(self):
-        ret = []
-        for (start, end, mr) in self._memory_mapping:
-            mr_dict = {
-                'name': mr.name,
-                'address': mr.address,
-                'size': mr.size,
-                'permissions': mr.permissions
-            }
-            if hasattr(mr, 'qemu_name'):
-                mr_dict['qemu_name'] = mr.qemu_name
-                mr_dict['properties'] = []
-                mr_dict['bus'] = 'sysbus'
-                if mr.qemu_name == 'avatar-rmemory':
-                    size_properties = {'type': 'uint32',
-                                       'value': mr.size,
-                                       'name': 'size'}
-                    mr_dict['properties'].append(size_properties)
-                    address_properties = {'type': 'uint64',
-                                          'value': mr.address,
-                                          'name': 'address'}
-                    mr_dict['properties'].append(address_properties)
-                    rx_queue_properties = {'type': 'string',
-                                           'value': self.rmem_rx_queue_name,
-                                           'name': 'rx_queue_name'}
-                    mr_dict['properties'].append(rx_queue_properties)
-                    tx_queue_properties = {'type': 'string',
-                                           'value': self.rmem_tx_queue_name,
-                                           'name': 'tx_queue_name'}
-                    mr_dict['properties'].append(tx_queue_properties)
-
-                elif hasattr(mr, 'qemu_properties'):
-                    if type(mr.qemu_properties) == list:
-                        mr_dict['properties'] += mr.qemu_properties
-                    else:
-                        mr_dict['properties'].append(mr.qemu_properties)
-            elif hasattr(mr, 'file') and mr.file is not None:
-                mr_dict['file'] = mr.file
-                if hasattr(mr, 'file_offset') and mr.file_offset is not None:
-                    mr_dict['file_offset'] = mr.file_offset
-                if hasattr(mr, 'file_bytes') and mr.file_bytes is not None:
-                    mr_dict['file_bytes'] = mr.file_bytes
-            ret.append(mr_dict)
-        return ret
-
-    def generate_configuration(self):
+    def generate_qemu_config(self):
         """
         Generates the configuration passed to avatar-qemus configurable machine
         """
-        conf_dict = {}
-        if self.cpu_model is not None:
-            conf_dict['cpu_model'] = self.cpu_model
+        conf_dict = self.avatar.generate_config()
+        conf_dict['entry_address'] = self.entry_address
         if self.fw is not None:
             conf_dict['kernel'] = self.fw
-        conf_dict['entry_address'] = self.entry_address
-        if not self._memory_mapping.is_empty():
-            conf_dict['memory_mapping'] = self._serialize_memory_mapping()
-        else:
-            self.log.warning("The memory mapping of QEMU is empty.")
-        return conf_dict
+        for mr in conf_dict['memory_mapping']:
+            if mr.get('qemu_name'):
+                mr['properties'] = []
+                mr['bus'] = 'sysbus'
+                if mr['qemu_name'] == 'avatar-rmemory':
+                    size_properties = {'type': 'uint32',
+                                       'value': mr['size'],
+                                       'name': 'size'}
+                    mr['properties'].append(size_properties)
+                    address_properties = {'type': 'uint64',
+                                          'value': mr['address'],
+                                          'name': 'address'}
+                    mr['properties'].append(address_properties)
+                    rx_queue_properties = {'type': 'string',
+                                           'value': self._rmem_rx_queue_name,
+                                           'name': 'rx_queue_name'}
+                    mr['properties'].append(rx_queue_properties)
+                    tx_queue_properties = {'type': 'string',
+                                           'value': self._rmem_tx_queue_name,
+                                           'name': 'tx_queue_name'}
+                    mr['properties'].append(tx_queue_properties)
 
-        # def add_memory_range(self, mr, **kwargs):
-        # self._memory_mapping[mr.address: mr.address + mr.size] = mr
-        # TODO: add qemu specific properties to the memory region object
+                elif mr.get('qemu_properties'):
+                    if type(mr['qemu_properties']) == list:
+                        mr['properties'] += mr.qemu_properties
+                    else:
+                        mr['properties'].append(mr['qemu_properties'])
+        del conf_dict['targets']
+        return conf_dict
 
     def init(self, cmd_line=None):
         """
@@ -186,13 +157,13 @@ class QemuTarget(Target):
             else:
                 self.log.warning('No cpu_model specified - are you sure?')
 
+        self.qemu_config_file =  ("%s/%s_conf.json" %
+            (self.avatar.output_directory, self.name) )
         if cmd_line is None:
             cmd_line = self.assemble_cmd_line()
 
-        with open("%s/%s" % (self.avatar.output_directory,
-                             self.QEMU_CONFIG_FILE), "w") as conf_file:
-            conf_dict = self.generate_configuration()
-            json.dump(conf_dict, conf_file)
+        self.avatar.save_config(file_name=self.qemu_config_file,
+                                config=self.generate_qemu_config())
 
         with open("%s/%s_out.txt" % (self.avatar.output_directory, self.name)
                 , "wb") as out, \
@@ -208,13 +179,13 @@ class QemuTarget(Target):
                           additional_args=self.gdb_additional_args,
                           avatar=self.avatar, origin=self,
                           )
-        qmp = QMPProtocol(self.qmp_port, origin=self)  # TODO: Implement QMP
+        qmp = QMPProtocol(self.qmp_port, origin=self)  
 
         if 'avatar-rmemory' in [i[2].qemu_name for i in
                                 self._memory_mapping.iter() if
                                 hasattr(i[2], 'qemu_name')]:
-            rmp = RemoteMemoryProtocol(self.rmem_tx_queue_name,
-                                       self.rmem_rx_queue_name,
+            rmp = RemoteMemoryProtocol(self._rmem_tx_queue_name,
+                                       self._rmem_rx_queue_name,
                                        self.avatar.queue, self)
         else:
             rmp = None

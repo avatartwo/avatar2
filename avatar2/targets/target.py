@@ -219,6 +219,29 @@ class Target(object):
 
         self.regs = TargetRegs(self, self._arch.registers)
 
+    def dictify(self):
+        """
+        Returns the memory range as *printable* dictionary for the config
+        """
+
+        ignore = ['state', 'status', 'regs', 'protocols', 'log', 'avatar']
+        expected_types = (str, bool, int, list) 
+        t_dict = {'type': self.__class__.__name__,
+                  'module': self.__module__}
+
+        for k, v in self.__dict__.items():
+            if k in ignore: continue
+            if k.startswith('_'): continue
+            if v is None: continue
+            if not isinstance(v, expected_types):
+                raise Exception(
+                    "Unsupported value for dictifying %s for target %s" %
+                    (k, self.name))
+            t_dict[k] = v
+        return t_dict
+
+
+
     @watch('TargetInit')
     def init(self):
         """
