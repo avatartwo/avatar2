@@ -93,15 +93,18 @@ class Avatar(Thread):
         with open(file_name, 'r') as config_file:
             config = json.load(config_file)
 
-        for t in config.pop('targets'):
+        for t in config.pop('targets', []):
             module = __import__(t.pop('module'))
             klass = getattr(module, t.pop('type'))
             self.add_target(klass, **t)
 
-        for mr in config.pop('memory_mapping'):
+        for mr in config.pop('memory_mapping', []):
             # resolve forwarded_to to the target objects
             tname = mr.get('forwarded_to')
             if tname is not None:
+                if not tname in self.targets:
+                    raise Exception(("Requested target %s not found in config. "
+                                     "Aborting." % tname))
                 mr['forwarded_to'] = self.targets[tname]
             # TODO handle emulate
             self.add_memory_range(mr.pop('address'),
