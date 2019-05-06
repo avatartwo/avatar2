@@ -35,6 +35,8 @@ class MemoryRange(object):
         self.file_offset = file_offset if file_offset is not None else None
         self.file_bytes = file_bytes if file_bytes is not None else None
         self.forwarded = forwarded
+        self.is_symbolic = is_symbolic
+        self.is_special = is_special
         self.forwarded_to = forwarded_to
         self.__dict__.update(kwargs)
 
