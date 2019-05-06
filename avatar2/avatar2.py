@@ -36,10 +36,13 @@ class Avatar(Thread):
     def __init__(self, arch=ARM, cpu_model=None, output_directory=None):
         super(Avatar, self).__init__()
 
-        
         self.shutdowned = False
-        signal.signal(signal.SIGINT, self.sigint_wrapper)
-        self.sigint_handler = self.shutdown
+        try:
+            signal.signal(signal.SIGINT, self.sigint_wrapper)
+            self.sigint_handler = self.shutdown
+        except ValueError:
+            # Cannot register SIGINT handler: we are not in main thread. Do not care about it.
+            pass
         atexit.register(self.shutdown)
 
         self.watchmen = Watchmen(self)
