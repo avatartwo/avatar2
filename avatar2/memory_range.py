@@ -1,4 +1,6 @@
 from os.path import abspath
+from sys import version_info
+
 
 class MemoryRange(object):
     """
@@ -47,6 +49,8 @@ class MemoryRange(object):
         """
         # Assumption: dicts saved in mrs are of primitive types only
         expected_types = (str, bool, int, dict) 
+        if version_info < (3, 0): expected_types += (unicode, )
+
         tmp_dict = dict(self.__dict__)
         mr_dict = {}
         while tmp_dict != {}:
@@ -56,8 +60,8 @@ class MemoryRange(object):
             # TODO handle emulate
             if not isinstance(v, expected_types):
                 raise Exception(
-                    "Unsupported value for dictifying %s for mem_range at 0x%x"
-                    % (k, self.address))
+                    "Unsupported type %s for dictifying %s for mem_range at 0x%x"
+                    % (type(v), k, self.address))
             mr_dict[k] = v
         return mr_dict
 

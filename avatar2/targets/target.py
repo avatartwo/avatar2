@@ -1,4 +1,5 @@
 import logging
+from sys import version_info
 from functools import wraps
 from threading import Event
 
@@ -226,6 +227,8 @@ class Target(object):
 
         ignore = ['state', 'status', 'regs', 'protocols', 'log', 'avatar']
         expected_types = (str, bool, int, list) 
+        if version_info < (3, 0): expected_types += (unicode, )
+
         t_dict = {'type': self.__class__.__name__,
                   'module': self.__module__}
 
@@ -235,8 +238,8 @@ class Target(object):
             if v is None: continue
             if not isinstance(v, expected_types):
                 raise Exception(
-                    "Unsupported value for dictifying %s for target %s" %
-                    (k, self.name))
+                    "Unsupported type %s for dictifying %s for target %s" %
+                    (type(v), k, self.name))
             t_dict[k] = v
         return t_dict
 
