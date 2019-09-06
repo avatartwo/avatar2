@@ -9,6 +9,8 @@ class WatchedTypes(object):
         'UpdateState',
         'RemoteMemoryRead',
         'RemoteMemoryWrite',
+        'RemoteInterruptEnter',
+        'RemoteInterruptExit',
         'AvatarGetStatus',
         'AddTarget',
         'TargetInit',
@@ -27,6 +29,7 @@ class WatchedTypes(object):
         'TargetWait',
         'TargetSetFile',
         'TargetDownload'
+        'TargetInjectInterrupt'
     ]
 
     def __init__(self):

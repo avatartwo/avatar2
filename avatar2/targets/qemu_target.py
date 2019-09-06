@@ -8,6 +8,8 @@ from avatar2.protocols.remote_memory import RemoteMemoryProtocol
 from avatar2.targets import Target
 
 from avatar2.installer.config import QEMU, GDB_ARM
+from avatar2.watchmen import watch
+
 
 class QemuTarget(Target):
     """
@@ -24,10 +26,12 @@ class QemuTarget(Target):
                  entry_address=0x00,
                  log_items=None,
                  log_file=None,
+                 system_clock_scale=None,
                  **kwargs):
         super(QemuTarget, self).__init__(avatar, **kwargs)
 
         # Qemu parameters
+        self.system_clock_scale = system_clock_scale
         if hasattr(self, 'executable') is False: # May be initialized by subclass
             self.executable = (executable if executable is not None
                                else self._arch.get_qemu_executable())
@@ -51,12 +55,17 @@ class QemuTarget(Target):
         self._entry_address = entry_address
         self._memory_mapping = avatar.memory_ranges
 
+<<<<<<< HEAD
         self._rmem_rx_queue_name = '/{:s}_rx_queue'.format(self.name)
         self._rmem_tx_queue_name = '/{:s}_tx_queue'.format(self.name)
 
 
         self.log_items = log_items
         self.log_file  = log_file
+=======
+        self.rmem_rx_queue_name = '/%s_rx_queue' % self.name
+        self.rmem_tx_queue_name = '/%s_tx_queue' % self.name
+>>>>>>> pretender/master
 
 
     def assemble_cmd_line(self):
@@ -142,11 +151,45 @@ class QemuTarget(Target):
                     if type(mr['qemu_properties']) == list:
                         mr['properties'] += mr.qemu_properties
                     else:
+<<<<<<< HEAD
                         mr['properties'].append(mr['qemu_properties'])
         del conf_dict['targets']
         return conf_dict
 
     def init(self, cmd_line=None):
+=======
+                        mr_dict['properties'].append(mr.qemu_properties)
+            elif hasattr(mr, 'file') and mr.file is not None:
+                mr_dict['file'] = mr.file
+            ret.append(mr_dict)
+        return ret
+
+    def generate_configuration(self):
+        """
+        Generates the configuration passed to avatar-qemus configurable machine
+        """
+        conf_dict = {}
+        if self.system_clock_scale is not None:
+            conf_dict['system_clock_scale'] = self.system_clock_scale
+
+        if self.cpu_model is not None:
+            conf_dict['cpu_model'] = self.cpu_model
+        if self.fw is not None:
+            conf_dict['kernel'] = self.fw
+        conf_dict['entry_address'] = self.entry_address
+        if not self._memory_mapping.is_empty():
+            conf_dict['memory_mapping'] = self._serialize_memory_mapping()
+        else:
+            self.log.warning("The memory mapping of QEMU is empty.")
+        return conf_dict
+
+        # def add_memory_range(self, mr, **kwargs):
+        # self._memory_mapping[mr.address: mr.address + mr.size] = mr
+        # TODO: add qemu specific properties to the memory region object
+
+    @watch("TargetInit")
+    def init(self):
+>>>>>>> pretender/master
         """
         Spawns a Qemu process and connects to it
         """

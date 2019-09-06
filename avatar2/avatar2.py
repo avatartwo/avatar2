@@ -11,6 +11,7 @@ import intervaltree
 import logging
 import signal
 import json
+import time
 
 from os import path, makedirs
 from threading import Thread, Event
@@ -62,6 +63,7 @@ class Avatar(Thread):
                                  else output_directory)
         if not path.exists(self.output_directory):
             makedirs(self.output_directory)
+
         self.log = logging.getLogger('avatar')
         format = '%(asctime)s | %(name)s.%(levelname)s | %(message)s'
         logging.basicConfig(filename='%s/avatar.log' % self.output_directory,
@@ -78,7 +80,7 @@ class Avatar(Thread):
             BreakpointHitMessage: self._handle_breakpoint_hit_message,
             UpdateStateMessage: self._handle_update_state_message,
             RemoteMemoryReadMessage: self._handle_remote_memory_read_message,
-            RemoteMemoryWriteMessage: self._handle_remote_memory_write_msg
+            RemoteMemoryWriteMessage: self._handle_remote_memory_write_message
         }
         self.daemon = True
         self.start()
@@ -251,8 +253,9 @@ class Avatar(Thread):
             raise Exception("More than one memory range specified at 0x%x, \
                          not supported yet!" % address)
         elif len(ranges) == 0:
-            raise Exception("No Memory range specified at 0x%x" %
+            self.log.critical("No Memory range specified at 0x%x" %
                             address)
+            return None
         return ranges.pop().data
 
     @watch('StateTransfer')
@@ -298,7 +301,8 @@ class Avatar(Thread):
 
             # Sync the registers!
             for r in regs:
-                to_target.write_register(r, from_target.read_register(r))
+                val = from_target.read_register(r)
+                to_target.write_register(r, val)
             self.log.info('Synchronized Registers')
 
         for range in synced_ranges:
@@ -314,12 +318,14 @@ class Avatar(Thread):
     @watch('BreakpointHit')
     def _handle_breakpoint_hit_message(self, message):
         self.log.info("Breakpoint hit for Target: %s" % message.origin.name)
-        self._handle_update_state_message(message)
 
     @watch('RemoteMemoryRead')
     def _handle_remote_memory_read_message(self, message):
+        
         range = self.get_memory_range(message.address)
-
+        if not range:
+            return (message.id, None, False)
+        message.dst = range
         if not range.forwarded:
             raise Exception("Forward request for non forwarded range received!")
         if range.forwarded_to is None:
@@ -333,7 +339,7 @@ class Avatar(Thread):
                                  "(expected: int)" % type(mem)))
             success = True
         except Exception as e:
-            self.log.exception("RemoteMemoryRead failed:")
+            self.log.exception("RemoteMemoryRead failed:", e)
             mem = -1
             success = False
         message.origin.protocols.remote_memory.send_response(message.id, mem,
@@ -341,8 +347,12 @@ class Avatar(Thread):
         return (message.id, mem, success)
 
     @watch('RemoteMemoryWrite')
-    def _handle_remote_memory_write_msg(self, message):
+    def _handle_remote_memory_write_message(self, message):
         mem_range = self.get_memory_range(message.address)
+        if not mem_range:
+            message.origin.protocols.remote_memory.send_response(message.id, 0, True)
+            return (message.id, 0, False)
+        message.dst = mem_range
         if not mem_range.forwarded:
             raise Exception("Forward request for non forwarded range received!")
         if mem_range.forwarded_to is None:
@@ -367,10 +377,11 @@ class Avatar(Thread):
                 break
 
             try:
-                message = self.queue.get(timeout=0.5)
+                message = self.queue.get(timeout=0.1)
             except:
                 continue
-            self.log.debug("Avatar received %s" % message)
+            self.log.debug("Avatar received %s. Queue-Status: %d/%d" % (message,
+                            self.queue.qsize(), self.fast_queue.qsize()))
 
             handler = self.message_handlers.get(message.__class__, None)
             if handler is None:
@@ -403,7 +414,20 @@ class AvatarFastQueueProcessor(Thread):
         self.avatar = avatar
         self._close = Event()
         self.daemon = True
+        self.message_handlers = {
+            UpdateStateMessage: self._fast_handle_update_state_message,
+            BreakpointHitMessage: self._fast_handle_update_state_message,
+        }
+
         self.start()
+
+
+    def _fast_handle_update_state_message(self, message):
+        #print message
+        message.origin.update_state(message.state)
+        self.avatar.queue.put(message)
+
+
 
     def run(self):
         self._close.clear()
@@ -411,16 +435,23 @@ class AvatarFastQueueProcessor(Thread):
             if self._close.is_set():
                 break
 
+            # get() blocks sometimes.  This is a non-blocking wait.
+            #if self.avatar.fast_queue.empty():
+                #time.sleep(.001)
+                #continue
+
             try:
                 message = self.avatar.fast_queue.get(timeout=0.1)
-            except queue.Empty as e:
+            except:
                 continue
 
-            if isinstance(message, UpdateStateMessage):
-                message.origin.update_state(message.state)
-                self.avatar.queue.put(message)
+            handler = self.message_handlers.get(message.__class__, None)
+            if handler is None:
+                raise Exception("No handler for fast message %s registered" %
+                                message)
+
             else:
-                raise Exception("Unknown Avatar Fast Message received")
+                handler(message)
 
     def stop(self):
         """

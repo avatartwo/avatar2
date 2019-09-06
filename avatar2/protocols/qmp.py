@@ -43,6 +43,7 @@ class QMPProtocol(object):
 
         while True:
             resp = self._telnet.read_until('\r\n'.encode('ascii'))
+            self.log.info(resp)
             resp = json.loads(resp.decode('ascii'))
             if 'event' in resp:
                 continue
