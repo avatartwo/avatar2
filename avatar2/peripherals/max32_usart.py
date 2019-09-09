@@ -1,4 +1,4 @@
-import socket
+i)mport socket
 
 from threading import Thread, Lock, Event
 from .avatar_peripheral import AvatarPeripheral
@@ -46,13 +46,13 @@ class Max32UART(AvatarPeripheral, Thread):
         self.status_register &= ~ST_RX_FIFO_CHRS
         self.status_register |= len(self.data_buf) << 8
         self.lock.release()
-        print ">>> %s" % hex(ret)
+        #print( ">>> %s" % hex(ret))
         return ret
 
     def write_data_register(self, size, value):
         if self.connected:
             self.conn.send(bytes((chr(value).encode('utf-8'))))
-        print "<<< %s" % hex(value)
+        #print("<<< %s" % hex(value))
         return True
         
 

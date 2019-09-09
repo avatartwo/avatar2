@@ -44,13 +44,13 @@ class NucleoUSART(AvatarPeripheral, Thread):
         if len(self.data_buf) == 0:
             self.status_register &= ~SR_RXNE
         self.lock.release()
-        print ">>> %s" % hex(ret)
+        #print(">>> %s" % hex(ret))
         return ret
 
     def write_data_register(self, offset, size, value):
         if self.connected:
             self.conn.send(bytes((chr(value).encode('utf-8'))))
-        print "<<< %s" % hex(value)
+        #print("<<< %s" % hex(value))
         return True
 
     def nop_read(self, offset, size):
