@@ -3,7 +3,8 @@ from intervaltree import IntervalTree
 
 class AvatarPeripheral(object):
     def __init__(self, name, address, size, **kwargs):
-        self.name = name
+        self.name = name if name else "%s_%x" % (self.__class__.__name__,
+                                                 address)
         self.address = address
         self.size = size
         self.read_handler = IntervalTree()
