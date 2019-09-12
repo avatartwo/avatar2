@@ -70,16 +70,52 @@ def test_nucleo_usart_read():
 
 
 
+@with_setup(setup_func, teardown_func)
+def test_nucleo_usart_debug_read():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(('127.0.0.1', PORT))
+    s.send(b'Hello World')
+
+    reply = bytearray()
+    time.sleep(.1)
+    while qemu.rm(0x40004400,4) & (1<<5) != 0:
+        reply.append(qemu.rm(0x40004404,4))
+
+    assert_equal(reply, b'Hello World')
+
+    s.send(b'Hello World')
+    reply = bytearray()
+    time.sleep(.1)
+    while qemu.rm(0x40004400,1) & (1<<5) != 0:
+        reply.append(qemu.rm(0x40004404,1))
+
+    assert_equal(reply, b'Hello World')
+    
+    
+
+    
+@with_setup(setup_func, teardown_func)
+def test_nucleo_usart_debug_write():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(('127.0.0.1', PORT))
+
+    test_string = bytearray('Hello World')
+
+    time.sleep(.1)
+    for c in test_string:
+        qemu.wm(0x40004404, 1, c)
+    reply =  s.recv(11, socket.MSG_WAITALL)
+    assert_equal(reply, test_string)
 
 
-
-
-
-
-
+    time.sleep(.1)
+    for c in test_string:
+        qemu.wm(0x40004404, 4, c)
+    reply =  s.recv(11, socket.MSG_WAITALL)
+    assert_equal(reply, test_string)
 
 if __name__ == '__main__':
     setup_func()
-    test_nucleo_usart_read()
+    test_nucleo_usart_debug_write()
     teardown_func()
 
