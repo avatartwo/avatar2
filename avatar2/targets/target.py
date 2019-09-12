@@ -374,7 +374,7 @@ class Target(object):
             return target_range.forwarded_to.read_memory(address, size,
                                                          num_words, raw)
         
-        return self.protocols.memory.read_memory(address, size, words, raw)
+        return self.protocols.memory.read_memory(address, size, num_words, raw)
 
     @watch('TargetRegisterWrite')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
