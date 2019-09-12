@@ -349,12 +349,17 @@ class Target(object):
         :param raw:       Specifies whether to write in raw or word mode
         :returns:         True on success else False
         """
+        target_range = self.avatar.get_memory_range(address)
+        if target_range.forwarded is True and target_range.forwarded_to != self:
+            return target_range.forwarded_to.write_memory(address, size, value,
+                                                          num_words, raw)
+        
         return self.protocols.memory.write_memory(address, size, value,
                                                   num_words, raw)
 
     @watch('TargetReadMemory')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
-    def read_memory(self, address, size, words=1, raw=False):
+    def read_memory(self, address, size, num_words=1, raw=False):
         """
         Reading from memory of the target
 
@@ -364,6 +369,11 @@ class Target(object):
         :param raw:         Whether the read memory is returned unprocessed
         :return:          The read memory
         """
+        target_range = self.avatar.get_memory_range(address)
+        if target_range.forwarded is True and target_range.forwarded_to != self:
+            return target_range.forwarded_to.read_memory(address, size,
+                                                         num_words, raw)
+        
         return self.protocols.memory.read_memory(address, size, words, raw)
 
     @watch('TargetRegisterWrite')
