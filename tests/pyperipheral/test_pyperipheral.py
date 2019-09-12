@@ -99,7 +99,7 @@ def test_nucleo_usart_debug_write():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(('127.0.0.1', PORT))
 
-    test_string = bytearray('Hello World')
+    test_string = bytearray(b'Hello World')
 
     time.sleep(.1)
     for c in test_string:
