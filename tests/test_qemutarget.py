@@ -20,6 +20,7 @@ QEMU_EXECUTABLE = os.environ.get("QEMU_EXECUTABLE",
 GDB_EXECUTABLE  = os.environ.get("GDB_EXECUTABLE", "gdb-multiarch")
 
 qemu = None
+fake_target = None
 
 
 
@@ -36,16 +37,17 @@ class FakeTarget(object):
     def read_memory(*args, **kwargs):
         return 0xdeadbeef
 
-    def write_memory(addr, size, val):
-        tar.fake_write_addr = addr
-        tar.fake_write_size = size
-        tar.fake_write_val  = val
+    def write_memory(self, addr, size, val, *args, **kwargs):
+        self.fake_write_addr = addr
+        self.fake_write_size = size
+        self.fake_write_val  = val
         return True
 
 def setup():
     global qemu
     global avatar
-    avatar = Avatar()
+    global fake_target
+    avatar = Avatar(output_directory='/tmp/testava')
     qemu = QemuTarget(avatar, name='qemu_test',
                       firmware="./tests/binaries/qemu_arm_test",
                       gdb_executable=GDB_EXECUTABLE,
@@ -74,6 +76,53 @@ def test_initilization():
     assert_equal(qemu.state, TargetStates.STOPPED)
 
 
+@with_setup(setup, teardown)
+def test_step():
+    global qemu
+
+    qemu.init()
+    qemu.wait()
+    qemu.regs.pc=0x08000000
+    qemu.step()
+    assert_equal(qemu.regs.pc, 0x08000004)
+
+
+@with_setup(setup, teardown)
+def test_memory_read():
+    global qemu
+
+    qemu.init()
+    qemu.wait()
+
+    mem = qemu.read_memory(0x08000000,4)
+    assert_equal(mem, 0xe3a0101e)
+
+
+@with_setup(setup, teardown)
+def test_memory_write():
+    global qemu
+
+    qemu.init()
+    qemu.wait()
+    qemu.write_memory(0x08000000,4, 0x41414141)
+    mem = qemu.read_memory(0x08000000,4)
+    assert_equal(mem, 0x41414141)
+
+
+@with_setup(setup, teardown)
+def test_remote_memory_write():
+    global qemu
+    global avatar
+
+    qemu.init()
+    qemu.wait()
+    remote_memory_write = qemu.write_memory(0x101f2000,4,0x41414141)
+    assert_equal(remote_memory_write, True)
+
+    assert_equal(fake_target.fake_write_addr, 0x101f2000)
+    assert_equal(fake_target.fake_write_size, 4)
+    assert_equal(fake_target.fake_write_val, 0x41414141)
+
 
 @with_setup(setup, teardown)
 def test_remote_memory_read():
@@ -86,9 +135,6 @@ def test_remote_memory_read():
 
     remote_memory_read = qemu.read_memory(0x101f2000,4)
     assert_equal(remote_memory_read, 0xdeadbeef)
-
-    remote_memory_write = qemu.write_memory(270471168,4,0x41414141)
-    assert_equal(remote_memory_write, True)
 
 
 if __name__ == '__main__':
