@@ -349,8 +349,13 @@ class Target(object):
         :param raw:       Specifies whether to write in raw or word mode
         :returns:         True on success else False
         """
-        target_range = self.avatar.get_memory_range(address)
-        if target_range.forwarded is True and target_range.forwarded_to != self:
+        try:
+            target_range = self.avatar.get_memory_range(address)
+        except Exception as e:
+            self.log.warn("Performing write on undefined range at 0x%x" % address)
+            target_range = None
+        if target_range is not None and target_range.forwarded is True and \
+        target_range.forwarded_to != self:
             return target_range.forwarded_to.write_memory(address, size, value,
                                                           num_words, raw)
         
@@ -369,8 +374,13 @@ class Target(object):
         :param raw:         Whether the read memory is returned unprocessed
         :return:          The read memory
         """
-        target_range = self.avatar.get_memory_range(address)
-        if target_range.forwarded is True and target_range.forwarded_to != self:
+        try:
+            target_range = self.avatar.get_memory_range(address)
+        except Exception as e:
+            self.log.warn("Performing write on undefined range at 0x%x" % address)
+            target_range = None
+        if target_range is not None and target_range.forwarded is True and \
+        target_range.forwarded_to != self:
             return target_range.forwarded_to.read_memory(address, size,
                                                          num_words, raw)
         
