@@ -21,6 +21,14 @@ def add_protocols(self, **kwargs):
     if isinstance(target, OpenOCDTarget):
         target.protocols.interrupts = CoreSightProtocol(target.avatar,
                                                         target)
+        # We want to remove the decorators around the read_memory function of
+        # this target, to allow reading while it is running (thanks oocd)
+        target.read_memory = MethodType( lambda t, *args, **kwargs:
+                                        t.protocols.memory.read_memory(
+                                            *args, **kwargs), target
+                                       )
+
+        
     if isinstance(target, QemuTarget):
         target.protocols.interrupts = ARMV7MInterruptProtocol(
             target, self.v7m_irq_rx_queue_name, self.v7m_irq_tx_queue_name
