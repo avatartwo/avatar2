@@ -154,6 +154,7 @@ class QemuTarget(Target):
         del conf_dict['targets']
         return conf_dict
 
+    @watch("TargetInit")
     def init(self, cmd_line=None):
         """
         Spawns a Qemu process and connects to it

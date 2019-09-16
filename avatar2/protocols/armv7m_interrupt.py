@@ -182,6 +182,7 @@ class ARMV7MInterruptProtocol(Thread):
     def send_interrupt_exit_response(self, id, success):
         response = V7MInterruptNotificationAck(id, success,
                                                RINOperation.EXIT.value)
+        
         try:
             self._tx_queue.send(response)
             self.log.debug("Send RemoteInterruptExitResponse with id %d" % id)

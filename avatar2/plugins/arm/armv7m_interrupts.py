@@ -110,13 +110,15 @@ def _handle_remote_interrupt_enter_message(self, message):
     if self._irq_src is None or self._irq_semi_forwarding is True:
         return
 
-    status = message.origin.get_status()
+    
+    status = self._irq_src.get_status()
     if status['state'] == TargetStates.STOPPED:
         self.log.info("Target stopped, restarting " + repr(message.origin))
         try:
-            message.origin.cont(blocking=False)
+            self._irq_src.cont(blocking=False)
         except:
             self.log.exception(" ")
+
 
 
 @watch('RemoteInterruptExit')
@@ -129,9 +131,7 @@ def _handle_remote_interrupt_exit_message(self, message):
     :param message:
     :return:
     """
-    # If the interrupt came from QEMU, we don't need to forward anything
-    if self._irq_src is not None and self._irq_semi_forwarding is False and \
-            not isinstance(message.origin, QemuTarget):
+    if self._irq_src is not None and self._irq_semi_forwarding is False:
         # We are forwarding, make sure to forward the return
         self._irq_src.protocols.interrupts.inject_exc_return(
             message.transition_type)

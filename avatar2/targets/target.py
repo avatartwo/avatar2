@@ -2,6 +2,7 @@ import logging
 from sys import version_info
 from functools import wraps
 from threading import Event
+from types import MethodType
 
 from enum import IntEnum
 
@@ -227,6 +228,7 @@ class Target(object):
         """
 
         ignore = ['state', 'status', 'regs', 'protocols', 'log', 'avatar']
+        ignored_types = (MethodType)
         expected_types = (str, bool, int, list) 
         if version_info < (3, 0): expected_types += (unicode, )
 
@@ -237,6 +239,7 @@ class Target(object):
             if k in ignore: continue
             if k.startswith('_'): continue
             if v is None: continue
+            if isinstance(v, ignored_types): continue
             if not isinstance(v, expected_types):
                 raise Exception(
                     "Unsupported type %s for dictifying %s for target %s" %
