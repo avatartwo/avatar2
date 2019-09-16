@@ -1,4 +1,4 @@
-i)mport socket
+import socket
 
 from threading import Thread, Lock, Event
 from .avatar_peripheral import AvatarPeripheral
