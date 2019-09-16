@@ -347,22 +347,42 @@ class Target(object):
         :param raw:       Specifies whether to write in raw or word mode
         :returns:         True on success else False
         """
+        try:
+            target_range = self.avatar.get_memory_range(address)
+        except Exception as e:
+            self.log.warn("Performing write on undefined range at 0x%x" % address)
+            target_range = None
+        if target_range is not None and target_range.forwarded is True and \
+        target_range.forwarded_to != self:
+            return target_range.forwarded_to.write_memory(address, size, value,
+                                                          num_words, raw)
+        
         return self.protocols.memory.write_memory(address, size, value,
                                                   num_words, raw)
 
     @watch('TargetReadMemory')
-    #@action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
-    def read_memory(self, address, size, words=1, raw=False):
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
+    def read_memory(self, address, size, num_words=1, raw=False):
         """
         Reading from memory of the target
 
         :param address:     The address to read from 
         :param size:        The size of a read word
-        :param words:       The amount of words to read (default: 1)
+        :param num_words:   The amount of words to read (default: 1)
         :param raw:         Whether the read memory is returned unprocessed
         :return:          The read memory
         """
-        return self.protocols.memory.read_memory(address, size, words, raw)
+        try:
+            target_range = self.avatar.get_memory_range(address)
+        except Exception as e:
+            self.log.warn("Performing write on undefined range at 0x%x" % address)
+            target_range = None
+        if target_range is not None and target_range.forwarded is True and \
+        target_range.forwarded_to != self:
+            return target_range.forwarded_to.read_memory(address, size,
+                                                         num_words, raw)
+        
+        return self.protocols.memory.read_memory(address, size, num_words, raw)
 
     @watch('TargetRegisterWrite')
     #@action_valid_decorator_factory(TargetStates.STOPPED, 'registers')

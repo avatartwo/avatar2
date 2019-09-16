@@ -67,9 +67,10 @@ class NucleoUSART(AvatarPeripheral, Thread):
         self.data_buf = bytearray()
         self.status_register = SR_TXE | SR_TC
 
-        self.read_handler[0:3] = self.read_status_register
-        self.read_handler[4:7] = self.read_data_register
-        self.write_handler[4:7] = self.write_data_register
+        self.read_handler[0:4] = self.read_status_register
+        self.read_handler[4:8] = self.read_data_register
+        self.write_handler[0:4] = self.nop_write
+        self.write_handler[4:8] = self.write_data_register
 
         self.read_handler[8:size] = self.nop_read
         self.write_handler[8:size] = self.nop_write

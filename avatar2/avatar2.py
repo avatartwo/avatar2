@@ -230,7 +230,7 @@ class Avatar(Thread):
             forwarded_to = python_peripheral
             kwargs.update({'python_peripheral': python_peripheral})
 
-        if forwarded:
+        if forwarded is True:
             kwargs.update({'qemu_name': 'avatar-rmemory'})
         m = MemoryRange(address, size, name=name, permissions=permissions,
                         file=file, file_offset=file_offset,
@@ -340,7 +340,7 @@ class Avatar(Thread):
                                  "(expected: int)" % type(mem)))
             success = True
         except Exception as e:
-            self.log.exception("RemoteMemoryRead failed:", e)
+            self.log.exception("RemoteMemoryRead failed: %s" % e)
             mem = -1
             success = False
         message.origin.protocols.remote_memory.send_response(message.id, mem,

@@ -1,6 +1,8 @@
 from os.path import abspath
 from sys import version_info
 
+from .peripherals.avatar_peripheral import AvatarPeripheral
+
 
 class MemoryRange(object):
     """
@@ -48,7 +50,7 @@ class MemoryRange(object):
         Returns the memory range as *printable* dictionary
         """
         # Assumption: dicts saved in mrs are of primitive types only
-        expected_types = (str, bool, int, dict) 
+        expected_types = (str, bool, int, dict, AvatarPeripheral) 
         if version_info < (3, 0): expected_types += (unicode, )
 
         tmp_dict = dict(self.__dict__)
@@ -62,6 +64,8 @@ class MemoryRange(object):
                 raise Exception(
                     "Unsupported type %s for dictifying %s for mem_range at 0x%x"
                     % (type(v), k, self.address))
+            if isinstance(v, AvatarPeripheral):
+                v = v.__class__.__name__
             mr_dict[k] = v
         return mr_dict
 
