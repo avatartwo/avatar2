@@ -103,7 +103,7 @@ class CoreSightProtocol(Thread):
         return self._origin.read_memory(SCB_VTOR, 4)
 
     def get_ivt_addr(self):
-        if self._origin.ivt_address:
+        if hasattr(self._origin, 'ivt_address'):
             return self._origin.ivt_address
         else:
             return self.get_vtor()
@@ -275,7 +275,7 @@ class CoreSightProtocol(Thread):
         """
         logger.info(
             "Injecting monitor stub. (IVT: %s, %s, %s)"
-            ")" % (self._origin.ivt_address, self.get_vtor(), vtor))
+            ")" % (self.get_ivt_addr(), self.get_vtor(), vtor))
 
         self._monitor_stub_base = addr
         self._monitor_stub_loop = addr + 12
@@ -283,11 +283,11 @@ class CoreSightProtocol(Thread):
         self._monitor_stub_writeme = addr + 8
         # Pivot VTOR, if needed
         # On CM0, you can't, so don't.
-        if self._origin.ivt_address is None:
+        if not hasattr(self._origin, 'ivt_address'):
             if self.get_vtor() == 0:
                 self.set_vtor(vtor)
         # Sometimes, we need to gain access to the IVT (make it writable). Do that here.
-        if self._origin.ivt_unlock is not None:
+        if hasattr(self._origin, 'ivt_unlock'):
             unlock_addr, unlock_val = self._origin.ivt_unlock
             self._origin.write_memory(unlock_addr, 4, unlock_val)
         # put the stub
