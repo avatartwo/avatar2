@@ -108,6 +108,9 @@ class GDBResponseListener(Thread):
                 if payload.get('signal-name') == 'SIGSEGV':
                     avatar_msg = UpdateStateMessage(
                         self._origin, TargetStates.EXITED)
+                elif payload.get('signal-name') == 'SIGTRAP':
+                    avatar_msg = BreakpointHitMessage(self._origin, -1,
+                                                      int(payload['frame']['addr'], 16))
                 else:
                     avatar_msg = UpdateStateMessage(
                         self._origin, TargetStates.STOPPED)
@@ -249,19 +252,19 @@ class GDBProtocol(object):
         gdb_args = []
         if not enable_init_files:
             gdb_args += ['--nx']
-        gdb_args = ['--quiet', '--interpreter=mi2']
+        gdb_args += ['--quiet', '--interpreter=mi2']
         gdb_args += additional_args
         if binary is not None:
             gdb_args += ['--args', binary]
             if local_arguments is not None:
                 gdb_args += [local_arguments]
+
         self._gdbmi = pygdbmi.gdbcontroller.GdbController(
             gdb_path=gdb_executable,
             gdb_args=gdb_args,
             verbose=verbose)  # set to True for debugging
         queue = avatar.queue if avatar is not None else None
         fast_queue = avatar.fast_queue if avatar is not None else None
-
         self._communicator = GDBResponseListener(
             self, self._gdbmi, queue, fast_queue, origin)
         self._communicator.daemon = True

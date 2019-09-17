@@ -2,6 +2,7 @@ import logging
 from sys import version_info
 from functools import wraps
 from threading import Event
+from types import MethodType
 
 from enum import IntEnum
 
@@ -14,7 +15,7 @@ def action_valid_decorator_factory(state, protocol):
     requested actions on a target, such as step(), stop(), read_register(), 
     write_register() and so on are actually executable.
 
-    :param state: The required state of the Target
+    :param state: A mask specifying the required state of the Target
     :type state:  An entry of the Enum TargetStates
     :param protocol: The protocol required to execute the action.
     :type protocol: str
@@ -154,6 +155,7 @@ class TargetProtocolStore(object):
     def shutdown(self):
         """Shutsdown all the associated protocols"""
         for p in self.protocols:
+            #print("Unloading %s" % str(p))
             setattr(self, p, None)
 
     def __setattr__(self, name, value):
@@ -226,6 +228,7 @@ class Target(object):
         """
 
         ignore = ['state', 'status', 'regs', 'protocols', 'log', 'avatar']
+        ignored_types = (MethodType)
         expected_types = (str, bool, int, list) 
         if version_info < (3, 0): expected_types += (unicode, )
 
@@ -236,6 +239,7 @@ class Target(object):
             if k in ignore: continue
             if k.startswith('_'): continue
             if v is None: continue
+            if isinstance(v, ignored_types): continue
             if not isinstance(v, expected_types):
                 raise Exception(
                     "Unsupported type %s for dictifying %s for target %s" %
@@ -259,8 +263,6 @@ class Target(object):
         """
         self.protocols.shutdown()
 
-
-
     @watch('TargetCont')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
     @synchronize_state(TargetStates.RUNNING)
@@ -276,10 +278,6 @@ class Target(object):
     @action_valid_decorator_factory(TargetStates.RUNNING, 'execution')
     @synchronize_state(TargetStates.STOPPED, transition_optional=True)
     def stop(self, blocking=True):
-        """
-        Stops the execution of the target 
-        :param blocking: if True, block until the target is STOPPED
-        """
         return self.protocols.execution.stop()
 
     @watch('TargetStep')
@@ -333,7 +331,7 @@ class Target(object):
         return self.protocols.memory.get_symbol(symbol)
 
     @watch('TargetWriteMemory')
-    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
+    #@action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
     def write_memory(self, address, size, value, num_words=1, raw=False):
         """
         Writing to memory of the target
@@ -370,7 +368,7 @@ class Target(object):
 
         :param address:     The address to read from 
         :param size:        The size of a read word
-        :param words:       The amount of words to read (default: 1)
+        :param num_words:   The amount of words to read (default: 1)
         :param raw:         Whether the read memory is returned unprocessed
         :return:          The read memory
         """
@@ -387,7 +385,7 @@ class Target(object):
         return self.protocols.memory.read_memory(address, size, num_words, raw)
 
     @watch('TargetRegisterWrite')
-    @action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
+    #@action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
     def write_register(self, register, value):
         """
         Writing a register to the target
@@ -398,7 +396,7 @@ class Target(object):
         return self.protocols.registers.write_register(register, value)
 
     @watch('TargetRegisterRead')
-    @action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
+    #@action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
     def read_register(self, register):
         """
         Reading a register from the target

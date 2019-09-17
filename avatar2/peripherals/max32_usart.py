@@ -3,78 +3,93 @@ import socket
 from threading import Thread, Lock, Event
 from .avatar_peripheral import AvatarPeripheral
 
-SR_RXNE = 0x20
-SR_TXE = 0x80
-SR_TC = 0x40
+REG_CTRL = 0x0
+REG_STATUS = 0x4
+REG_INTEN = 0x8
+REG_INTFL = 0xC
+REG_BAUD_INT = 0x10
+REG_BAUD_DIF = 0x14
+REG_TX_FIFO_OUT = 0x18
+REG_FLOW_CTRL = 0x1C
+REG_TX_RX = 0x20
+
+ST_TX_BUSY       = 0b0000000000000001
+ST_RX_BUSY       = 0b0000000000000010 
+ST_RX_FIFO_EMPTY = 0b0000000000010000
+ST_RX_FIFO_FULL  = 0b0000000000100000
+ST_TX_FIFO_EMPTY = 0b0000000001000000
+ST_TX_FIFO_FULL =  0b0000000010000000
+ST_RX_FIFO_CHRS =  0b0000111100000000
+ST_TX_FIFO_CHRS =  0b1111000000000000
 
 
-class NucleoRTC(AvatarPeripheral):
-    def nop_read(self, offset, size):
-        return 0x00
-
-    def __init__(self, name, address, size, **kwargs):
-        AvatarPeripheral.__init__(self, name, address, size)
-        self.read_handler[0:size] = self.nop_read
-
-
-class NucleoTIM(AvatarPeripheral):
-    def nop_read(self, offset, size):
-        return 0x00
-
-    def nop_write(self, offset, size, value):
-        return True
-
-    def __init__(self, name, address, size, **kwargs):
-        AvatarPeripheral.__init__(self, name, address, size)
-        self.read_handler[0:size] = self.nop_read
-        self.write_handler[0:size] = self.nop_write
-
-
-class NucleoUSART(AvatarPeripheral, Thread):
-    def read_status_register(self, offset, size):
+class Max32UART(AvatarPeripheral, Thread):
+    def read_status_register(self, size):
         self.lock.acquire(True)
         ret = self.status_register
         self.lock.release()
         return ret
 
-    def read_data_register(self, offset, size):
+    def read_data_register(self, size):
         self.lock.acquire(True)
         ret = self.data_buf[0]
         self.data_buf = self.data_buf[1:]
         if len(self.data_buf) == 0:
-            self.status_register &= ~SR_RXNE
+            self.status_register &= ~ST_RX_FIFO_FULL
+            self.status_register |= ST_RX_FIFO_EMPTY
+        elif len(self.data_buf) < 16:
+            self.status_register &= ~ST_RX_FIFO_FULL
+            self.status_register &= ~ST_RX_FIFO_EMPTY
+        elif len(self.data_buf) == 16:
+            self.status_register |= ~ST_RX_FIFO_FULL
+            self.status_register &= ~ST_RX_FIFO_EMPTY
+        self.status_register &= ~ST_RX_FIFO_CHRS
+        self.status_register |= len(self.data_buf) << 8
         self.lock.release()
-        #print(">>> %s" % hex(ret))
+        #print( ">>> %s" % hex(ret))
         return ret
 
-    def write_data_register(self, offset, size, value):
+    def write_data_register(self, size, value):
         if self.connected:
             self.conn.send(bytes((chr(value).encode('utf-8'))))
         #print("<<< %s" % hex(value))
         return True
+        
 
-    def nop_read(self, offset, size):
+    def read_config_register(self, size):
+        return self.config_register
+
+    def write_config_register(self, size, value):
+        self.config_register = value
+        return True
+
+    def nop_read(self, size):
         return 0x00
 
-    def nop_write(self, offset, size, value):
+    def nop_write(self, size, value):
         return True
 
     def __init__(self, name, address, size, nucleo_usart_port=5656, **kwargs):
         Thread.__init__(self)
         AvatarPeripheral.__init__(self, name, address, size)
         self.port = nucleo_usart_port
-
+        
         self.data_buf = bytearray()
-        self.status_register = SR_TXE | SR_TC
+        self.status_register = ST_TX_FIFO_EMPTY | ST_RX_FIFO_EMPTY
+        
+        self.read_handler[REG_CTRL:REG_CTRL+4] = self.read_config_register
+        self.write_handler[REG_CTRL:REG_CTRL+4] = self.write_config_register
+        
+        self.read_handler[REG_STATUS:REG_STATUS+4] = self.read_status_register
+        self.write_handler[REG_STATUS:REG_STATUS+4] = self.nop_write
 
-        self.read_handler[0:4] = self.read_status_register
-        self.read_handler[4:8] = self.read_data_register
-        self.write_handler[0:4] = self.nop_write
-        self.write_handler[4:8] = self.write_data_register
+        self.read_handler[REG_STATUS+4:0x20] = self.nop_read
+        self.write_handler[REG_STATUS+4:0x20] = self.nop_write
 
-        self.read_handler[8:size] = self.nop_read
-        self.write_handler[8:size] = self.nop_write
+        self.read_handler[0x20:0x24] = self.read_data_register
+        self.write_handler[0x20:0x24] = self.write_data_register
 
+        
         self.connected = False
 
         self.lock = Lock()
@@ -135,6 +150,16 @@ class NucleoUSART(AvatarPeripheral, Thread):
                     break
                 self.lock.acquire(True)
                 self.data_buf += chr
-                self.status_register |= SR_RXNE
+                if len(self.data_buf) == 0:
+            	    self.status_register &= ~ST_RX_FIFO_FULL
+        	    self.status_register |= ST_RX_FIFO_EMPTY
+                elif len(self.data_buf) < 16:
+                    self.status_register &= ~ST_RX_FIFO_FULL
+                    self.status_register &= ~ST_RX_FIFO_EMPTY
+                elif len(self.data_buf) == 16:
+                    self.status_register |= ~ST_RX_FIFO_FULL
+                    self.status_register &= ~ST_RX_FIFO_EMPTY
+                self.status_register &= ~ST_RX_FIFO_CHRS
+                self.status_register |= len(self.data_buf) << 8
                 self.lock.release()
             self.connected = False

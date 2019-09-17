@@ -40,32 +40,42 @@ class ARM(Architecture):
     unicorn_arch = UC_ARCH_ARM
     unicorn_mode = UC_MODE_ARM
 
-
 class ARM_CORTEX_M3(ARM):
     cpu_model = 'cortex-m3'
     qemu_name = 'arm'
     gdb_name = 'arm'
 
     capstone_arch = CS_ARCH_ARM
+    keystone_arch = KS_ARCH_ARM
     capstone_mode = CS_MODE_LITTLE_ENDIAN | CS_MODE_THUMB | CS_MODE_MCLASS
     keystone_arch = KS_ARCH_ARM
     keystone_mode = KS_MODE_LITTLE_ENDIAN | KS_MODE_THUMB
     unicorn_arch = UC_ARCH_ARM
     unicorn_mode = UC_MODE_LITTLE_ENDIAN | UC_MODE_THUMB
+    sr_name = 'xpsr'
 
 
     @staticmethod
     def register_write_cb(avatar, *args, **kwargs):
+                
         if isinstance(kwargs['watched_target'],
                       avatar2.targets.qemu_target.QemuTarget):
             qemu = kwargs['watched_target']
 
+            # xcps/cpsr encodes the thumbbit diffently accross different
+            # ISA versions. Panda_target does not cleanly support cortex-m yet,
+            # and hence uses the thumbbit as stored on other ARM versions.
+            if isinstance(qemu, avatar2.targets.panda_target.PandaTarget):
+                shiftval = 5
+            else:
+                shiftval = 24
+
             if args[0] == 'pc' or args[0] == 'cpsr':
                 cpsr = qemu.read_register('cpsr')
-                if cpsr & 0x20:
+                if cpsr & 1<< shiftval:
                     return
                 else:
-                    cpsr |= 0x20
+                    cpsr |= 1<<shiftval
                     qemu.write_register('cpsr', cpsr)
 
     @staticmethod
@@ -73,6 +83,7 @@ class ARM_CORTEX_M3(ARM):
         avatar.watchmen.add('TargetRegisterWrite', 'after',
                             ARM_CORTEX_M3.register_write_cb)
 
+        pass
 ARMV7M = ARM_CORTEX_M3
 
 

@@ -8,6 +8,8 @@ from avatar2.protocols.remote_memory import RemoteMemoryProtocol
 from avatar2.targets import Target
 
 from avatar2.installer.config import QEMU, GDB_ARM
+from avatar2.watchmen import watch
+
 
 class QemuTarget(Target):
     """
@@ -24,10 +26,12 @@ class QemuTarget(Target):
                  entry_address=0x00,
                  log_items=None,
                  log_file=None,
+                 system_clock_scale=None,
                  **kwargs):
         super(QemuTarget, self).__init__(avatar, **kwargs)
 
         # Qemu parameters
+        self.system_clock_scale = system_clock_scale
         if hasattr(self, 'executable') is False: # May be initialized by subclass
             self.executable = (executable if executable is not None
                                else self._arch.get_qemu_executable())
@@ -116,6 +120,10 @@ class QemuTarget(Target):
         conf_dict['entry_address'] = self.entry_address
         if self.fw is not None:
             conf_dict['kernel'] = self.fw
+
+        if self.system_clock_scale is not None:
+            conf_dict['system_clock_scale'] = self.system_clock_scale
+
         for mr in conf_dict['memory_mapping']:
             if mr.get('qemu_name'):
                 mr['properties'] = []
@@ -146,6 +154,7 @@ class QemuTarget(Target):
         del conf_dict['targets']
         return conf_dict
 
+    @watch("TargetInit")
     def init(self, cmd_line=None):
         """
         Spawns a Qemu process and connects to it
