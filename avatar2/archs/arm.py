@@ -57,16 +57,25 @@ class ARM_CORTEX_M3(ARM):
 
     @staticmethod
     def register_write_cb(avatar, *args, **kwargs):
+                
         if isinstance(kwargs['watched_target'],
                       avatar2.targets.qemu_target.QemuTarget):
             qemu = kwargs['watched_target']
 
+            # xcps/cpsr encodes the thumbbit diffently accross different
+            # ISA versions. Panda_target does not cleanly support cortex-m yet,
+            # and hence uses the thumbbit as stored on other ARM versions.
+            if isinstance(qemu, avatar2.targets.panda_target.PandaTarget):
+                shiftval = 5
+            else:
+                shiftval = 24
+
             if args[0] == 'pc' or args[0] == 'cpsr':
                 cpsr = qemu.read_register('cpsr')
-                if cpsr & 1<<24:
+                if cpsr & 1<< shiftval:
                     return
                 else:
-                    cpsr |= 1<<24
+                    cpsr |= 1<<shiftval
                     qemu.write_register('cpsr', cpsr)
 
     @staticmethod
