@@ -1,5 +1,9 @@
 #ifndef HW_AVATAR_REMOTE_MEMORY_H
 #define HW_AVATAR_REMOTE_MEMORY_H
+
+
+#include "hw/avatar/avatar_posix.h"
+
 enum RemoteMemoryOperation{
   AVATAR_READ,
   AVATAR_WRITE,

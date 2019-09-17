@@ -25,6 +25,7 @@
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "trace.h"
+#include "hw/avatar/interrupts.h"
 
 /* IRQ number counting:
  *
@@ -795,6 +796,7 @@ void armv7m_nvic_acknowledge_irq(void *opaque)
     assert(s->vectpending_prio < running);
 
     trace_nvic_acknowledge_irq(pending, s->vectpending_prio);
+    avatar_armv7m_exception_enter(pending);
 
     vec->active = 1;
     vec->pending = 0;
@@ -1564,6 +1566,7 @@ static void nvic_writel(NVICState *s, uint32_t offset, uint32_t value,
                         MemTxAttrs attrs)
 {
     ARMCPU *cpu = s->cpu;
+
 
     switch (offset) {
     case 0xc: /* CPPWR */
@@ -2355,6 +2358,7 @@ static MemTxResult nvic_sysreg_write(void *opaque, hwaddr addr,
     unsigned i, startvec, end;
     unsigned setval = 0;
 
+    avatar_armv7m_nvic_forward_write(offset, value, size);
     trace_nvic_sysreg_write(addr, value, size);
 
     if (attrs.user && !nvic_user_access_ok(s, addr, attrs)) {

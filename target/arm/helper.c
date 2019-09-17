@@ -35,6 +35,7 @@
 #include "exec/cpu_ldst.h"
 #include "semihosting/common-semi.h"
 #endif
+#include "hw/avatar/interrupts.h"
 
 #define ARM_CPU_FREQ 1000000000 /* FIXME: 1 GHz, should be configurable */
 #define PMCR_NUM_COUNTERS 4 /* QEMU IMPDEF choice */
@@ -9709,6 +9710,7 @@ static void arm_cpu_do_interrupt_aarch32_hyp(CPUState *cs)
     addr += env->cp15.hvbar;
 
     take_aarch32_exception(env, ARM_CPU_MODE_HYP, mask, 0, addr);
+    avatar_armv7m_exception_exit(env->v7m.exception, env->regs[15]);
 }
 
 static void arm_cpu_do_interrupt_aarch32(CPUState *cs)

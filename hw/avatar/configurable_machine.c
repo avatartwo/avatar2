@@ -33,6 +33,7 @@
 #ifdef TARGET_ARM
 #include "target/arm/cpu.h"
 #include "hw/arm/arm.h"
+#include "hw/arm/armv7m.h"
 #include "hw/avatar/arm_helper.h"
 #endif
 
@@ -66,6 +67,7 @@ static inline void set_feature(CPUARMState *env, int feature)
 
 // For now, this function is unused so let's prevent the compiler from failing.
 static inline void unset_feature(CPUARMState *env, int feature) __attribute__ ((unused));
+
 static inline void unset_feature(CPUARMState *env, int feature)
 {
     env->features &= ~(1ULL << feature);
@@ -110,7 +112,6 @@ static QDict * load_configuration(const char * filename)
         fprintf(stderr, "Error parsing JSON configuration file\n");
         exit(1);
     }
-
 
     obj_dict = qobject_to(QDict, obj);
     if (!obj_dict) {
@@ -338,7 +339,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
 
         }
 
-        printf("Configurable: Inserting 0x%"
+        printf("Configurable: Inserting %"
                PRIx64 " bytes of data in memory region %s\n", data_size, name);
         //Size of data to put into a RAM region needs to fit in the RAM region
         g_assert(data_size <= size);
@@ -439,7 +440,6 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
     DeviceState *dstate; //generic device if CPU can be initiliazed via qdev-API
     int num_irq = 64;
 
-
     if (qdict_haskey(conf, "cpu_model"))
     {
         cpu_model = qdict_get_str(conf, "cpu_model");
@@ -478,28 +478,28 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
             exit(1);
         }
 
-    cpuobj = object_new(object_class_get_name(cpu_oc));
+        cpuobj = object_new(object_class_get_name(cpu_oc));
 
-    object_property_set_bool(cpuobj, true, "realized", &error_fatal);
-    cpuu = ARM_CPU(cpuobj);
+        object_property_set_bool(cpuobj, true, "realized", &error_fatal);
+        cpuu = ARM_CPU(cpuobj);
     }
-
     env = (CPUState *) &(cpuu->env);
     if (!env)
     {
-        fprintf(stderr, "Unable to find CPU definition\n");
-        exit(1);
+            fprintf(stderr, "Unable to find CPU definition\n");
+            exit(1);
     }
 
     avatar_add_banked_registers(cpuu);
     set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
     return cpuu;
 }
+
+
 #elif TARGET_MIPS
 static MIPSCPU *create_cpu(MachineState * ms, QDict *conf)
 {
     const char *cpu_model = ms->cpu_type;
-    i
     MIPSCPU *cpuu;
     CPUState *cpu;
 

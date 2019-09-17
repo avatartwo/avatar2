@@ -7,6 +7,7 @@
 #include "qemu/error-report.h"
 #include "hw/sysbus.h"
 
+#include "hw/avatar/remote_memory.h"
 #include "hw/avatar/avatar_posix.h"
 #include "hw/avatar/remote_memory.h"
 
@@ -102,11 +103,12 @@ static Property avatar_rmemory_properties[] = {
 
 //}
 
+QemuAvatarMessageQueue *rmem_rx_queue_ref = NULL;
+QemuAvatarMessageQueue *rmem_tx_queue_ref = NULL;
+
 static void avatar_rmemory_realize(DeviceState *dev, Error **errp)
 {
 
-    static QemuAvatarMessageQueue *rx_queue_ref = NULL;
-    static QemuAvatarMessageQueue *tx_queue_ref = NULL;
 
 
     AvatarRMemoryState *s = AVATAR_RMEMORY(dev);
@@ -115,17 +117,17 @@ static void avatar_rmemory_realize(DeviceState *dev, Error **errp)
     sysbus_init_mmio(sbd, &s->iomem);
     sysbus_init_irq(sbd, &s->irq);
 
-    if(rx_queue_ref == NULL){
-        rx_queue_ref = malloc(sizeof(QemuAvatarMessageQueue));
-        qemu_avatar_mq_open_read(rx_queue_ref, s->rx_queue_name, sizeof(RemoteMemoryResp));
+    if(rmem_rx_queue_ref == NULL){
+        rmem_rx_queue_ref = malloc(sizeof(QemuAvatarMessageQueue));
+        qemu_avatar_mq_open_read(rmem_rx_queue_ref, s->rx_queue_name, sizeof(RemoteMemoryResp));
     }
-    if(tx_queue_ref == NULL){
-        tx_queue_ref = malloc(sizeof(QemuAvatarMessageQueue));
-        qemu_avatar_mq_open_write(tx_queue_ref, s->tx_queue_name, sizeof(MemoryForwardReq));
+    if(rmem_tx_queue_ref == NULL){
+        rmem_tx_queue_ref = malloc(sizeof(QemuAvatarMessageQueue));
+        qemu_avatar_mq_open_write(rmem_tx_queue_ref, s->tx_queue_name, sizeof(MemoryForwardReq));
     }
 
-    s->rx_queue = rx_queue_ref;
-    s->tx_queue = tx_queue_ref;
+    s->rx_queue = rmem_rx_queue_ref;
+    s->tx_queue = rmem_tx_queue_ref;
     s->request_id = 0;
 
 }
