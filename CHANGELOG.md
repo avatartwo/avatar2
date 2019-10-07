@@ -1,3 +1,7 @@
+# TBD
+
+* Using more performant gdb-protocol as default for openocd-target
+
 # Version 1.3.0 (September 17th, 2019)
 * Major update: Pretender release (https://www.usenix.org/conference/raid2019/presentation/gustafson)
     * IRQ injection into Qemu

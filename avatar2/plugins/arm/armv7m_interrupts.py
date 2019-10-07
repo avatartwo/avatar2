@@ -27,6 +27,9 @@ def add_protocols(self, **kwargs):
                                         t.protocols.memory.read_memory(
                                             *args, **kwargs), target
                                        )
+        # Also, let's use openocd as protocol for register and memory
+        target.protocols.memory = target.protocols.monitor
+        target.protocols.register = target.protocols.monitor
 
         
     if isinstance(target, QemuTarget):
