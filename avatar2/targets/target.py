@@ -451,7 +451,7 @@ class Target(object):
         #self._no_state_update_pending.set()
 
     @watch('TargetWait')
-    def wait(self, state=TargetStates.STOPPED):
+    def wait(self, state=TargetStates.STOPPED|TargetStates.EXITED):
         while self.state & state == 0:
             pass
 
