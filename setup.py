@@ -23,7 +23,7 @@ setup(
         'parse',
         'configparser',
         'npyscreen',
-        'enum34',
+        'enum34;python_version<"3.4"',
         'unicorn',
         'bitstring',
 	'pylink-square',
