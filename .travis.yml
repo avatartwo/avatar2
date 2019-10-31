@@ -8,7 +8,7 @@ services:
 
 before_install:
     - docker pull ubuntu:18.04
-    - docker run -v /home/travis/build/$TRAVIS_REPO_SLUG:/avatar2 --name ubuntu --cap-add=SYS_PTRACE -dit ubuntu:18.04
+    - docker run -v /home/travis/build/$TRAVIS_REPO_SLUG:/avatar2 --name ubuntu --cap-add=SYS_PTRACE --security-opt seccomp=unconfined -dit ubuntu:18.04
     - docker exec ubuntu apt-get update
     - docker exec ubuntu apt-get install -y sudo
 
