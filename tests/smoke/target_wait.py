@@ -4,6 +4,7 @@
 import avatar2
 import os
 import logging
+import sys
 
 from time import sleep
 from nose.tools import *

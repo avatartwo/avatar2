@@ -7,6 +7,7 @@ import time
 
 from nose.tools import *
 
+SLEEP_TIME = 1
 
 port = 4444
 p = None
@@ -60,7 +61,8 @@ def test_break_run_and_read_write_mem():
     ret = g.cont()
     assert_equal(ret, True)
     # todo: enable waiting
-    time.sleep(.2)
+    
+    time.sleep(SLEEP_TIME)
 
     ret = g.read_memory(0x08048000, 4)
     assert_equal(ret, 0x464c457f)
@@ -81,15 +83,15 @@ def test_continue_stopping_stepping():
     ret = g.stop()
     assert_equal(ret, True)
 
-    time.sleep(.2)
+    time.sleep(SLEEP_TIME)
 
     ret = g.step()
     assert_equal(ret, True)
 
-    time.sleep(.2)
+    time.sleep(SLEEP_TIME)
 
 @with_setup(setup_helloworld, teardown_func)
-def test_wacthpoint():
+def test_watchpoint():
     ret = g.set_watchpoint(0x080484c0, read=True,
                            write=False)
     assert_equal(ret, True)
@@ -97,7 +99,8 @@ def test_wacthpoint():
     ret = g.cont()
     assert_equal(ret, True)
 
-    time.sleep(.2)
+    
+    time.sleep(SLEEP_TIME)
 
     ret = g.read_memory(0x08048000, 4)
     assert_equal(ret, 0x464c457f)

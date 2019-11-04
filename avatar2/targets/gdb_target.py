@@ -74,7 +74,7 @@ class GDBTarget(Target):
     @watch('TargetCont')
     @action_valid_decorator_factory(TargetStates.INITIALIZED, 'execution')
     @synchronize_state(TargetStates.RUNNING)
-    def run(self):
+    def run(self, blocking=True):
         return self.protocols.execution.run()
 
     def cont(self, blocking=True):
