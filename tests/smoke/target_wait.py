@@ -18,10 +18,10 @@ def test_wait_race():
     binary_path = (os.path.dirname(os.path.abspath(__file__))
                    + '/../binaries/infinite_loop')
 
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+    #logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
     a = avatar2.Avatar(arch=avatar2.X86_64)
     gdb = a.add_target(avatar2.GDBTarget, local_binary=binary_path,
-                       gdb_verbose_mi=True)
+                       gdb_verbose_mi=False)
     a.watchmen.add('TargetWait', when='before', callback=delay)
 
     gdb.init()
