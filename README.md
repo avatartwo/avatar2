@@ -1,6 +1,9 @@
 [![PyPI version](https://badge.fury.io/py/avatar2.svg)](https://badge.fury.io/py/avatar2)
 [![Build Status](https://travis-ci.org/avatartwo/avatar2.svg?branch=master)](https://travis-ci.org/avatartwo/avatar2)
 
+<img src="./avatar_logo.png" width="40%" height="40%"><br/>
+
+
 Welcome to avatar², the target orchestration framework with focus on dynamic
  analysis of embedded devices' firmware!
 
