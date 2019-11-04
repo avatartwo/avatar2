@@ -20,9 +20,9 @@ install:
     - docker exec ubuntu apt-get install -y python python-pip
     - docker exec ubuntu apt-get install -y python3 python3-pip
     - docker exec ubuntu apt-get install -y libc6-i386 
-    - docker exec ubuntu apt-get install -y gdb 
+    - docker exec ubuntu apt-get install -y gdb=8.1-0ubuntu3
     - docker exec ubuntu apt-get install -y pkg-config 
-    - docker exec ubuntu apt-get install -y gdb-multiarch
+    - docker exec ubuntu apt-get install -y gdb-multiarch=8.1-0ubuntu3
     - docker exec ubuntu apt-get install -y libcapstone3 
     - docker exec ubuntu apt-get install -y libcapstone-dev
     - docker exec ubuntu pip2 install --upgrade pip
