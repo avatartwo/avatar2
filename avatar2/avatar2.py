@@ -335,12 +335,14 @@ class Avatar(Thread):
     def _handle_breakpoint_hit_message(self, message):
         self.log.info("Breakpoint hit for Target: %s" % message.origin.name)
         self._handle_update_state_message(message)
+        # Breakpoints are two stages: SYNCING | STOPPED -> HandleBreakpoint -> STOPPED
+        # This makes sure that all handlers are complete before stopping and breaking wait()
+        self.fast_queue.put(UpdateStateMessage(message.origin, TargetStates.STOPPED))
 
     @watch('SyscallCatched')
     def _handle_syscall_catched_message(self, message):
         self.log.info("Syscall catched for Target: %s" % message.origin.name)
         self._handle_update_state_message(message)
-
 
 
     @watch('RemoteMemoryRead')

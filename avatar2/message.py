@@ -19,7 +19,7 @@ class UpdateStateMessage(AvatarMessage):
 
 class BreakpointHitMessage(UpdateStateMessage):
     def __init__(self, origin, breakpoint_number, address):
-        super(BreakpointHitMessage, self).__init__(origin, TargetStates.STOPPED)
+        super(BreakpointHitMessage, self).__init__(origin, TargetStates.BREAKPOINT)
         self.breakpoint_number = breakpoint_number
         self.address = address
 

@@ -96,6 +96,7 @@ class TargetStates(IntEnum):
     SYNCING = 0x10
     EXITED = 0x20
     NOT_RUNNING = INITIALIZED | STOPPED
+    BREAKPOINT = SYNCING | STOPPED
 
 class TargetRegs(object):
     def __init__(self, target, register_dict):
