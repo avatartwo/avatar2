@@ -65,6 +65,7 @@ def synchronize_state(*states, **kwargs):
                     if message.origin == self:
                         if message.state == state:
                             state_reached.set()
+                            avatar.watchmen.remove_watchman('UpdateState', w)
                         elif message.state == TargetStates.EXITED:
                             raise Exception("Target %s exited" % self.name)
 
@@ -77,7 +78,6 @@ def synchronize_state(*states, **kwargs):
             if blocking is True:
                 if not (transition_optional == True and self.state == state):
                     state_reached.wait()
-                avatar.watchmen.remove_watchman('UpdateState', w)
             return ret
 
         return state_synchronizer
