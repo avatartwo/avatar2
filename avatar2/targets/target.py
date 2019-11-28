@@ -265,7 +265,7 @@ class Target(object):
 
     @watch('TargetCont')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'execution')
-    @synchronize_state(TargetStates.RUNNING)
+    @synchronize_state(TargetStates.RUNNING, TargetStates.EXITED)
     def cont(self, blocking=True):
         """
         Continues the execution of the target
