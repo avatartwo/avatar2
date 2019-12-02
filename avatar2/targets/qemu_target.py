@@ -114,6 +114,21 @@ class QemuTarget(Target):
             self._process = None
         super(QemuTarget, self).shutdown()
 
+    def _filter_mr_kwargs(self, mr):
+        """
+        Return a dict with known/expected kwargs/keys from an dictified mr.
+        """
+        expected_keys = ['name', 'address', 'size', 'forwarded', 'forwarded_to',
+                         'is_special', 'is_symbolic', 'permissions',
+                         'bus', 'properties', 'qemu_name',
+                         'python_peripheral', 'inline_module']
+        filtered_mr = {}
+        for k, v in mr.items():
+            if k in expected_keys: continue
+            filtered_mr[k] = v
+        return filtered_mr
+
+
     def generate_qemu_config(self):
         """
         Generates the configuration passed to avatar-qemus configurable machine
@@ -130,7 +145,7 @@ class QemuTarget(Target):
             if mr.get('qemu_name'):
                 mr['properties'] = []
                 mr['bus'] = 'sysbus'
-                if mr['qemu_name'] == 'avatar-rmemory':
+                if mr['qemu_name'] in ['avatar-rmemory', 'avatar-pyperipheral']:
                     size_properties = {'type': 'uint32',
                                        'value': mr['size'],
                                        'name': 'size'}
@@ -139,6 +154,8 @@ class QemuTarget(Target):
                                           'value': mr['address'],
                                           'name': 'address'}
                     mr['properties'].append(address_properties)
+
+                if mr['qemu_name'] == 'avatar-rmemory':
                     rx_queue_properties = {'type': 'string',
                                            'value': self._rmem_rx_queue_name,
                                            'name': 'rx_queue_name'}
@@ -147,6 +164,24 @@ class QemuTarget(Target):
                                            'value': self._rmem_tx_queue_name,
                                            'name': 'tx_queue_name'}
                     mr['properties'].append(tx_queue_properties)
+
+                if mr['qemu_name'] == 'avatar-pyperipheral':
+                    file_properties = {'type':'string',
+                                        'name': 'python_file',
+                                        'value': mr['inline_module']
+                                       }
+                    mr['properties'].append(file_properties)
+                    class_properties = {'type':'string',
+                                        'name': 'python_class',
+                                        'value': mr['python_peripheral']
+                                       }
+                    mr['properties'].append(class_properties)
+                    filtered_kwargs = self._filter_mr_kwargs(mr)
+                    kwargs_properties = {'type':'string',
+                                         'name': 'python_kwargs',
+                                         'value': str(filtered_kwargs)
+                                        }
+                    mr['properties'].append(kwargs_properties)
 
                 elif mr.get('qemu_properties'):
                     if type(mr['qemu_properties']) == list:

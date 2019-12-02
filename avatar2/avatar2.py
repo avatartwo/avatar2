@@ -228,11 +228,13 @@ class Avatar(Thread):
     def add_memory_range(self, address, size, name=None, permissions='rwx',
                          file=None, file_offset=None, file_bytes=None,
                          forwarded=False, forwarded_to=None, emulate=None,
-                         interval_tree=None, **kwargs):
+                         interval_tree=None, inline=False, **kwargs):
         """
         Adds a memory range to avatar
 
         :param emulate:      Emulation function that will take name, address and size if set
+        :param inline:       If set to true, inline the emulation object into targets which support inlining (e.g., QEMU, PANDA).
+                             NB: This deactivates all callbacks/watchmen on this region.
         :param address:      Base-Address of the Range
         :param size:         Size of the range
         :param file:         A file backing this range, if applicable
@@ -244,7 +246,9 @@ class Avatar(Thread):
                              the range will be added to self.memory_ranges
         """
         memory_ranges = self.memory_ranges if interval_tree is None else interval_tree
-        if emulate:
+        if inline is True and emulate is None:
+            self.log.warn("inline set for non peripheral memory")
+        if emulate is not None:
             python_peripheral = emulate(name, address, size, **kwargs)
             forwarded = True
             forwarded_to = python_peripheral
@@ -252,6 +256,10 @@ class Avatar(Thread):
 
         if forwarded is True:
             kwargs.update({'qemu_name': 'avatar-rmemory'})
+        if inline is True:
+            kwargs.update({'qemu_name': 'avatar-pyperipheral'})
+            kwargs.update({'inline_module': str(python_peripheral.__module__)})
+
         m = MemoryRange(address, size, name=name, permissions=permissions,
                         file=file, file_offset=file_offset,
                         file_bytes=file_bytes, forwarded=forwarded,
