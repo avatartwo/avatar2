@@ -4,17 +4,18 @@ from capstone import *
 
 
 def disassemble(self, addr=None, insns=1,
-                arch=None, mode=None):
+                arch=None, mode=None, detail=False):
     """
     Main purpose of the disassembler plugin, it's used to disassemble
     instructions
-    :param addr:  The address to start disassembling.
-                  If not specified, the current pc is used
-    :param insns: The numbe of instructions to be disassembled
-    :param arch:  The capstone-architecture to be used.
-                  If not specified, it is retrieved from avatar.arch 
-    :param mode:  The capstone-mode to be used.
-                  If not specified, it is retrieved from avatar.arch 
+    :param addr:   The address to start disassembling.
+                   If not specified, the current pc is used
+    :param insns:  The numbe of instructions to be disassembled
+    :param arch:   The capstone-architecture to be used.
+                   If not specified, it is retrieved from avatar.arch
+    :param mode:   The capstone-mode to be used.
+                   If not specified, it is retrieved from avatar.arch
+    :param detail: Whether to enable detailed disassembly
     :returns:     A list with capstone instructions
     """
 
@@ -24,6 +25,7 @@ def disassemble(self, addr=None, insns=1,
 
     ret = []
     md = Cs(arch, mode)
+    md.detail = detail
 
     disassembled = 0
     while disassembled < insns:
