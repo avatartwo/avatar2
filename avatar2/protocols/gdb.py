@@ -96,7 +96,7 @@ class GDBResponseListener(Thread):
             pass  # ignore changed memory for now
         elif msg == 'stopped':
             if payload.get('reason') == 'breakpoint-hit':
-                avatar_msg = BreakpointHitMessage(self._origin, payload['bkptno'],
+                avatar_msg = BreakpointHitMessage(self._origin, int(payload['bkptno']),
                                                   int(payload['frame']['addr'], 16))
             elif payload.get('reason') == 'exited-normally':
                 avatar_msg = UpdateStateMessage(
