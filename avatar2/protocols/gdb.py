@@ -473,6 +473,8 @@ class GDBProtocol(object):
         :param bool temporary:  Tempory breakpoint
         :param str regex:     If set, inserts breakpoints matching the regex
         :param str condition: If set, inserts a breakpoint with specified condition
+                              Note: This allows only a single condition. For more
+                                    complex ones, please use set_break_condition()
         :param int ignore_count: Amount of times the bp should be ignored
         :param int thread:    Threadno in which this breakpoints should be added
         :returns:             The number of the breakpoint
@@ -506,6 +508,18 @@ class GDBProtocol(object):
         ret, resp = self._sync_request(cmd, GDB_PROT_DONE)
         self.log.debug("Attempted to set breakpoint. Received response: %s" % resp)
         return int(resp['payload']['bkpt']['number']) if ret else -1
+
+    def set_break_condition(self, bp_no, condition='1'):
+        """
+        Modifies the break condition for a given break-point
+        :param bp_no: the breakpoint whose condition should be modified
+        :param condition: The condition string to use.
+                          The default value, '1', will make the bp unconditional
+        """
+        cmd = ["-break-condition", str(bp_no), condition]
+        ret, resp = self._sync_request(cmd, GDB_PROT_DONE)
+        self.log.debug("Attempted to set break-condition. Received response: %s" % resp)
+        return ret
 
     def set_watchpoint(self, variable, write=True, read=False):
         cmd = ["-break-watch"]
