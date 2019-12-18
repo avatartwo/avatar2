@@ -77,6 +77,7 @@ class Avatar(Thread):
         self.fast_queue = queue.Queue()
         self.fast_queue_listener = AvatarFastQueueProcessor(self)
         self.message_handlers = { 
+            SyscallCatchedMessage: self._handle_syscall_catched_message,
             BreakpointHitMessage: self._handle_breakpoint_hit_message,
             UpdateStateMessage: self._handle_update_state_message,
             RemoteMemoryReadMessage: self._handle_remote_memory_read_message,
@@ -320,6 +321,13 @@ class Avatar(Thread):
         self.log.info("Breakpoint hit for Target: %s" % message.origin.name)
         self._handle_update_state_message(message)
 
+    @watch('SyscallCatched')
+    def _handle_syscall_catched_message(self, message):
+        self.log.info("Syscall catched for Target: %s" % message.origin.name)
+        self._handle_update_state_message(message)
+
+
+
     @watch('RemoteMemoryRead')
     def _handle_remote_memory_read_message(self, message):
         
@@ -418,6 +426,7 @@ class AvatarFastQueueProcessor(Thread):
         self.message_handlers = {
             UpdateStateMessage: self._fast_handle_update_state_message,
             BreakpointHitMessage: self._fast_handle_update_state_message,
+            SyscallCatchedMessage: self._fast_handle_update_state_message,
         }
 
         self.start()
