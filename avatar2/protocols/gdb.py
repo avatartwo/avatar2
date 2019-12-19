@@ -282,11 +282,15 @@ class GDBProtocol(object):
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
             logging.getLogger(self.__class__.__name__)
+        self.is_quit = False
 
     def __del__(self):
         self.shutdown()
 
     def shutdown(self):
+        if self.is_quit is False:
+            self.quit()
+            self.is_quit = True
         if self._communicator is not None:
             self._communicator.stop()
             self._communicator = None
@@ -861,4 +865,9 @@ class GDBProtocol(object):
         else:
             self.log.debug("Unable to set variable %s to %s" %
                            (str(variable), str(value)))
+        return ret
+
+    def quit(self):
+        req = ['-gdb-exit']
+        ret = self._sync_request(req, GDB_PROT_DONE)
         return ret
