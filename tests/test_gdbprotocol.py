@@ -20,7 +20,8 @@ x86_regs = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
 
 
 def setup_helloworld():
-    global p, g
+    global p, g, port
+    port += 1
 
     binary = '%s/tests/binaries/hello_world' % os.getcwd()
     p = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % port, binary])
@@ -29,7 +30,9 @@ def setup_helloworld():
 
 
 def setup_inf_loop():
-    global p, g
+    global p, g, port
+    port += 1
+
     binary = '%s/tests/binaries/infinite_loop' % os.getcwd()
     p = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % port, binary])
     g = GDBProtocol(arch=avatar2.archs.X86_64)
