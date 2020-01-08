@@ -282,15 +282,11 @@ class GDBProtocol(object):
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
             logging.getLogger(self.__class__.__name__)
-        self.is_quit = False
 
     def __del__(self):
         self.shutdown()
 
     def shutdown(self):
-        if self.is_quit is False:
-            self.quit()
-            self.is_quit = True
         if self._communicator is not None:
             self._communicator.stop()
             self._communicator = None
