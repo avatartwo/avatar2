@@ -16,7 +16,7 @@ else:
 
 from avatar2.archs.arm import ARM
 from avatar2.targets import TargetStates
-from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMessage
+from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMessage, SyscallCatchedMessage
 
 GDB_PROT_DONE = 'done'
 GDB_PROT_CONN = 'connected'
@@ -92,6 +92,8 @@ class GDBResponseListener(Thread):
             pass  # library loading not supported yet
         elif msg == 'breakpoint-modified':
             pass  # ignore breakpoint modified for now
+        elif msg == 'breakpoint-created':
+            pass  # ignore breakpoint created for now
         elif msg == 'memory-changed':
             pass  # ignore changed memory for now
         elif msg == 'stopped':
@@ -123,6 +125,12 @@ class GDBResponseListener(Thread):
             elif payload.get('reason') == 'read-watchpoint-trigger':
                 avatar_msg = UpdateStateMessage(
                     self._origin, TargetStates.STOPPED)
+            elif payload.get('reason') == 'syscall-entry':
+                avatar_msg = SyscallCatchedMessage(self._origin, int(payload['bkptno']),
+                                                  int(payload['frame']['addr'], 16), 'entry')
+            elif payload.get('reason') == 'syscall-return':
+                avatar_msg = SyscallCatchedMessage(self._origin, int(payload['bkptno']),
+                                                  int(payload['frame']['addr'], 16), 'return')
             elif payload.get('reason') is not None:
                 self.log.critical("Target stopped with unknown reason: %s" %
                                   payload['reason'])
@@ -553,6 +561,26 @@ class GDBProtocol(object):
         else:
             return -1
 
+    def set_syscall_cachpoint(self, syscall):
+        '''
+        Set's up a syscall catchpoint.
+        :param syscall: the syscall to catch; can be either its name or no
+        '''
+        # this command is not exported via gdb-mi, hence we need manual parsing
+        ret = self.console_command('catch syscall %s' % syscall)
+        if ret[0] is not True:
+            return ret[0]
+        # assume return message is in format of
+        # '"\nCatchpoint 1 (syscall 'write' [4])\\n") '
+        expected_bp_num = ret[1].split()[1]
+        if not expected_bp_num.isdigit():
+            self.log.warning("Couldn't extract bp_num for catchpoint!")
+            return True
+        return int(expected_bp_num)
+        
+
+
+
     def remove_breakpoint(self, bkpt):
         """Deletes a breakpoint"""
         ret, resp = self._sync_request(
@@ -833,4 +861,9 @@ class GDBProtocol(object):
         else:
             self.log.debug("Unable to set variable %s to %s" %
                            (str(variable), str(value)))
+        return ret
+
+    def quit(self):
+        req = ['-gdb-exit']
+        ret = self._sync_request(req, GDB_PROT_DONE)
         return ret

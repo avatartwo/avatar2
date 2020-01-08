@@ -19,9 +19,14 @@ class UpdateStateMessage(AvatarMessage):
 
 class BreakpointHitMessage(UpdateStateMessage):
     def __init__(self, origin, breakpoint_number, address):
-        super(self.__class__, self).__init__(origin, TargetStates.STOPPED)
+        super(BreakpointHitMessage, self).__init__(origin, TargetStates.STOPPED)
         self.breakpoint_number = breakpoint_number
         self.address = address
+
+class SyscallCatchedMessage(BreakpointHitMessage):
+    def __init__(self, origin, breakpoint_number, address, type='entry'):
+        super(self.__class__, self).__init__(origin, breakpoint_number, address)
+        self.type = type
 
 
 class RemoteMemoryReadMessage(AvatarMessage):

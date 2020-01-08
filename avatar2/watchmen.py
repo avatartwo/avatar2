@@ -7,6 +7,7 @@ class WatchedTypes(object):
         'StateTransfer',
         'BreakpointHit',
         'UpdateState',
+        'SyscallCatched',
         'RemoteMemoryRead',
         'RemoteMemoryWrite',
         'RemoteInterruptEnter',
@@ -28,7 +29,7 @@ class WatchedTypes(object):
         'TargetRemovebreakpoint',
         'TargetWait',
         'TargetSetFile',
-        'TargetDownload'
+        'TargetDownload',
         'TargetInjectInterrupt'
     ]
 

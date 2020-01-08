@@ -20,25 +20,41 @@ x86_regs = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
 
 
 def setup_helloworld():
-    global p, g
-    p = subprocess.Popen(
-        'gdbserver --once 127.0.0.1:%d %s/tests/binaries/hello_world' %
-        (port, os.getcwd()), shell=True)
+    global p, g, port
+
+
+    binary = '%s/tests/binaries/hello_world' % os.getcwd()
+    p = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % port, binary],
+                        stderr=subprocess.PIPE)
+    
+    out = str(p.stderr.readline())
+    assert_equal(binary in out, True)
+    out = str(p.stderr.readline())
+    assert_equal(str(port) in out, True)
+    
     g = GDBProtocol(arch=avatar2.archs.X86_64)
     g.remote_connect(port=port)
 
 
 def setup_inf_loop():
-    global p, g
-    p = subprocess.Popen(
-        'gdbserver --once 127.0.0.1:%d %s/tests/binaries/infinite_loop' %
-        (port, os.getcwd()), shell=True)
+    global p, g, port
+
+    binary = '%s/tests/binaries/infinite_loop' % os.getcwd()
+    p = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % port, binary],
+                        stderr=subprocess.PIPE)
+
+    out = str(p.stderr.readline())
+    assert_equal(binary in out, True)
+    out = str(p.stderr.readline())
+    assert_equal(str(port) in out, True)
+
     g = GDBProtocol(arch=avatar2.archs.X86_64)
     g.remote_connect(port=port)
 
 
 def teardown_func():
     g.shutdown()
+    p.terminate()
 
 @with_setup(setup_helloworld, teardown_func)
 def test_register_names():
