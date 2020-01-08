@@ -9,20 +9,22 @@ from nose.tools import *
 
 SLEEP_TIME = 1
 
+MEM_ADDR = 0x555555554000
 port = 4444
 p = None
 g = None
 
-x86_regs = ['eax', 'ecx', 'edx', 'ebx', 'esp', 'ebp', 'esi',
-            'edi', 'eip', 'eflags', 'cs', 'ss', 'ds', 'es', 'fs', 'gs']
+x86_regs = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
+            u'r8', u'r9', u'r10', u'r11', u'r12', u'r13', u'r14', u'r15',
+            u'rip', u'eflags', u'cs', u'ss', u'ds', u'es', u'fs', u'gs']
 
 
 def setup_helloworld():
     global p, g
     p = subprocess.Popen(
-        'gdbserver --once 127.0.0.1:%d %s/tests/binaries/hello_world' % 
+        'gdbserver --once 127.0.0.1:%d %s/tests/binaries/hello_world' %
         (port, os.getcwd()), shell=True)
-    g = GDBProtocol(arch=avatar2.archs.X86)
+    g = GDBProtocol(arch=avatar2.archs.X86_64)
     g.remote_connect(port=port)
 
 
@@ -31,7 +33,7 @@ def setup_inf_loop():
     p = subprocess.Popen(
         'gdbserver --once 127.0.0.1:%d %s/tests/binaries/infinite_loop' %
         (port, os.getcwd()), shell=True)
-    g = GDBProtocol(arch=avatar2.archs.X86)
+    g = GDBProtocol(arch=avatar2.archs.X86_64)
     g.remote_connect(port=port)
 
 
@@ -41,20 +43,22 @@ def teardown_func():
 @with_setup(setup_helloworld, teardown_func)
 def test_register_names():
     regs = g.get_register_names()
-    assert_list_equal(regs[:16], x86_regs)
+    
+    assert_list_equal(regs[:len(x86_regs)], x86_regs)
 
 
 @with_setup(setup_helloworld, teardown_func)
 def test_register_read_and_write():
 
-    ret = g.write_register('eax', 1678)
+    ret = g.write_register('rax', 1678)
     assert_equal(ret, True)
-    ret = g.read_register('eax')
+    ret = g.read_register('rax')
     assert_equal(ret, 1678)
 
 
 @with_setup(setup_helloworld, teardown_func)
 def test_break_run_and_read_write_mem():
+
     ret = g.set_breakpoint('main')
     assert_equal(ret, True)
 
@@ -64,13 +68,13 @@ def test_break_run_and_read_write_mem():
     
     time.sleep(SLEEP_TIME)
 
-    ret = g.read_memory(0x08048000, 4)
+    ret = g.read_memory(MEM_ADDR, 4)
     assert_equal(ret, 0x464c457f)
 
-    ret = g.write_memory(0x08048000, 4, 0x41414141)
+    ret = g.write_memory(MEM_ADDR, 4, 0x41414141)
     assert_equal(ret, True)
 
-    ret = g.read_memory(0x08048000, 4)
+    ret = g.read_memory(MEM_ADDR, 4)
     assert_equal(ret, 0x41414141)
 
 @with_setup(setup_inf_loop, teardown_func)
@@ -92,7 +96,7 @@ def test_continue_stopping_stepping():
 
 @with_setup(setup_helloworld, teardown_func)
 def test_watchpoint():
-    ret = g.set_watchpoint(0x080484c0, read=True,
+    ret = g.set_watchpoint(0x555555554754, read=True,
                            write=False)
     assert_equal(ret, True)
 
@@ -102,10 +106,10 @@ def test_watchpoint():
     
     time.sleep(SLEEP_TIME)
 
-    ret = g.read_memory(0x08048000, 4)
+    ret = g.read_memory(MEM_ADDR, 4)
     assert_equal(ret, 0x464c457f)
 
 if __name__ == '__main__':
     setup_helloworld()
-    test_break_run_and_read_write_mem()
+    test_break_run_and_read_write_mem() 
     teardown_func()
