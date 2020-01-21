@@ -25,14 +25,14 @@
 #include "sysemu/sysemu.h"
 #include "exec/address-spaces.h"
 #include "hw/hw.h"
+#include "hw/irq.h"
 #include "hw/sysbus.h"
-#include "hw/devices.h"
 #include "hw/boards.h"
+#include "hw/qdev-properties.h"
 
 //plattform specific imports
 #ifdef TARGET_ARM
 #include "target/arm/cpu.h"
-#include "hw/arm/arm.h"
 #include "hw/arm/armv7m.h"
 #include "hw/avatar/arm_helper.h"
 #endif
@@ -357,8 +357,9 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
                " byte of data from file %s beginning at offset 0x%" PRIx64
                " to address 0x%" PRIx64
                "\n", data_size, filename, file_offset,address);
-        cpu_physical_memory_write_rom(&address_space_memory,
-                                      address, (uint8_t *) data, data_size);
+        address_space_write_rom(&address_space_memory, address,
+                                    MEMTXATTRS_UNSPECIFIED,
+                                    (uint8_t *) data, data_size);
         g_free(data);
     }
 
