@@ -43,10 +43,10 @@ script:
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-3.4 ./tests/test_gdbprotocol.py'
 
     - docker exec ubuntu bash -c 'cd avatar2/ && echo Yes | bash ./targets/build_qemu.sh'
-    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/panda/panda/arm-softmmu/qemu-system-arm nosetests-2.7 ./tests/test_qemutarget.py'
-    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/panda/panda/arm-softmmu/qemu-system-arm nosetests-3.4 ./tests/test_qemutarget.py'
-    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/panda/panda/arm-softmmu/qemu-system-arm nosetests-2.7 ./tests/pyperipheral/test_pyperipheral.py'
-    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/panda/panda/arm-softmmu/qemu-system-arm nosetests-3.4 ./tests/pyperipheral/test_pyperipheral.py'
+    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/qemu/arm-softmmu/qemu-system-arm nosetests-2.7 ./tests/test_qemutarget.py'
+    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/qemu/arm-softmmu/qemu-system-arm nosetests-3.4 ./tests/test_qemutarget.py'
+    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/qemu/arm-softmmu/qemu-system-arm nosetests-2.7 ./tests/pyperipheral/test_pyperipheral.py'
+    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/qemu/arm-softmmu/qemu-system-arm nosetests-3.4 ./tests/pyperipheral/test_pyperipheral.py'
 
     - docker exec ubuntu bash -c 'cd avatar2/ && echo Yes | bash ./targets/build_panda.sh'
     - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/panda/panda/arm-softmmu/qemu-system-arm nosetests-2.7 ./tests/test_qemutarget.py'
