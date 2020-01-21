@@ -15,10 +15,6 @@ import logging
 from nose.tools import *
 
 
-QEMU_EXECUTABLE = os.environ.get("QEMU_EXECUTABLE",
-                    "targets/build/qemu/arm-softmmu/qemu-system-arm")
-GDB_EXECUTABLE  = os.environ.get("GDB_EXECUTABLE", "gdb-multiarch")
-
 qemu = None
 fake_target = None
 
@@ -50,8 +46,7 @@ def setup():
     avatar = Avatar(output_directory='/tmp/testava')
     qemu = QemuTarget(avatar, name='qemu_test',
                       firmware="./tests/binaries/qemu_arm_test",
-                      gdb_executable=GDB_EXECUTABLE,
-                      executable=QEMU_EXECUTABLE)
+                      )
     fake_target = FakeTarget()
 
     dev1 = avatar.add_memory_range(0x101f2000, 0x1000, 'dev1', forwarded=True, 

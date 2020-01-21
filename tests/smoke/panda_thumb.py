@@ -11,10 +11,6 @@ from avatar2.peripherals.nucleo_usart import *
 
 
 
-QEMU_EXECUTABLE = os.environ.get("QEMU_EXECUTABLE",
-                    "targets/build/qemu/arm-softmmu/qemu-system-arm")
-GDB_EXECUTABLE  = os.environ.get("GDB_EXECUTABLE", "gdb-multiarch")
-
 '''
 The ARM architecture encodes the thumbbit at a different bit in xpsr/cpsr based
 on the used ISA version. The PandaTarget does not correctly emulate cortex-m
@@ -35,8 +31,7 @@ def setup_target(target_type):
     # Initiate the avatar-object
     avatar = Avatar(output_directory='/tmp/avatar', arch=ARM_CORTEX_M3)
 
-    t = avatar.add_target(target_type, executable=QEMU_EXECUTABLE,
-                             gdb_executable=GDB_EXECUTABLE, gdb_port=1236)
+    t = avatar.add_target(target_type, gdb_port=1236)
 
     # Define the various memory ranges and store references to them
     avatar.add_memory_range(0x08000000, 0x1000000, file=firmware)

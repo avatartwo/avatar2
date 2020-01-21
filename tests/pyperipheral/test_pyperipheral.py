@@ -11,10 +11,6 @@ from avatar2.peripherals.nucleo_usart import *
 
 
 
-QEMU_EXECUTABLE = os.environ.get("QEMU_EXECUTABLE",
-                    "targets/build/qemu/arm-softmmu/qemu-system-arm")
-GDB_EXECUTABLE  = os.environ.get("GDB_EXECUTABLE", "gdb-multiarch")
-
 PORT = 9997
 
 qemu = None
@@ -34,8 +30,7 @@ def setup_func():
     # Initiate the avatar-object
     avatar = Avatar(output_directory='/tmp/avatar', arch=ARM_CORTEX_M3)
 
-    qemu = avatar.add_target(QemuTarget, executable=QEMU_EXECUTABLE,
-                             gdb_executable=GDB_EXECUTABLE, gdb_port=1236,
+    qemu = avatar.add_target(QemuTarget, gdb_port=1236,
                              entry_address=0x08005105)
 
     #qemu.log_items = ['in_asm']
