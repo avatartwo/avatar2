@@ -36,7 +36,7 @@ class OpenOCDProtocol(Thread):
 
     def __init__(self, avatar, origin, openocd_script, openocd_executable="openocd",
                  additional_args=[], host='127.0.0.1', tcl_port=6666, gdb_port=3333,
-                 output_directory='/tmp'):
+                 output_directory='/tmp', debug=False):
         """
         OpenOCD machine interface protocol
         :param avatar: The Avatar instance
@@ -48,6 +48,7 @@ class OpenOCDProtocol(Thread):
         :param tcl_port: The port for OpenOCD's TCL machine interface.  Should be 6666
         :param gdb_port: The GDB port for OpenOCD's GDB interface
         :param output_directory: The directory where logfiles should go
+        :param debug: Enable openocd debug output
         """
         if isinstance(openocd_script, str):
             self.openocd_files = [openocd_script]
@@ -71,8 +72,12 @@ class OpenOCDProtocol(Thread):
         self.cmd_lock = Lock()
         self._origin = origin
 
+        self.output_directory = output_directory
         executable_path = distutils.spawn.find_executable(openocd_executable)
-        self._cmd_line = [executable_path, '--debug']
+        self._cmd_line = [executable_path]
+        if debug is True:
+            self._cmd_line += ['--debug']
+
         self._cmd_line += [e for l
                            in [['-f', abspath(f)] for f in self.openocd_files]
                            for e in l]
@@ -97,6 +102,13 @@ class OpenOCDProtocol(Thread):
         returns: True on success, else False
         """
         sleep(1)
+        
+        if self._openocd.poll() is not None:
+            raise RuntimeError(("Openocd errored! Please check "
+                                "%s/openocd_err.txt for details" %
+                                self.output_directory))
+
+
         self.log.debug("Connecting to OpenOCD on %s:%s" % (self._host, self._tcl_port))
         try:
             self.telnet = telnetlib.Telnet(self._host, self._tcl_port)
