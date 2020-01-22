@@ -34,6 +34,8 @@
 #include "semihosting/common-semi.h"
 #endif
 
+#include "hw/avatar/interrupts.h"
+
 static void v7m_msr_xpsr(CPUARMState *env, uint32_t mask,
                          uint32_t reg, uint32_t val)
 {
@@ -1407,6 +1409,8 @@ static void do_v7m_exception_exit(ARMCPU *cpu)
     qemu_log_mask(CPU_LOG_INT, "Exception return: magic PC %" PRIx32
                   " previous exception %d\n",
                   excret, env->v7m.exception);
+
+    avatar_armv7m_exception_exit(env->v7m.exception, excret);
 
     if ((excret & R_V7M_EXCRET_RES1_MASK) != R_V7M_EXCRET_RES1_MASK) {
         qemu_log_mask(LOG_GUEST_ERROR, "M profile: zero high bits in exception "
