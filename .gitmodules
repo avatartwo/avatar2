@@ -3,4 +3,4 @@
 	url = ../avatar-qemu.git
 [submodule "targets/src/avatar-panda"]
 	path = targets/src/avatar-panda
-	url = ../avatar-panda.git
+	url = https://github.com/panda-re/panda
