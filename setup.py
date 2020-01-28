@@ -15,7 +15,8 @@ setup(
               'avatar2/installer'
               ],
     install_requires=[
-        'pygdbmi>=0.7.3.1',
+        'pygdbmi==0.9.0.2;python_version<"3.5"',
+        'pygdbmi;python_version>="3.5"',
         'intervaltree',
         'posix_ipc>=1.0.0',
         'capstone>=3.0.4',

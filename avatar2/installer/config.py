@@ -30,7 +30,7 @@ TARGETS = OrderedDict(
              'install_cmd': ['git submodule update --init dtc',
                              './configure', 'make'],
           }),
-    (PANDA, {'git': 'https://github.com/avatartwo/avatar-panda',
+    (PANDA, {'git': 'https://github.com/panda-re/panda',
              'configure': '--disable-sdl --target-list=arm-softmmu',
              'make': '',
              'rel_path': 'arm-softmmu/qemu-system-arm',
