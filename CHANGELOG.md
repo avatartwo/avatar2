@@ -1,6 +1,18 @@
-# TBD
+# Version 1.3.1 (January 28th, 2020)
 
-* Using more performant gdb-protocol as default for openocd-target
+* Major Updates:
+    * Qemu Endpoint set to version 4.2.0-rc5
+    * avatar-panda got mainlined into PANDA
+* Improvements
+    * set_break_condition for gdb-protocol
+    * gdb protocol allows to catch syscalls
+    * Using more performant gdb-protocol as default for openocd-target
+    * Better error handling for OpenOCDTarget
+* Bugfixes:
+    * enum3.4 dependency conditional on python version (thanks @rhelmot)
+    * EXIT is a valid transition for wait (thanks @Kyle-Kyle)
+    * breakpointhitmessage uses int for breakpoint number
+    * various fixes for CI
 
 # Version 1.3.0 (September 17th, 2019)
 * Major update: Pretender release (https://www.usenix.org/conference/raid2019/presentation/gustafson)
