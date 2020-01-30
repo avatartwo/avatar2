@@ -58,9 +58,11 @@ class QemuTarget(Target):
         self._rmem_rx_queue_name = '/{:s}_rx_queue'.format(self.name)
         self._rmem_tx_queue_name = '/{:s}_tx_queue'.format(self.name)
 
-
         self.log_items = log_items
         self.log_file  = log_file
+
+        self.qemu_config_file =  ("%s/%s_conf.json" %
+            (self.avatar.output_directory, self.name) )
 
 
     def assemble_cmd_line(self):
@@ -166,8 +168,6 @@ class QemuTarget(Target):
             else:
                 self.log.warning('No cpu_model specified - are you sure?')
 
-        self.qemu_config_file =  ("%s/%s_conf.json" %
-            (self.avatar.output_directory, self.name) )
         if cmd_line is None:
             cmd_line = self.assemble_cmd_line()
 
