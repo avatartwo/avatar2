@@ -6,6 +6,13 @@ from avatar2.watchmen import AFTER, BEFORE, watch
 from avatar2 import TargetStates, GDBTarget
 
 
+def load_memory_mappings_target(target, *args, **kwargs):
+    """
+    Stub method for compatibility to be able to call load_memory_mappings on the target object.
+    """
+    return load_memory_mappings(target.avatar, target, *args, **kwargs)
+
+
 def load_memory_mappings(avatar, target, forward=False):
     if not isinstance(target, GDBTarget):
         raise TypeError("The memory mapping can be loaded ony from GDBTargets")
@@ -32,5 +39,28 @@ def load_memory_mappings(avatar, target, forward=False):
         )
 
 
+def add_methods(target):
+    target.load_memory_mappings = MethodType(load_memory_mappings_target, target)
+
+
+def target_added_callback(avatar, *args, **kwargs):
+    target = kwargs["watched_return"]
+    add_methods(target)
+
+
+def add_methods(target):
+    target.load_memory_mappings = MethodType(load_memory_mappings_target, target)
+
+
+def target_added_callback(avatar, *args, **kwargs):
+    target = kwargs["watched_return"]
+    add_methods(target)
+
+
 def load_plugin(avatar):
+    avatar.watchmen.add_watchman(
+        "AddTarget", when="after", callback=target_added_callback
+    )
     avatar.load_memory_mappings = MethodType(load_memory_mappings, avatar)
+    for target in avatar.targets.values():
+        add_methods(target)
