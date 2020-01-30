@@ -181,6 +181,12 @@ class QemuTarget(Target):
             self._process = Popen(cmd_line, stdout=out, stderr=err)
         self.log.debug("QEMU command line: %s" % ' '.join(cmd_line))
         self.log.info("QEMU process running")
+        self._connect_protocols()
+
+    def _connect_protocols(self):
+        """
+        Internal routine to connect the various protocols to a running qemu
+        """
 
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
                           arch=self.avatar.arch,
