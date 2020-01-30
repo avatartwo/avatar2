@@ -211,8 +211,8 @@ class Avatar(Thread):
 
     def add_memory_range(self, address, size, name=None, permissions='rwx',
                          file=None, file_offset=None, file_bytes=None,
-                         forwarded=False, forwarded_to=None,emulate=None,
-                         **kwargs):
+                         forwarded=False, forwarded_to=None, emulate=None,
+                         interval_tree=None, **kwargs):
         """
         Adds a memory range to avatar
 
@@ -224,7 +224,10 @@ class Avatar(Thread):
         :param file_bytes:   Bytes of the file to be copied into memory
         :param forwarded:    Whether this range should be forwarded
         :param forwarded_to: If forwarded is true, specify the forwarding target
+        :param interval_tree:interval_tree this range shall be added to. If None,
+                             the range will be added to self.memory_ranges
         """
+        memory_ranges = self.memory_ranges if interval_tree is None else interval_tree
         if emulate:
             python_peripheral = emulate(name, address, size, **kwargs)
             forwarded = True
@@ -237,7 +240,7 @@ class Avatar(Thread):
                         file=file, file_offset=file_offset,
                         file_bytes=file_bytes, forwarded=forwarded,
                         forwarded_to=forwarded_to, **kwargs)
-        self.memory_ranges[address:address + size] = m
+        memory_ranges[address:address + size] = m
         return m
 
     def get_memory_range(self, address):

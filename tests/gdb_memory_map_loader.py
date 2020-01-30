@@ -50,9 +50,15 @@ target = avatar.add_target(GDBTarget, gdb_port=GDB_PORT)
 # This usually connects the target to the endpoint
 target.init()
 
-# Load the memory maps from the target.
+# Load the memory maps from the target without update.
+mem_ranges = target.load_memory_mappings(update=False)
+assert len(avatar.memory_ranges) == 0
+assert (mem_ranges)
+
+# Load the memory maps from the target with update (default).
 target.load_memory_mappings()
-assert len(avatar.memory_ranges)
+
+assert (mem_ranges.boundary_table == avatar.memory_ranges.boundary_table)
 
 # Now it is possible to interact with the target.
 # For example, we can insert our shellcode at the current point of execution

@@ -1,3 +1,4 @@
+from intervaltree.intervaltree import IntervalTree
 from types import MethodType
 from threading import Event
 from enum import Enum
@@ -8,12 +9,19 @@ from avatar2 import TargetStates, GDBTarget
 
 def load_memory_mappings_target(target, *args, **kwargs):
     """
-    Stub method for compatibility to be able to call load_memory_mappings on the target object.
+    Stub method for compatibility to be able to call load_memory_mappings on the
+    target object.
     """
     return load_memory_mappings(target.avatar, target, *args, **kwargs)
 
 
-def load_memory_mappings(avatar, target, forward=False):
+def load_memory_mappings(avatar, target, forward=False, update=True):
+    """
+    Load memory maps from the specified target
+    :param forward: Enable forwarding of memory to that target
+    :param update:  If true, replaces avatars memory_ranges with the loaded ones
+    :return:        An Intervaltree object containing the mappings
+    """
     if not isinstance(target, GDBTarget):
         raise TypeError("The memory mapping can be loaded ony from GDBTargets")
 
@@ -29,6 +37,8 @@ def load_memory_mappings(avatar, target, forward=False):
         }
         for x in [y.split() for y in lines]
     ]
+    memory_ranges = IntervalTree()
+
     for m in mappings:
         avatar.add_memory_range(
             m["start"],
@@ -36,7 +46,11 @@ def load_memory_mappings(avatar, target, forward=False):
             name=m["obj"],
             forwarded=forward,
             forwarded_to=target if forward else None,
+            interval_tree=memory_ranges,
         )
+    if update is True:
+        avatar.memory_ranges = memory_ranges
+    return memory_ranges
 
 
 def add_methods(target):
