@@ -5,10 +5,13 @@ from avatar2.targets import action_valid_decorator_factory
 
 class PandaTarget(QemuTarget):
     def __init__(self, *args, **kwargs):
-        super(self.__class__, self).__init__(*args, **kwargs)
-        executable = kwargs.get('executable')
-        self.executable = (executable if executable is not None
-                           else self._arch.get_panda_executable())
+        super(PandaTarget, self).__init__(*args, **kwargs)
+
+        # If we are a PandaTarget (and not a subclass), resolve the executable
+        if self.__class__ == PandaTarget:
+            executable = kwargs.get('executable')
+            self.executable = (executable if executable is not None
+                               else self._arch.get_panda_executable())
 
         # self.protocols.monitor = self.protocols.execution
 
