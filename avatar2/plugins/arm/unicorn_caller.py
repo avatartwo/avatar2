@@ -1,7 +1,7 @@
 from types import MethodType
 
 #from keystone import *
-from ..targets.unicorn_target import UnicornTarget
+from ...targets.unicorn_target import UnicornTarget
 from intervaltree import IntervalTree
 
 from unicorn import UC_HOOK_MEM_READ, UC_HOOK_MEM_WRITE, UC_MEM_READ, UC_MEM_WRITE
