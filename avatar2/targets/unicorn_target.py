@@ -15,3 +15,8 @@ class UnicornTarget(Target):
         if 'hardware' not in kwargs:
             kwargs['hardware'] = True
         self.protocols.execution.set_breakpoint(line, **kwargs)
+
+
+    def add_hook(self, event, hook):
+        # Allows the user to set a unicorn hook
+        self.protocols.execution.uc.hook_add(event, hook)
