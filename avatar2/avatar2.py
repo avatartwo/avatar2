@@ -303,8 +303,8 @@ class Avatar(Thread):
         :type synced_ranges:   list
         """
 
-        if from_target.state != TargetStates.STOPPED or \
-                        to_target.state != TargetStates.STOPPED:
+        if from_target.state & TargetStates.STOPPED == 0 or \
+                        to_target.state & TargetStates.STOPPED == 0:
             raise Exception("Targets must be stopped for State Transfer, \
                              but target_states are (%s, %s)" %
                             (from_target.state, to_target.state))
