@@ -13,6 +13,7 @@ import signal
 import json
 import time
 
+from copy import deepcopy
 from os import path, makedirs
 from threading import Thread, Event
 
@@ -267,16 +268,24 @@ class Avatar(Thread):
                         file_bytes=file_bytes, forwarded=forwarded,
                         forwarded_to=forwarded_to, **kwargs)
 
+
         if overwrite is True:
             mr_set = self.memory_ranges[address:address+size]
-            for interval in mr_set:
-                self.memory_ranges.remove(interval)
-                if address > interval.begin:
-                    self.memory_ranges[interval.begin:address] = interval.data
-                if interval.end > address+size:
-                    self.memory_ranges[address+size:interval.end] = interval.data
+            start = min(mr_set, key=lambda x: x.begin).begin
+            end   = max(mr_set, key=lambda x: x.end).end
+            self.memory_ranges.chop(address, address+size,
+                                    datafunc=lambda x,y:
+                                    deepcopy(x.data) if y is True else x.data)
+            mr_set2 = self.memory_ranges[start:end]
+            for interval in mr_set2:
+                interval.data.address = interval.begin
+                interval.data.size = interval.end - interval.begin
+                interval.data.name = '%s_%x_%x' % (interval.data.name,
+                                                   interval.data.address,
+                                                   interval.data.size)
 
         self.memory_ranges[address:address + size] = m
+
         return m
 
     def get_memory_range(self, address):
