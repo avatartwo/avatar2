@@ -228,7 +228,8 @@ class Avatar(Thread):
     def add_memory_range(self, address, size, name=None, permissions='rwx',
                          file=None, file_offset=None, file_bytes=None,
                          forwarded=False, forwarded_to=None, emulate=None,
-                         interval_tree=None, inline=False, **kwargs):
+                         interval_tree=None, inline=False, overwrite=False,
+                         **kwargs):
         """
         Adds a memory range to avatar
 
@@ -244,6 +245,7 @@ class Avatar(Thread):
         :param forwarded_to: If forwarded is true, specify the forwarding target
         :param interval_tree:interval_tree this range shall be added to. If None,
                              the range will be added to self.memory_ranges
+        :param overwrite:    If true, overwrite existing MR if they overlap with the new one
         """
         memory_ranges = self.memory_ranges if interval_tree is None else interval_tree
         if inline is True and emulate is None:
@@ -264,7 +266,17 @@ class Avatar(Thread):
                         file=file, file_offset=file_offset,
                         file_bytes=file_bytes, forwarded=forwarded,
                         forwarded_to=forwarded_to, **kwargs)
-        memory_ranges[address:address + size] = m
+
+        if overwrite is True:
+            mr_set = self.memory_ranges[address:address+size]
+            for interval in mr_set:
+                self.memory_ranges.remove(interval)
+                if address > interval.begin:
+                    self.memory_ranges[interval.begin:address] = interval.data
+                if interval.end > address+size:
+                    self.memory_ranges[address+size:interval.end] = interval.data
+
+        self.memory_ranges[address:address + size] = m
         return m
 
     def get_memory_range(self, address):
