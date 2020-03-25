@@ -269,8 +269,8 @@ class Avatar(Thread):
                         forwarded_to=forwarded_to, **kwargs)
 
 
-        if overwrite is True:
-            mr_set = self.memory_ranges[address:address+size]
+        mr_set = self.memory_ranges[address:address+size]
+        if overwrite is True and len(mr_set) > 0:
             start = min(mr_set, key=lambda x: x.begin).begin
             end   = max(mr_set, key=lambda x: x.end).end
             self.memory_ranges.chop(address, address+size,
