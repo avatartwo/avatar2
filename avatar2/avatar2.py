@@ -280,8 +280,7 @@ class Avatar(Thread):
             for interval in mr_set2:
                 interval.data.address = interval.begin
                 interval.data.size = interval.end - interval.begin
-                interval.data.name = '%s_%x_%x' % (interval.data.name,
-                                                   interval.data.address,
+                interval.data.name = 'SPLIT_%x_%x' % (interval.data.address,
                                                    interval.data.size)
 
         self.memory_ranges[address:address + size] = m
