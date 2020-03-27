@@ -397,7 +397,8 @@ class Avatar(Thread):
             return (message.id, None, False)
         message.dst = range
         if not range.forwarded:
-            raise Exception("Forward request for non forwarded range received!")
+            raise Exception("Forward request for non forwarded range received!\
+                            (Address = 0x%x)" % message.address)
         if range.forwarded_to is None:
             raise Exception("Forward request for non existing target received.\
                             (Address = 0x%x)" % message.address)
