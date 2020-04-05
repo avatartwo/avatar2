@@ -77,10 +77,14 @@ class GDBRSPServer(Thread):
 
         l.info(f'GDB server listening on port {self.port}, please connect')
         self.sock.bind(('', self.port))
+        self.sock.settimeout(TIMEOUT_TIME)
         self.sock.listen(1)
         
         while not self._do_shutdown.isSet():
-            self.conn, addr = self.sock.accept()
+            try:
+                self.conn, addr = self.sock.accept()
+            except socket.timeout:
+                continue
             self.conn.settimeout(TIMEOUT_TIME)
             l.info(f'Accepted connection from {addr}')
 
@@ -328,8 +332,6 @@ class GDBRSPServer(Thread):
                 continue
 
             if c == b'\x03':
-                if not self.target.state & TargetStates.EXITED:
-                    self.send_packet(b'S03')
                 if not self.target.state & TargetStates.STOPPED:
                     self.target.stop()
                 self.send_packet(b'S02')
@@ -353,10 +355,19 @@ def spawn_gdb_server(self, target, port, do_forwarding=True, xml_file=None):
         xml_file = f'{dirname(__file__)}/gdb/arm-target.xml'
       
     server = GDBRSPServer(self, target, port, xml_file, do_forwarding)
-
     server.start()
+    self._gdb_servers.append(server)
     return server
 
+def exit_server(avatar, watched_target):
+
+    for s in avatar._gdb_servers:
+        if s.target == watched_target:
+            s.shutdown()
+            avatar._gdb_servers.remove(s)
 
 def load_plugin(avatar):
     avatar.spawn_gdb_server = MethodType(spawn_gdb_server, avatar)
+    avatar.watchmen.add_watchman('TargetShutdown', when='before',
+                                 callback=exit_server)
+    avatar._gdb_servers = []
