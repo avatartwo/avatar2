@@ -36,7 +36,7 @@ def setup_avatar_gdb_server():
     gdb_target = a.add_target(avatar2.GDBTarget, gdb_port=avatar_gdb_port)
 
     a.init_targets()
-    a.load_plugin('gdb')
+    a.load_plugin('gdbserver')
     s = a.spawn_gdb_server(gdb_target, port, True, XML_PATH)
 
 

@@ -60,6 +60,7 @@ class GDBRSPServer(Thread):
             'm' : self.mem_read,
             'M' : self.mem_write,
             'c' : self.cont,
+            'C' : self.cont, #cond with signal, we don't care
             's' : self.step,
             'S' : self.step,
             'S' : self.step_signal,
@@ -303,7 +304,6 @@ class GDBRSPServer(Thread):
     def check_breakpoint_hit(self):
         if self.target.state & TargetStates.STOPPED and self.running is True:
             if self.target.regs.pc in self.bps.values():
-                print("BREAKPOINT HIT")
                 self.running = False
                 self.send_packet(b'S05')
 
