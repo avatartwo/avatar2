@@ -8,22 +8,23 @@ import struct
 
 import xml.etree.ElementTree as ET
 
+from time import sleep
 from struct import pack
 from types import MethodType
-from threading import Thread
+from threading import Thread, Event
 from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
 from os.path import dirname
 
 from avatar2.targets import TargetStates
 
-#import socket
-
-l = logging.getLogger(__file__)
+l = logging.getLogger('avatar2.gdbplugin')
 
 chksum = lambda x: sum(x) & 0xff
 match_hex = lambda m, s: [int(x, 16) for x in re.match(m, s).groups()]
 
-l.setLevel('DEBUG')
+TIMEOUT_TIME = 1.0
+
+
 class GDBRSPServer(Thread):
 
     def __init__(self, avatar, target, port=3333, xml_file=None,
@@ -39,9 +40,10 @@ class GDBRSPServer(Thread):
         self.xml_file = xml_file
         self.do_forwarding = do_forwarding
 
-        self._packetsize=4096
+        self._packetsize=0x47FF
         self.running = False
         self.bps = {}
+        self._do_shutdown = Event()
         
 
         xml_regs = ET.parse(self.xml_file).getroot().find('feature')
@@ -58,10 +60,17 @@ class GDBRSPServer(Thread):
             'm' : self.mem_read,
             'M' : self.mem_write,
             'c' : self.cont,
+            's' : self.step,
+            'S' : self.step,
+            'S' : self.step_signal,
             'Z' : self.insert_breakpoint,
             'z' : self.remove_breakpoint,
             'D' : self.detach,
         }
+
+    def shutdown(self):
+        self._do_shutdown.set()
+        sleep(TIMEOUT_TIME*2)
 
     def run(self):
 
@@ -69,15 +78,18 @@ class GDBRSPServer(Thread):
         self.sock.bind(('', self.port))
         self.sock.listen(1)
         
-        while True:
+        while not self._do_shutdown.isSet():
             self.conn, addr = self.sock.accept()
-            self.conn.settimeout(1.0)
+            self.conn.settimeout(TIMEOUT_TIME)
             l.info(f'Accepted connection from {addr}')
 
             if not self.target.state & TargetStates.STOPPED:
                 self.target.stop()
             while self.conn._closed is False:
                 packet = self.receive_packet()
+                if packet is None:
+                    continue
+
                 l.debug(f'Received: {packet}')
                 self.send_raw(b'+') # send ACK
 
@@ -86,6 +98,7 @@ class GDBRSPServer(Thread):
                 resp = handler(packet)
                 if resp is not None:
                     self.send_packet(resp)
+        self.sock.close()
 
 
     ### Handlers
@@ -103,11 +116,18 @@ class GDBRSPServer(Thread):
         if pkt[1:].startswith(b'Attached') is True:
             return b'1'
 
-        if pkt[1:].startswith(b'Xfer:features:read:target.xml:0') is True:
+        if pkt[1:].startswith(b'Xfer:features:read:target.xml') is True:
+            off, length = match_hex('qXfer:features:read:target.xml:(.*),(.*)',
+                                   pkt.decode())
             
             with open(self.xml_file, 'rb') as f:
                 data = f.read()
-            return b'l'+data
+            resp_data = data[off:off+length]
+            if len(resp_data) < length:
+                prefix = b'l'
+            else:
+                prefix = b'm'
+            return prefix+resp_data
 
         if pkt[1:].startswith(b'fThreadInfo') is True:
             return b'm1'
@@ -161,6 +181,7 @@ class GDBRSPServer(Thread):
             assert( bitsize % 8 == 0)
             r_len = int(bitsize / 8)
             r_val = self.target.read_register(reg['name'])
+            #l.debug(f'{reg["name"]}, {r_val}, {r_len}')
 
             resp += r_val.to_bytes(r_len, 'little').hex()
             
@@ -172,8 +193,9 @@ class GDBRSPServer(Thread):
             bitsize = int(reg['bitsize'])
             r_len = int(bitsize / 8)
             r_val = pkt[idx: idx + r_len*2]
+            r_raw = bytes.fromhex(r_val.decode())
+            int_val =  int.from_bytes(r_raw, byteorder='little')
 
-            int_val = struct.unpack('<I', binascii.a2b_hex(r_val))[0]
             self.target.write_register(reg['name'], int_val)
             idx += r_len*2
         return b'OK'
@@ -223,6 +245,14 @@ class GDBRSPServer(Thread):
         self.running = True
         return b'OK'
 
+    def step(self, pkt):
+        self.target.step()
+        return b'S00'
+
+    def step_signal(self, pkt):
+        self.target.step()
+        return pkt[1:]
+
     def insert_breakpoint(self, pkt):
         addr, kind = match_hex('Z0,(.*),(.*)', pkt.decode())
         bpno = self.target.set_breakpoint(addr)
@@ -246,11 +276,13 @@ class GDBRSPServer(Thread):
 
     def detach(self, pkt):
         l.info("Exiting GDB server")
-        self.send_packet(b'OK')
-        for bpno in self.bps.items():
-            self.target.remove_breakpoint(bpno)
-        self.target.cont()
-        self.conn.close()
+        if not self.target.state & TargetStates.EXITED:
+            for bpno in self.bps.items():
+                self.target.remove_breakpoint(bpno)
+            self.target.cont()
+        if self.conn._closed is False:
+            self.send_packet(b'OK')
+            self.conn.close()
         
         return None
 
@@ -280,13 +312,24 @@ class GDBRSPServer(Thread):
         pkt_finished = False
         pkt_receiving = False
         while pkt_finished is False:
-            self.check_breakpoint_hit()
             try:
                 c = self.conn.recv(1)
             except socket.timeout:
+                if self._do_shutdown.isSet():
+                    self.send_packet(b'S03')
+                    self.conn.close()
+                    return
+
+                if self.target.state & TargetStates.EXITED:
+                    self.send_packet(b'S03')
+                    self.conn.close()
+                    return
+                self.check_breakpoint_hit()
                 continue
 
             if c == b'\x03':
+                if not self.target.state & TargetStates.EXITED:
+                    self.send_packet(b'S03')
                 if not self.target.state & TargetStates.STOPPED:
                     self.target.stop()
                 self.send_packet(b'S02')
@@ -304,7 +347,7 @@ class GDBRSPServer(Thread):
                 pkt += c
 
 
-def spawn_server(self, target, port, do_forwarding=True, xml_file=None):
+def spawn_gdb_server(self, target, port, do_forwarding=True, xml_file=None):
     if xml_file is None:
         # default for now: use ARM
         xml_file = f'{dirname(__file__)}/gdb/arm-target.xml'
@@ -316,4 +359,4 @@ def spawn_server(self, target, port, do_forwarding=True, xml_file=None):
 
 
 def load_plugin(avatar):
-    avatar.spawn_server = MethodType(spawn_server, avatar)
+    avatar.spawn_gdb_server = MethodType(spawn_gdb_server, avatar)
