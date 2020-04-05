@@ -34,7 +34,8 @@ class Avatar(Thread):
 
     """
 
-    def __init__(self, arch=ARM, cpu_model=None, output_directory=None):
+    def __init__(self, arch=ARM, cpu_model=None, output_directory=None,
+                log_to_stdout=True):
         super(Avatar, self).__init__()
 
         self.shutdowned = False
@@ -64,10 +65,21 @@ class Avatar(Thread):
         if not path.exists(self.output_directory):
             makedirs(self.output_directory)
 
+
+
         self.log = logging.getLogger('avatar')
         format = '%(asctime)s | %(name)s.%(levelname)s | %(message)s'
-        logging.basicConfig(filename='%s/avatar.log' % self.output_directory,
-                            level=logging.INFO, format=format)
+
+        logfile = '%s/avatar.log' % self.output_directory
+        logging.basicConfig(filename=logfile,
+                            level=logging.INFO, format=format,
+                           )
+
+        if log_to_stdout is True:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setFormatter(logging.Formatter(format))
+            root = logging.getLogger()
+            root.addHandler(handler)
         self.log.info("Initialized Avatar. Output directory is %s" %
                       self.output_directory)
 
