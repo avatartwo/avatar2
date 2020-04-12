@@ -2,23 +2,23 @@ import sys
 import logging
 import struct
 import ctypes
-from math import ceil
-from collections import OrderedDict
-from os.path import abspath
 
 if sys.version_info < (3, 0):
     import Queue as queue
 else:
     import queue
 
-# Python USB package used to interact with Inception-debugger.
-# Could be replace by the Inception driver.
+from math import ceil
+from collections import OrderedDict
+from os.path import abspath
+
+# Python USB package used to interact with Inception-debugger
+# Could be replace by the Inception driver
 import usb.core
 import usb.util
 
 from avatar2.targets import TargetStates
 from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMessage
-from time import sleep
 
 
 class InceptionProtocol(object):

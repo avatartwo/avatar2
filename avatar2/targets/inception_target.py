@@ -1,15 +1,7 @@
-import sys
-
-if sys.version_info < (3, 0):
-    from Queue import PriorityQueue
-else:
-    from queue import PriorityQueue
-import time
-
 from avatar2.targets import Target, TargetStates
 from avatar2.protocols.inception import InceptionProtocol, IPCortexM3
 
-from ..watchmen import watch
+from avatar2.watchmen import watch
 
 class InceptionTarget(Target):
     '''
