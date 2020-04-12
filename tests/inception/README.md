@@ -1,12 +1,12 @@
 # Inception
 
-Inception is a framework to perform security testing of real world firmware programs [1][1] [2][2].
-It features several components, but here we are interested into its low latency hardware debugger [3][3].
+[Inception][1] is a framework to perform security testing of real world firmware programs.
+It features several components, but here we are interested into its low latency [hardware debugger][2].
 
 The inception target and protocol allow Avatar2 to interact with the inception debugger and speed up read/write operations between the host and the device.
 To install the debugger, please refer to: https://github.com/Inception-framework/debugger
 
-In the same folder is present a script `test_inception_hardware_perf.py` that test read/write operations using the nucleo L152RE example [4][4].
+In the same folder is present a script `test_inception_hardware_perf.py` that test read/write operations using the [nucleo L152RE example][3].
 Following is the output with the nucleo board:
 ```
 # python3 test-inception.py
@@ -26,8 +26,10 @@ Targets stopped, start tests for n = 100
 [*] Test completed
 ```
 
-# References
+# Publication:
+1. N. Corteggiani, G. Camurati, A. Francillon. "Inception: System-wide security testing of real-world embedded systems software" 27th USENIX Security Symposium (USENIX Security 18), Baltimore, MD, August 2018.
+    -[Paper](http://s3.eurecom.fr/docs/usenixsec18_corteggiani.pdf) - [Website](https://inception-framework.github.io/inception/) - [Code](https://github.com/Inception-framework)
+
 [1]: https://inception-framework.github.io/inception/
-[2]: https://github.com/Inception-framework
-[3]: https://inception-framework.github.io/inception/debugger.html
-[4]: https://github.com/avatartwo/avatar2-examples/tree/master/nucleo_l152re
+[2]: https://inception-framework.github.io/inception/debugger.html
+[3]: https://github.com/avatartwo/avatar2-examples/tree/master/nucleo_l152re

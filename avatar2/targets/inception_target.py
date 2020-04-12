@@ -12,8 +12,24 @@ from avatar2.protocols.inception import InceptionProtocol, IPCortexM3
 from ..watchmen import watch
 
 class InceptionTarget(Target):
+    '''
+    Inception is a framework to perform security testing of real world
+    firmware programs. The inception target and protocol allow Avatar2
+    to interact with the low latency inception debugger and speed up
+    read/write operations between the host and the device.
+
+    For more information, please visit:
+    https://inception-framework.github.io/inception/debugger.html
+
+    Publication:
+    Inception: System-wide security testing of real-world embedded systems
+    software
+    Nassim Corteggiani, Giovanni Camurati, Aurélien Francillon
+    27th USENIX Security Symposium (USENIX Security 18), Baltimore, MD
+    '''
+
     def __init__(self, avatar, 
-                 processor='cortexM3',
+                 processor='cortex-m3',
                  device_vendor_id=0x04b4,
                  device_product_id=0x00f1,
                  **kwargs):
@@ -27,7 +43,7 @@ class InceptionTarget(Target):
     @watch('TargetInit')
     def init(self):
 
-        if self.processor == 'cortexM3':
+        if self.processor == 'cortex-m3':
             inception = IPCortexM3(avatar=self.avatar, origin=self,
                     device_vendor_id=self._device_vendor_id,
                     device_product_id=self._device_product_id, 

@@ -286,7 +286,7 @@ class InceptionProtocol(object):
 
 class IPCortexM3(InceptionProtocol):
     """
-    Inception protocol for Cortex M3.
+    Inception protocol for cortex-m3.
     """
 
     '''
