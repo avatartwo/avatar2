@@ -37,7 +37,7 @@ def test_race():
     def hook_callback(avatar, *args, **kwargs):
         gdb = avatar.targets['gdbtest']
         pc = gdb.read_register("pc")
-        assert pc is not None, f"ILLEGAL STATE {gdb.get_status()}"
+        assert pc is not None, "ILLEGAL STATE %s" % gdb.get_status()
 
 
 
