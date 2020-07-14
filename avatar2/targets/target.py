@@ -212,7 +212,7 @@ class Target(object):
         self.protocols = TargetProtocolStore()
 
         self.state = TargetStates.CREATED
-        self._no_state_update_pending = Event()
+        self.processing_callbacks = Event()
 
         self.log = logging.getLogger('%s.targets.%s' % (avatar.log.name, self.name))
         log_file = logging.FileHandler('%s/%s.log' % (avatar.output_directory, self.name))
@@ -448,12 +448,13 @@ class Target(object):
     def update_state(self, state):
         self.log.info("State changed to to %s" % TargetStates(state))
         self.state = state
-        #self._no_state_update_pending.set()
 
     @watch('TargetWait')
     def wait(self, state=TargetStates.STOPPED|TargetStates.EXITED):
-        while self.state & state == 0:
-            pass
+        while True:
+            self.processing_callbacks.wait(.1)
+            if self.state & state != 0:
+                break
 
     def get_status(self):
         """
