@@ -32,10 +32,6 @@ install:
     - docker exec ubuntu pip2 install ./avatar2/
     - docker exec ubuntu pip3 install ./avatar2/
 
-    ## Ugly hackery to fix keystone install paths on ubuntu
-    - docker exec ubuntu bash -c 'cp /usr/local/lib/python2.7/dist-packages/usr/lib/python2.7/dist-packages/keystone/libkeystone.so /usr/local/lib/python2.7/dist-packages/keystone'
-    - docker exec ubuntu bash -c 'cp /usr/local/lib/python3.6/dist-packages/usr/lib/python3/dist-packages/keystone/libkeystone.so /usr/local/lib/python3.6/dist-packages/keystone'
-                                                    
 script:
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-2.7 ./tests/test_remote_memoryprotocol.py'
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-2.7 ./tests/test_gdbprotocol.py'
@@ -66,3 +62,5 @@ script:
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-2.7 --processes=-1 --process-timeout=20 ./tests/smoke/target_wait.py'
     - docker exec ubuntu bash -c 'cd avatar2/ && nosetests-3.4 --processes=-1 --process-timeout=20 ./tests/smoke/target_wait.py'
 
+    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/panda/panda/arm-softmmu/panda-system-arm nosetests-2.7 --processes=-1 --process-timeout=20 ./tests/smoke/54_sync_hooks.py'
+    - docker exec ubuntu bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=./targets/build/panda/panda/arm-softmmu/panda-system-arm nosetests-3.4 --processes=-1 --process-timeout=20 ./tests/smoke/54_sync_hooks.py'
