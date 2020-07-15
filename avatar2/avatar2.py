@@ -337,7 +337,19 @@ class Avatar(Thread):
         self._handle_update_state_message(message)
         # Breakpoints are two stages: SYNCING | STOPPED -> HandleBreakpoint -> STOPPED
         # This makes sure that all handlers are complete before stopping and breaking wait()
-        self.fast_queue.put(UpdateStateMessage(message.origin, TargetStates.STOPPED))
+
+        def bp_end_sync_cb(avatar, message, *args, **kwargs):
+                avatar.watchmen.remove_watchman('BreakpointHit', w)
+                avatar.fast_queue.put(UpdateStateMessage(message.origin,
+                                                         TargetStates.STOPPED))
+
+        # We handle this via a watchmen added in here, so we are sure that this
+        # watchmen gets executed *at the end*
+        # Note: This can break if another breakpoint-hit callback inserts an
+        #       additional breakpointhit-watchmen (after).
+        w = self.watchmen.add('BreakpointHit', when='after',
+                              callback=bp_end_sync_cb)
+
 
     @watch('SyscallCatched')
     def _handle_syscall_catched_message(self, message):

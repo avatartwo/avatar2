@@ -1,4 +1,5 @@
 import logging
+import time
 from sys import version_info
 from functools import wraps
 from threading import Event
@@ -213,7 +214,6 @@ class Target(object):
         self.protocols = TargetProtocolStore()
 
         self.state = TargetStates.CREATED
-        self.processing_callbacks = Event()
 
         self.log = logging.getLogger('%s.targets.%s' % (avatar.log.name, self.name))
         log_file = logging.FileHandler('%s/%s.log' % (avatar.output_directory, self.name))
@@ -228,8 +228,7 @@ class Target(object):
         Returns the memory range as *printable* dictionary for the config
         """
 
-        ignore = ['state', 'status', 'regs', 'protocols', 'log', 'avatar',
-                  'processing_callbacks']
+        ignore = ['state', 'status', 'regs', 'protocols', 'log', 'avatar']
         ignored_types = (MethodType)
         expected_types = (str, bool, int, list) 
         if version_info < (3, 0): expected_types += (unicode, )
@@ -453,10 +452,16 @@ class Target(object):
 
     @watch('TargetWait')
     def wait(self, state=TargetStates.STOPPED|TargetStates.EXITED):
+
+        if state & TargetStates.SYNCING:
+            self.log.warn("Waiting on SYNCING-state - this could lead to races")
+
         while True:
-            self.processing_callbacks.wait(.1)
-            if self.state & state != 0:
+            if self.state & state != 0 and \
+               (state & TargetStates.SYNCING or \
+                self.state & TargetStates.SYNCING == 0):
                 break
+            time.sleep(.001) # send thread a ms to sleep to free resources
 
     def get_status(self):
         """
