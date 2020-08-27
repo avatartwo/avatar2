@@ -268,9 +268,7 @@ class GDBProtocol(object):
                 gdb_args += [local_arguments]
 
         self._gdbmi = pygdbmi.gdbcontroller.GdbController(
-            gdb_path=gdb_executable,
-            gdb_args=gdb_args,
-            verbose=verbose)  # set to True for debugging
+            command=[gdb_executable] + gdb_args)
         queue = avatar.queue if avatar is not None else None
         fast_queue = avatar.fast_queue if avatar is not None else None
         self._communicator = GDBResponseListener(
