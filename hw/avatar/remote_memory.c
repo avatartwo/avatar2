@@ -138,7 +138,7 @@ static void avatar_rmemory_class_init(ObjectClass *oc, void *data)
     DeviceClass *dc = DEVICE_CLASS(oc);
 
     dc->realize = avatar_rmemory_realize;
-    dc->props = avatar_rmemory_properties;
+    device_class_set_props(dc, avatar_rmemory_properties);
 }
 
 static const TypeInfo avatar_rmemory_arm_info = {

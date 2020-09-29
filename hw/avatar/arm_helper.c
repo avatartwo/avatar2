@@ -73,7 +73,7 @@ static int banked_gdb_set_reg(CPUARMState *env, uint8_t *buf, int reg){
     return 0;
 }
 
-static int banked_gdb_get_reg(CPUARMState *env, uint8_t *buf, int reg)
+static int banked_gdb_get_reg(CPUARMState *env, GByteArray *buf, int reg)
 {
     switch(reg){
     case 0:

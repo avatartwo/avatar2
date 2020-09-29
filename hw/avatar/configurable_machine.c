@@ -59,21 +59,6 @@
 #define RAM_RESIZEABLE (1 << 2)
 /* Board init.  */
 
-#ifdef TARGET_ARM
-static inline void set_feature(CPUARMState *env, int feature)
-{
-    env->features |= 1ULL << feature;
-}
-
-// For now, this function is unused so let's prevent the compiler from failing.
-static inline void unset_feature(CPUARMState *env, int feature) __attribute__ ((unused));
-
-static inline void unset_feature(CPUARMState *env, int feature)
-{
-    env->features &= ~(1ULL << feature);
-}
-#endif
-
 static QDict * load_configuration(const char * filename)
 {
     int file = open(filename, O_RDONLY);
@@ -186,7 +171,7 @@ static void set_properties(DeviceState *dev, QList *properties)
             QDICT_ASSERT_KEY_TYPE(property, "value", QTYPE_QSTRING);
             const char *value = qdict_get_str(property, "value");
             QObject *pr = qdict_get(peripherals, value);
-            qdev_prop_set_ptr(dev, name, (void *) pr);
+            qdev_prop_set_chr(dev, name, (void *) pr);
         }
     }
 }
@@ -202,11 +187,13 @@ static SysBusDevice *make_configurable_device(const char *qemu_name,
     SysBusDevice *s;
     qemu_irq irq;
 
-    dev = qdev_create(NULL, qemu_name);
+    dev = qdev_new(qemu_name);
+    //dev = qdev_create(NULL, qemu_name);
 
     if(properties) set_properties(dev, properties);
 
-    qdev_init_nofail(dev);
+    /*qdev_init_nofail(dev);*/
+    qdev_realize(dev, NULL, NULL);
 
     s = SYS_BUS_DEVICE(dev);
     sysbus_mmio_map(s, 0, address);
@@ -461,12 +448,12 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
             g_assert(num_irq);
         } 
 
-        dstate = qdev_create(NULL, "armv7m");
+        dstate = qdev_new("armv7m");
         qdev_prop_set_uint32(dstate, "num-irq", num_irq);
         qdev_prop_set_string(dstate, "cpu-type", ARM_CPU_TYPE_NAME("cortex-m3"));
-        object_property_set_link(OBJECT(dstate), OBJECT(get_system_memory()),
-                "memory", &error_abort);
-        qdev_init_nofail(dstate);
+        object_property_set_link(OBJECT(dstate), "memory", 
+            OBJECT(get_system_memory()), &error_abort);
+        qdev_realize_and_unref(dstate, NULL, NULL);
 
         cpuu = ARM_CPU(first_cpu);
 
@@ -481,7 +468,7 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
 
         cpuobj = object_new(object_class_get_name(cpu_oc));
 
-        object_property_set_bool(cpuobj, true, "realized", &error_fatal);
+        object_property_set_bool(cpuobj, "realized", true, &error_fatal);
         cpuu = ARM_CPU(cpuobj);
     }
     env = (CPUState *) &(cpuu->env);
