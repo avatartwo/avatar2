@@ -184,16 +184,23 @@ static SysBusDevice *make_configurable_device(const char *qemu_name,
                                               QList *properties)
 {
     DeviceState *dev;
+    BusState* sysbus;
     SysBusDevice *s;
     qemu_irq irq;
 
-    dev = qdev_new(qemu_name);
-    //dev = qdev_create(NULL, qemu_name);
+    sysbus = sysbus_get_default();
+    /* replace the result of: dev = qdev_create(NULL, qemu_name); */
 
+    dev = qdev_new(qemu_name);
+    
+    /* this is a sysbus device. 
+     * QEMU no longer attaches devices to this automatically; 
+     * we will need to give it a helping hand. */
+    //qdev_set_parent_bus(dev, sysbus);
+    //dev->realized = true;
     if(properties) set_properties(dev, properties);
 
-    /*qdev_init_nofail(dev);*/
-    qdev_realize(dev, NULL, NULL);
+    qdev_realize_and_unref(dev, sysbus, NULL);
 
     s = SYS_BUS_DEVICE(dev);
     sysbus_mmio_map(s, 0, address);
@@ -426,8 +433,10 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
     ARMCPU *cpuu;
     CPUState *env;
     DeviceState *dstate; //generic device if CPU can be initiliazed via qdev-API
+    BusState* sysbus = sysbus_get_default();
     int num_irq = 64;
-
+    
+    
     if (qdict_haskey(conf, "cpu_model"))
     {
         cpu_model = qdict_get_str(conf, "cpu_model");
@@ -453,7 +462,7 @@ static ARMCPU *create_cpu(MachineState * ms, QDict *conf)
         qdev_prop_set_string(dstate, "cpu-type", ARM_CPU_TYPE_NAME("cortex-m3"));
         object_property_set_link(OBJECT(dstate), "memory", 
             OBJECT(get_system_memory()), &error_abort);
-        qdev_realize_and_unref(dstate, NULL, NULL);
+        qdev_realize_and_unref(dstate, sysbus, NULL);
 
         cpuu = ARM_CPU(first_cpu);
 
