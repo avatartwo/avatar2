@@ -142,6 +142,12 @@ class AvatarInstallerGitMenu(AvatarInstallerMenu):
             nps.TitleText, name='Make options', begin_entry_at=25,
             value=make, hidden=False if make is not None else True
         )
+
+        self.git_apt_deps = self.add(
+                nps.TitleText, name='Dependencies with apt-get (default values for Ubuntu 20.04)',
+                value=TARGETS[self.target_name]['git_apt_deps'],
+                begin_entry_at=25
+        )
            
 
         options = [MENTRY_BUILD, MENTRY_CANCEL]
@@ -167,6 +173,7 @@ class AvatarInstallerGitMenu(AvatarInstallerMenu):
                                        TARGETS[self.target_name]['install_cmd'])
             self.parentApp.git_kwargs = {
                 'branch': self.git_branch.value,
+                'apt_deps': self.git_apt_deps.value,
                 'configure_options': self.configure_options.value,
                 'make_options': self.make_options.value
             }
@@ -330,10 +337,21 @@ class Avatar2Installer(nps.NPSAppManaged):
             return False
 
     def git_install(self, local_directory, repository, install_commands,
-                    branch='master', configure_options=None,
+                    branch='master', apt_deps=None, configure_options=None,
                     make_options=None):
 
         get_terminal_screen()
+
+        if apt_deps != '':
+            system('echo')
+            system('echo [*] Installing dependencies...')
+            res = system('sudo apt-get install %s' % apt_deps)
+            sleep(1.5)
+            if res != 0:
+                raise Exception('Fail to install dependencies %s' % apt_deps)
+
+        system('echo')
+        system('echo [*] Installing from git...')
         git_exec = find('git')
         system('%s clone %s --single-branch --branch %s %s'  % 
                (git_exec, repository, branch, local_directory) )
