@@ -137,6 +137,13 @@ class AvatarInstallerGitMenu(AvatarInstallerMenu):
              value=conf, hidden=False if conf is not None else True
         )
 
+        script = TARGETS[self.target_name].get('install_script')
+        self.install_script = self.add(
+                nps.TitleText, name='Install script (if used following parameters are ignored)',
+                value=script, begin_entry_at=25,
+                hidden=False if script is not None else True
+        )
+
         make = TARGETS[self.target_name].get('make')
         self.make_options= self.add(
             nps.TitleText, name='Make options', begin_entry_at=25,
@@ -175,7 +182,8 @@ class AvatarInstallerGitMenu(AvatarInstallerMenu):
                 'branch': self.git_branch.value,
                 'apt_deps': self.git_apt_deps.value,
                 'configure_options': self.configure_options.value,
-                'make_options': self.make_options.value
+                'make_options': self.make_options.value,
+                'install_script': self.install_script.value
             }
             if exists(self.install_dir.value):
                 self.parentApp.switchForm('DirExists')
@@ -338,7 +346,7 @@ class Avatar2Installer(nps.NPSAppManaged):
 
     def git_install(self, local_directory, repository, install_commands,
                     branch='master', apt_deps=None, configure_options=None,
-                    make_options=None):
+                    make_options=None, install_script=None):
 
         get_terminal_screen()
 
@@ -357,16 +365,24 @@ class Avatar2Installer(nps.NPSAppManaged):
                (git_exec, repository, branch, local_directory) )
 
         chdir(local_directory)
-        for cmd in install_commands:
-            if cmd == './configure' and configure_options is not None:
-                res = system(cmd + ' ' + configure_options)
-            elif cmd == 'make' and make_options is not None:
-                res = system(cmd + ' ' + make_options)
-            else:
-                res = system(cmd)
+
+        if install_script is None or install_script.strip() == '':
+            for cmd in install_commands:
+                if cmd == './configure' and configure_options is not None:
+                    res = system(cmd + ' ' + configure_options)
+                elif cmd == 'make' and make_options is not None:
+                    res = system(cmd + ' ' + make_options)
+                else:
+                    res = system(cmd)
+                if res != 0:
+                    sleep(2)
+                    raise Exception('Executing install command \'%s\' failed' % cmd)
+
+        else:
+            res = system('echo ' + install_script + ' ' + configure_options)
+            res = system(install_script + ' ' + configure_options)
             if res != 0:
-                sleep(2)
-                raise Exception('Executing install command \'%s\' failed' % cmd)
+                raise Exception('Install script %s failed' % install_script)
 
         exec_path = '%s/%s' % (self.install_dir,
                                TARGETS[self.current_target]['rel_path'])

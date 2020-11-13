@@ -30,7 +30,7 @@ TARGETS = OrderedDict(
              'git_apt_deps': 'libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev',
              'rel_path': 'arm-softmmu/qemu-system-arm',
              'install_cmd': ['git submodule update --init dtc',
-                             './configure', 'make'],
+                             './configure', 'make']
           }),
     (PANDA, {'git': 'https://github.com/panda-re/panda',
              'configure': '--disable-sdl --target-list=arm-softmmu',
@@ -39,6 +39,7 @@ TARGETS = OrderedDict(
              'rel_path': 'arm-softmmu/qemu-system-arm',
              'install_cmd': ['git submodule update --init dtc',
                              './configure', 'make'],
+             'install_script': 'panda/scripts/install_ubuntu.sh'
            }),
     (GDB_X86, { 'apt_name': 'gdb' }),
     (GDB_MULTI, { 'apt_name': 'gdb-multiarch'})
