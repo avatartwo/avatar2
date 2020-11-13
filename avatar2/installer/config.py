@@ -10,7 +10,7 @@ CONFIG_FILE = expanduser('~/.avatar2/settings.cfg')
 OPENOCD = 'openocd'
 QEMU = 'avatar-qemu'
 PANDA = 'avatar-panda'
-GDB_ARM = 'gdb (ARM)'
+GDB_MULTI = 'gdb (multiarch)'
 GDB_X86 = 'gdb (x86)' 
 
 
@@ -38,8 +38,7 @@ TARGETS = OrderedDict(
                              './configure', 'make'],
            }),
     (GDB_X86, { 'apt_name': 'gdb' }),
-    (GDB_ARM, { 'apt_name': 'gdb-arm-none-eabi',
-               'sys_name': 'arm-none-eabi-gdb'})
+    (GDB_MULTI, { 'apt_name': 'gdb-multiarch'})
     ]
 )
 
