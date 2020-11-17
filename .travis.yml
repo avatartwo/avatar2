@@ -15,6 +15,7 @@ before_install:
 
 install:
     # NOTE: every command is executed starting from '/'
+    - docker exec ubuntu export TZ=Europe/Paris
     - docker exec ubuntu apt-get install -y git
     - docker exec ubuntu apt-get install -y cmake
     - docker exec ubuntu apt-get install -y python3 python3-pip
