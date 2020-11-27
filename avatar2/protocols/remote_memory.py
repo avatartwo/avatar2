@@ -1,7 +1,7 @@
 import logging
 
 from enum import Enum
-from os import O_WRONLY, O_RDONLY
+from os import O_WRONLY, O_RDONLY, O_CREAT
 from threading import Thread, Event
 from ctypes import Structure, c_uint32, c_uint64
 
@@ -130,14 +130,14 @@ class RemoteMemoryProtocol(object):
         :return True on success, else False
         """
         try:
-            self._rx_queue = MessageQueue(self.rx_queue_name, flags=O_RDONLY,
+            self._rx_queue = MessageQueue(self.rx_queue_name, flags=O_RDONLY|O_CREAT,
                                           read=True, write=False)
         except Exception as e:
             self.log.exception("Unable to create rx_queue:")
             return False
 
         try:
-            self._tx_queue = MessageQueue(self.tx_queue_name, flags=O_WRONLY,
+            self._tx_queue = MessageQueue(self.tx_queue_name, flags=O_WRONLY|O_CREAT,
                                           read=False, write=True)
         except Exception as e:
             self.log.exception("Unable to create tx_queue:")
