@@ -73,15 +73,12 @@ def watch(watched_type):
             elif isinstance(self, Target):
                 avatar = self.avatar
                 cb_kwargs['watched_target'] = self
-                self.processing_callbacks.clear()
 
             avatar.watchmen.t(watched_type, BEFORE, *args, **cb_kwargs)
             ret = func(self, *args, **kwargs)
             cb_kwargs.update({'watched_return': ret})
             cb_ret = avatar.watchmen.t(watched_type, AFTER, *args, **cb_kwargs)
 
-            if isinstance(self, Target):
-                self.processing_callbacks.set()
             return ret if cb_ret is None else cb_ret
 
         return watchtrigger
