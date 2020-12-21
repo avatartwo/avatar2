@@ -5,12 +5,17 @@ import os
 import traceback
 import subprocess
 
+BE = True
+arch = 'mips' if BE else 'mipsel'
+avatar_arch = avatar2.archs.MIPS_BE if BE else avatar2.archs.MIPS_LE
+qemu = 'qemu-system-' + arch
+
 try:
 
   # --- Init all objects
 
   os.system("rm -rf tmp");
-  Avatar = avatar2.Avatar(arch=avatar2.archs.MIPS_BE,
+  Avatar = avatar2.Avatar(arch=avatar_arch,
     output_directory='tmp')
   Avatar.load_plugin('gdb_memory_map_loader')
 
@@ -24,14 +29,14 @@ try:
   load_options = {
     'main_opts': {
       'backend' : 'blob',
-      'custom_arch' : 'mips',
+      'custom_arch' : arch,
       'segments' : [ (0, 0x12345678, 4) ],
     },
   }
   Angr = Avatar.add_target(avatar2.AngrTarget, binary="blob",
                            load_options=load_options)
 
-  qemu_process = subprocess.Popen("qemu-system-mips -kernel test.elf -nographic -m 256M -s -S".split())
+  qemu_process = subprocess.Popen((qemu + " -kernel test.elf -nographic -m 256M -s -S").split())
 
   Avatar.init_targets()
 

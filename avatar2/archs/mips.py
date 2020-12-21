@@ -41,3 +41,8 @@ class MIPS_BE(MIPS):
     gdb_name = 'mips'
     angr_name = 'mips'
     endian = 'big'
+
+class MIPS_LE(MIPS):
+    gdb_name = 'mips'
+    angr_name = 'mipsel'
+    endian = 'little'
