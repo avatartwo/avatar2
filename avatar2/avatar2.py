@@ -371,8 +371,8 @@ class Avatar(Thread):
                             (Address = 0x%x)" % message.address)
 
         try:
-            mem = range.forwarded_to.read_memory(message.address, message.size)
-            if not isinstance(mem, int):
+            mem = range.forwarded_to.read_memory(message.address, message.size, message.num_words, message.raw)
+            if not message.raw and message.num_words == 1 and not isinstance(mem, int):
                 raise Exception(("Forwarded read returned data of type %s "
                                  "(expected: int)" % type(mem)))
             success = True
