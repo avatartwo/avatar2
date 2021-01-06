@@ -352,6 +352,15 @@ class GDBProtocol(object):
         if self._arch.gdb_name == 'arm':
             self.set_abi('AAPCS')
 
+        if hasattr(self._arch, 'endian'):
+            req = ['-gdb-set', 'endian', self._arch.endian]
+            ret, resp = self._sync_request(req, GDB_PROT_DONE)
+            if not ret:
+                self.log.critical(
+                    "Unable to set endianness, received response: %s" %
+                    resp)
+                raise Exception("GDBProtocol was unable to set endianness")
+
         req = ['-target-select', 'remote', '%s:%d' % (ip, int(port))]
         ret, resp = self._sync_request(req, GDB_PROT_CONN)
 

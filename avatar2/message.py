@@ -31,6 +31,8 @@ class RemoteMemoryReadMessage(AvatarMessage):
         self.pc = pc
         self.address = address
         self.size = size
+        self.num_words = 1
+        self.raw = False
 
 
 class RemoteMemoryWriteMessage(AvatarMessage):

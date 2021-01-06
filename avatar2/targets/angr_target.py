@@ -1,5 +1,6 @@
 from threading import Event, Thread
 from types import MethodType
+import struct
 
 from angr import sim_options as o
 from cle import Clemory
@@ -38,6 +39,7 @@ class AvatarPage(TreePage):
         self.cowed = cowed
         self.avatar = origin.avatar
         self.origin = origin
+        self.remote_loaded_data = None
         self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
@@ -69,7 +71,7 @@ class AvatarPage(TreePage):
             start, value = self._read_memory(state, x,
                                              x+state.arch.bytes)[0]
             value._object = value.object.reversed
-            value.object = value.object.reversed
+            #value.object = value.object.reversed
             super(self.__class__, self).store_mo(state, value, overwrite=True)
 
     def store_mo(self, state, new_mo, overwrite=True):
@@ -98,20 +100,31 @@ class AvatarPage(TreePage):
 
 
     def _read_memory(self, state, start, end):
-        MemoryForwardMsg = RemoteMemoryReadMessage(self.origin, self.id,
-                                                   0x0, # Fake PC
-                                                   start,
-                                                   end - start)
-        self.avatar.queue.put(MemoryForwardMsg)
 
-        r_id, r_value, r_success = self.origin.response_queue.get()
+        if self.remote_loaded_data is None:
 
-        if self.id != r_id:
-            raise("AvatarAngrMemory received mismatching id!")
-        if r_success != True:
-            raise Exception("AvatarAngrMemory remote memory request failed!")
+          MemoryForwardMsg = RemoteMemoryReadMessage(self.origin, self.id,
+                                                     0x0, # Fake PC
+                                                     self._page_addr,
+                                                     self._page_size)
+          MemoryForwardMsg.raw = True
+          self.avatar.queue.put(MemoryForwardMsg)
 
-        self.id += 1
+          r_id, r_value, r_success = self.origin.response_queue.get()
+
+          if self.id != r_id:
+              raise("AvatarAngrMemory received mismatching id!")
+          if r_success != True:
+              raise Exception("AvatarAngrMemory remote memory request failed!")
+
+          self.id += 1
+
+          self.remote_loaded_data = r_value
+
+        bts = self.remote_loaded_data[ (start - self._page_addr) : (end - self._page_addr) ]
+        num2fmt = {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}
+        r_value = struct.unpack('<1%s' % num2fmt[len(bts)], bts)[0]
+
         # do your stuff
         return [(start, SimMemoryObject(BVV(r_value, (end-start)*8), start))]
 
@@ -245,6 +258,9 @@ class AngrTarget(Target):
         self.entry_address = entry_address
 
         self.response_queue = queue.Queue()
+
+        self.gdb = None
+        self.safe_memory_map = None
 
 
     def init(self):
@@ -380,6 +396,48 @@ class AngrTarget(Target):
 
     def set_watchpoint(self, variable, write=True, read=False):
         raise("Watchpoints are not implemented for the angr target! :(")
+
+    def set_gdb(self, gdb):
+        self.gdb = gdb
+
+    def set_safe_memory_map(self, mem_map):
+        '''
+        Set the map for the .do_safe(...) wrapper,
+        an instance of intervaltree.IntervalTree
+        '''
+        self.safe_memory_map = mem_map;
+
+    def check_safe_memory_map(self, addr):
+        if self.safe_memory_map != None:
+            if not self.safe_memory_map.overlaps(addr):
+                raise Exception("Address out of safe memory map: 0x%x" % addr)
+
+    def do_safe(self, function, state):
+        '''
+        Helper function (wrapper), useful when there is no memory map from GDB:
+        try to execute some code ('function'), if accessing new address -
+        create this page (for angr 'state') and retry.
+        Real crashes can be detected: when GDB returns an error response
+        or safe_memory_map is set.
+        '''
+        page_size = state.memory.mem._page_size
+        while True:
+            try:
+                result = function()
+            except angr.errors.SimSegfaultException as ex:
+                # print("SSE " + hex(ex.addr))
+                self.check_safe_memory_map(ex.addr)
+                page_num = ex.addr / page_size
+                page_addr = page_num * page_size
+                self.avatar.add_memory_range(page_addr, page_size, forwarded=True, forwarded_to=self.gdb)
+                state.memory.mem._pages[page_num] = AvatarPage(page_addr, page_size, origin=self.angr.factory.origin)
+                state.memory.mem._symbolic_addrs[page_num] = set()
+                continue
+            else:
+                break
+        return result
+
+
 
 '''
 class SimAvatarMemory(SimPagedMemory):
