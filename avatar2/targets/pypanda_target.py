@@ -19,6 +19,7 @@ class PyPandaTarget(PandaTarget):
 
         super(PyPandaTarget, self).__init__(*args, **kwargs)
 
+        self.cb_ctx  = 0
         self.pypanda = None
         self._thread = None
 
@@ -47,3 +48,25 @@ class PyPandaTarget(PandaTarget):
         self._thread.start()
 
         self._connect_protocols()
+
+
+    def register_callback(self, callback, function, name=None, enabled=True,
+                          procname=None):
+        pp = self.pypanda
+
+        if hasattr(pp.callback, callback) is False:
+            raise Exception("Callback %s not found!" % callback)
+        cb = getattr(pp.callback, callback)
+
+        if name == None:
+            name = 'avatar_cb_%d' % self.cb_ctx
+        self.cb_ctx += 1
+
+        pp.register_callback(cb, cb(function), name, enabled=enabled,
+                             procname=procname)
+
+        return name
+
+    def delete_callback(self, name):
+        return self.pypanda.delete_callback(name)
+
