@@ -1,6 +1,7 @@
 from threading import Thread
 from avatar2.targets import PandaTarget
 
+from ..watchmen import watch
 
 
 class PyPandaTarget(PandaTarget):
@@ -26,6 +27,7 @@ class PyPandaTarget(PandaTarget):
             self.pypanda.end_analysis()
 
 
+    @watch('TargetInit')
     def init(self, **kwargs):
         from pandare import Panda
 
