@@ -43,6 +43,12 @@
 #include "disas/capstone.h"
 #include "cpu-internal.h"
 
+/* Configurable machine */
+static int x86_configurable_machine_mode = 0;
+void set_x86_configurable_machine(int mode) {
+    x86_configurable_machine_mode = mode;
+}
+
 /* Helpers for building CPUID[2] descriptors: */
 
 struct CPUID2CacheDescriptorInfo {
@@ -5828,7 +5834,18 @@ static void x86_cpu_reset(DeviceState *dev)
     env->tr.limit = 0xffff;
     env->tr.flags = DESC_P_MASK | (11 << DESC_TYPE_SHIFT);
 
-    cpu_x86_load_seg_cache(env, R_CS, 0xf000, 0xffff0000, 0xffff,
+
+    // Default values for starting a system in real mode
+    unsigned int cs_selector = 0xf000;
+    target_ulong cs_base = 0xffff0000;
+
+    if (x86_configurable_machine_mode != 0) {
+      // For x86 configurable machine, we don't want to start in real mode
+      cs_selector = 0;
+      cs_base = 0;
+    }
+
+    cpu_x86_load_seg_cache(env, R_CS, cs_selector, cs_base, 0xffff,
                            DESC_P_MASK | DESC_S_MASK | DESC_CS_MASK |
                            DESC_R_MASK | DESC_A_MASK);
     cpu_x86_load_seg_cache(env, R_DS, 0, 0, 0xffff,
@@ -5847,10 +5864,27 @@ static void x86_cpu_reset(DeviceState *dev)
                            DESC_P_MASK | DESC_S_MASK | DESC_W_MASK |
                            DESC_A_MASK);
 
+    if (x86_configurable_machine_mode == 32) {
+      // For configurable machine, don't continue
+      // setting up initial state. These registers
+      // values should all be 0 or undefined at the start
+      // of a unicorn-style execution
+
+      // But do set hflags so we're in 32-bit mode (else we end up in 16-bit)
+      env->hflags |= HF_CS32_MASK;
+      return;
+    }else if (x86_configurable_machine_mode == 64) {
+      // Set hflags so we're in 64-bit mode (else we end up in 16-bit)
+      env->hflags |= HF_CS64_MASK;
+      return;
+    }
+
+
     env->eip = 0xfff0;
     env->regs[R_EDX] = env->cpuid_version;
 
     env->eflags = 0x2;
+
 
     /* FPU init */
     for (i = 0; i < 8; i++) {
