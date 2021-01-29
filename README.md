@@ -93,4 +93,4 @@ The following publications describe, use, or extend the avatar² framework:
 
 
 # Acknowledgements
-The avatar² project was partially funded through, and supported by, SIEMENS AG, Corporate Technology.
+The avatar² project was partially funded through, and supported by, SIEMENS AG - Technology.
