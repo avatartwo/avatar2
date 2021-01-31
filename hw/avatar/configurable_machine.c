@@ -450,28 +450,37 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     THISCPU *cpuu;
     CPUState *env;
 
+#if defined(TARGET_ARM) || defined(TARGET_I386) || defined(TARGET_MIPS)
+    ObjectClass *cpu_oc;
+    Object *cpuobj;
+#endif
+
+#ifdef TARGET_ARM
+    DeviceState *dstate; //generic device if CPU can be initiliazed via qdev-API
+    BusState* sysbus = sysbus_get_default();
+    int num_irq = 64;
+
+#elif defined(TARGET_I386)
+    //
+
+#elif defined(TARGET_MIPS)
+    Error *err = NULL;
+#endif
+
+
     cpu_type = ms->cpu_type;
 
-    if (qdict_haskey(conf, "cpu_model"))
-    {
+    if (qdict_haskey(conf, "cpu_model")) {
         cpu_type = qdict_get_str(conf, "cpu_model");
         g_assert(cpu_type);
     }
 
 
 #ifdef TARGET_ARM
-    ObjectClass *cpu_oc;
-    Object *cpuobj;
-    DeviceState *dstate; //generic device if CPU can be initiliazed via qdev-API
-    BusState* sysbus = sysbus_get_default();
-    int num_irq = 64;
-
     //create armv7m cpus together with nvic
-    if (!strcmp(cpu_type, "cortex-m3"))
-    {
+    if (!strcmp(cpu_type, "cortex-m3")) {
 
-        if (qdict_haskey(conf, "num_irq"))
-        {
+        if (qdict_haskey(conf, "num_irq")) {
             num_irq = qdict_get_int(conf, "num_irq");
             g_assert(num_irq);
         } 
@@ -484,9 +493,8 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
         qdev_realize_and_unref(dstate, sysbus, NULL);
 
         cpuu = ARM_CPU(first_cpu);
-    }
-    else
-    {
+
+    } else {
         cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, cpu_type);
         if (!cpu_oc) {
             fprintf(stderr, "Unable to find CPU definition\n");
@@ -500,9 +508,6 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     }
 
 #elif defined(TARGET_I386)
-    ObjectClass *cpu_oc;
-    Object *cpuobj;
-
     cpu_oc = cpu_class_by_name(TYPE_X86_CPU, cpu_type);
     if (!cpu_oc) {
         fprintf(stderr, "Unable to find CPU definition\n");
@@ -510,7 +515,6 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     }
 
     cpuobj = object_new(object_class_get_name(cpu_oc));
-
     cpuu = X86_CPU(cpuobj);
 
     if (cpuu->apic_state) {
@@ -518,15 +522,12 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     }
 
 #elif defined(TARGET_MIPS)
-    ObjectClass *cpu_oc;
-    Object *cpuobj;
-    Error *err = NULL;
-
     cpu_oc = cpu_class_by_name(TYPE_MIPS_CPU, cpu_type);
     if (!cpu_oc) {
         fprintf(stderr, "Unable to find CPU definition\n");
         exit(1);
     }
+
     cpuobj = object_new(object_class_get_name(cpu_oc));
     cpuu = MIPS_CPU(cpuobj);
 
@@ -542,8 +543,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 
 
     env = (CPUState *) &(cpuu->env);
-    if (!env)
-    {
+    if (!env) {
         fprintf(stderr, "Unable to find CPU definition\n");
         exit(1);
     }
@@ -554,13 +554,13 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
 
 #elif defined(TARGET_I386)
-		// Ensures CS register is set correctly on x86/x86_64 CPU reset. See target/i386/cpu.c:3063
-		int mode =
+    // Ensures CS register is set correctly on x86/x86_64 CPU reset. See target/i386/cpu.c:3063
+    int mode =
 #if defined(TARGET_X86_64)
-              64;
+          64;
 #else
-              32;
-#endif
+          32;
+#endif  /* TARGET_X86_64 */
     set_x86_configurable_machine(mode); // This sets the CPU to be in 32 or 64 bit mode
 
 #elif defined(TARGET_MIPS)
@@ -568,7 +568,6 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 #endif
 
     assert(cpuu != NULL);
-
     return cpuu;
 }
 
