@@ -151,8 +151,8 @@ class Max32UART(AvatarPeripheral, Thread):
                 self.lock.acquire(True)
                 self.data_buf += chr
                 if len(self.data_buf) == 0:
-            	    self.status_register &= ~ST_RX_FIFO_FULL
-        	    self.status_register |= ST_RX_FIFO_EMPTY
+                    self.status_register &= ~ST_RX_FIFO_FULL
+                    self.status_register |= ST_RX_FIFO_EMPTY
                 elif len(self.data_buf) < 16:
                     self.status_register &= ~ST_RX_FIFO_FULL
                     self.status_register &= ~ST_RX_FIFO_EMPTY
