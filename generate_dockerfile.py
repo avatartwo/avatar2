@@ -19,6 +19,7 @@ avatar2_runtime_dependencies=[ 'python3',
                                'python3-setuptools',
                                'libcapstone3',
                                'gdb',
+                               'gdbserver',
                                'gdb-multiarch']
 avatar2_build_dependencies=[ 'git',
                              'cmake',

@@ -3,7 +3,7 @@ FROM ubuntu:20.04 AS base
 
 # avatar2 run-time dependencies
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 python3-setuptools libcapstone3 gdb gdb-multiarch && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 python3-setuptools libcapstone3 gdb gdbserver gdb-multiarch && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -25,7 +25,7 @@ RUN cd /root/avatar2 && \
 
 ### Stage 2: Build avatar-qemu
 FROM base AS build-avatar-qemu
-ARG QEMU_TARGETS="arm-softmmu"
+ARG QEMU_TARGETS="arm-softmmu,mips-softmmu"
 
 RUN sed -i '/deb-src .*-security main restricted/s/^#//g' /etc/apt/sources.list
 RUN apt-get update && \
