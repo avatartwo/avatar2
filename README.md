@@ -33,6 +33,22 @@ install the endpoints automatically.
 python -m avatar2.installer
 ```
 
+### Building with Docker
+
+A Dockerfile is present which build by default avatar² with QEmu and PANDA target endpoints:
+
+```
+$ docker build -t avatar2 .
+$ docker run --rm avatar2 python3 -c "import avatar2"
+```
+
+Alternately, you can use `generate_dockerfile.py` to build a docker image with only the target endpoints your need:
+
+```
+$ python3 generate_dockerfile.py --endpoint_list avatar-qemu --qemu_targets arm-softmmu
+$ docker build -t avatar2 .
+```
+
 ### Building manually
 
 Avatar² can also be built manually.
@@ -43,7 +59,7 @@ $ cd avatar2
 $ sudo python setup.py install
 ```
 Afterwards, the different target endpoints can be built, such as QEmu or PANDA.
-For doing so, we are providing build-scripts for Ubuntu 18.04 - while other
+For doing so, we are providing build-scripts for Ubuntu 20.04 - while other
 distributions are not officially supported (yet), the scripts are known to
 work with slight modifications on other distributions as well.
 ```
