@@ -3,6 +3,7 @@ source /etc/os-release
 
 repo="deb-src http://archive.ubuntu.com/ubuntu/ $UBUNTU_CODENAME-security main restricted"
 apt_src="/etc/apt/sources.list"
+QEMU_NPROC=$(QEMU_NPROC:-$(nproc))
 
 if [[ "$ID" == "ubuntu" ]]
 then
@@ -36,5 +37,6 @@ git submodule update --init dtc
 mkdir -p ../../build/qemu/
 cd ../../build/qemu
 ../../src/avatar-qemu/configure --disable-sdl --target-list=arm-softmmu 
-make -j4
+
+make -j $QEMU_NPROC
 

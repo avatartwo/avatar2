@@ -7,7 +7,7 @@ from avatar2.protocols.qmp import QMPProtocol
 from avatar2.protocols.remote_memory import RemoteMemoryProtocol
 from avatar2.targets import Target
 
-from avatar2.installer.config import QEMU, GDB_ARM
+from avatar2.installer.config import QEMU, GDB_MULTI
 from avatar2.watchmen import watch
 
 

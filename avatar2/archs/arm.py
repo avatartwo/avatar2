@@ -7,13 +7,13 @@ from unicorn.arm_const import *
 from .architecture import Architecture
 import avatar2
 
-from avatar2.installer.config import QEMU, PANDA, OPENOCD, GDB_ARM
+from avatar2.installer.config import QEMU, PANDA, OPENOCD, GDB_MULTI
 
 class ARM(Architecture):
 
     get_qemu_executable = Architecture.resolve(QEMU)
     get_panda_executable = Architecture.resolve(PANDA)
-    get_gdb_executable  = Architecture.resolve(GDB_ARM)
+    get_gdb_executable  = Architecture.resolve(GDB_MULTI)
     get_oocd_executable = Architecture.resolve(OPENOCD)
 
 

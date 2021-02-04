@@ -137,10 +137,23 @@ class AvatarInstallerGitMenu(AvatarInstallerMenu):
              value=conf, hidden=False if conf is not None else True
         )
 
+        script = TARGETS[self.target_name].get('install_script')
+        self.install_script = self.add(
+                nps.TitleText, name='Install script (if used following parameters are ignored)',
+                value=script, begin_entry_at=25,
+                hidden=False if script is not None else True
+        )
+
         make = TARGETS[self.target_name].get('make')
         self.make_options= self.add(
             nps.TitleText, name='Make options', begin_entry_at=25,
             value=make, hidden=False if make is not None else True
+        )
+
+        self.git_apt_deps = self.add(
+                nps.TitleText, name='Dependencies with apt-get (default values for Ubuntu 20.04)',
+                value=TARGETS[self.target_name]['git_apt_deps'],
+                begin_entry_at=25
         )
            
 
@@ -167,8 +180,10 @@ class AvatarInstallerGitMenu(AvatarInstallerMenu):
                                        TARGETS[self.target_name]['install_cmd'])
             self.parentApp.git_kwargs = {
                 'branch': self.git_branch.value,
+                'apt_deps': self.git_apt_deps.value,
                 'configure_options': self.configure_options.value,
-                'make_options': self.make_options.value
+                'make_options': self.make_options.value,
+                'install_script': self.install_script.value
             }
             if exists(self.install_dir.value):
                 self.parentApp.switchForm('DirExists')
@@ -330,25 +345,44 @@ class Avatar2Installer(nps.NPSAppManaged):
             return False
 
     def git_install(self, local_directory, repository, install_commands,
-                    branch='master', configure_options=None,
-                    make_options=None):
+                    branch='master', apt_deps=None, configure_options=None,
+                    make_options=None, install_script=None):
 
         get_terminal_screen()
+
+        if apt_deps != '':
+            system('echo')
+            system('echo [*] Installing dependencies...')
+            res = system('sudo apt-get install %s' % apt_deps)
+            sleep(1.5)
+            if res != 0:
+                raise Exception('Fail to install dependencies %s' % apt_deps)
+
+        system('echo')
+        system('echo [*] Installing from git...')
         git_exec = find('git')
         system('%s clone %s --single-branch --branch %s %s'  % 
                (git_exec, repository, branch, local_directory) )
 
         chdir(local_directory)
-        for cmd in install_commands:
-            if cmd == './configure' and configure_options is not None:
-                res = system(cmd + ' ' + configure_options)
-            elif cmd == 'make' and make_options is not None:
-                res = system(cmd + ' ' + make_options)
-            else:
-                res = system(cmd)
+
+        if install_script is None or install_script.strip() == '':
+            for cmd in install_commands:
+                if cmd == './configure' and configure_options is not None:
+                    res = system(cmd + ' ' + configure_options)
+                elif cmd == 'make' and make_options is not None:
+                    res = system(cmd + ' ' + make_options)
+                else:
+                    res = system(cmd)
+                if res != 0:
+                    sleep(2)
+                    raise Exception('Executing install command \'%s\' failed' % cmd)
+
+        else:
+            res = system('echo ' + install_script + ' ' + configure_options)
+            res = system(install_script + ' ' + configure_options)
             if res != 0:
-                sleep(2)
-                raise Exception('Executing install command \'%s\' failed' % cmd)
+                raise Exception('Install script %s failed' % install_script)
 
         exec_path = '%s/%s' % (self.install_dir,
                                TARGETS[self.current_target]['rel_path'])
