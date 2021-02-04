@@ -141,7 +141,7 @@ def generate(endpoint_list, qemu_targets=['arm-softmmu']):
             if 'panda' in endpoint_list:
                 f.write(TEMPLATE_PANDA)
 
-        f.write('RUN apt-get clean && rm -rf /var/lib/apt/lists/*')
+        f.write('RUN apt-get clean && rm -rf /var/lib/apt/lists/*\n\n')
 
 
 if __name__ == '__main__':
