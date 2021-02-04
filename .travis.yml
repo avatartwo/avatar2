@@ -26,12 +26,12 @@ script:
 
       # Test avatar-qemu
     - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=ARM AVATAR2_QEMU_EXECUTABLE=qemu-system-arm nosetests-3.4 ./tests/test_qemutarget.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=MIPS AVATAR2_QEMU_EXECUTABLE=qemu-system-arm nosetests-3.4 ./tests/test_qemutarget.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=MIPS AVATAR2_QEMU_EXECUTABLE=qemu-system-mips nosetests-3.4 ./tests/test_qemutarget.py'
     - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=qemu-system-arm nosetests-3.4 ./tests/pyperipheral/test_pyperipheral.py'
 
       # Test panda
     - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=ARM AVATAR2_QEMU_EXECUTABLE=panda-system-arm nosetests-3.4 ./tests/test_qemutarget.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=MIPS AVATAR2_QEMU_EXECUTABLE=panda-system-arm nosetests-3.4 ./tests/test_qemutarget.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=MIPS AVATAR2_QEMU_EXECUTABLE=panda-system-mips nosetests-3.4 ./tests/test_qemutarget.py'
     - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm nosetests-3.4 ./tests/pyperipheral/test_pyperipheral.py'
     - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm AVATAR2_PANDA_EXECUTABLE=panda-system-arm nosetests-3.4 ./tests/smoke/panda_thumb.py'
 
