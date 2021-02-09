@@ -191,7 +191,7 @@ class GDBResponseListener(Thread):
 
             try:
                 responses = self._gdb_controller.get_gdb_response(
-                    timeout_sec=0.0
+                    timeout_sec=0.01
                 )
             except:
                 continue
@@ -267,7 +267,7 @@ class GDBProtocol(object):
             if local_arguments is not None:
                 gdb_args += [local_arguments]
 
-        
+
         if sys.version_info <= (3, 5):
             self._gdbmi = pygdbmi.gdbcontroller.GdbController(
                 gdb_path=gdb_executable,
@@ -275,7 +275,8 @@ class GDBProtocol(object):
                 verbose=verbose)  # set to True for debugging
         else:
             self._gdbmi = pygdbmi.gdbcontroller.GdbController(
-                command=[gdb_executable] + gdb_args)
+                command=[gdb_executable] + gdb_args,
+                time_to_check_for_additional_output_sec=0)
         queue = avatar.queue if avatar is not None else None
         fast_queue = avatar.fast_queue if avatar is not None else None
         self._communicator = GDBResponseListener(
@@ -386,7 +387,7 @@ class GDBProtocol(object):
         if not ret:
             self.log.critical("GDBProtocol was unable to connect to remote target")
             raise Exception("GDBProtocol was unable to connect")
-        
+
         self.update_target_regs()
 
         return ret
@@ -591,7 +592,7 @@ class GDBProtocol(object):
             self.log.warning("Couldn't extract bp_num for catchpoint!")
             return True
         return int(expected_bp_num)
-        
+
 
 
 
@@ -650,7 +651,7 @@ class GDBProtocol(object):
         """reads memory
 
         :param address:   Address to write to
-        :param wordsize:  the size of a read word (1, 2, 4 or 8) 
+        :param wordsize:  the size of a read word (1, 2, 4 or 8)
         :param num_words: the amount of read words
         :param raw:       Whether the read memory should be returned unprocessed
         :return:          The read memory
@@ -693,7 +694,7 @@ class GDBProtocol(object):
             return self._read_special_reg_from_name(reg)
         else:
             reg_nr = (
-                self._origin.regs._get_nr_from_name(reg) 
+                self._origin.regs._get_nr_from_name(reg)
                 if hasattr(self._origin, 'regs')
                 else self._arch.registers[reg])
             return self.read_register_from_nr(reg_nr)
@@ -747,7 +748,7 @@ class GDBProtocol(object):
 
             fmt = "{:s}=" \
                   + self._arch.special_registers[reg]['format'].replace(' ','')
-            
+
             ret, resp = self._sync_request(
                 ["-data-evaluate-expression", fmt.format(
                    self._arch.special_registers[reg]['gdb_expression'], *value)
