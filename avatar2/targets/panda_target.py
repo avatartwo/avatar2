@@ -7,11 +7,9 @@ class PandaTarget(QemuTarget):
     def __init__(self, *args, **kwargs):
         super(PandaTarget, self).__init__(*args, **kwargs)
 
-        # If we are a PandaTarget (and not a subclass), resolve the executable
-        if self.__class__ == PandaTarget:
-            executable = kwargs.get('executable')
-            self.executable = (executable if executable is not None
-                               else self._arch.get_panda_executable())
+        executable = kwargs.get('executable')
+        self.executable = (executable if executable is not None
+                           else self._arch.get_panda_executable())
 
         # self.protocols.monitor = self.protocols.execution
 
@@ -20,7 +18,7 @@ class PandaTarget(QemuTarget):
         """
         Starts recording the execution in PANDA
 
-        :param record_name:   The name of the record file 
+        :param record_name:   The name of the record file
         """
         filename = "%s/%s" % (self.avatar.output_directory, record_name)
         return self.protocols.monitor.execute_command('begin_record',
@@ -62,9 +60,9 @@ class PandaTarget(QemuTarget):
         Loads a PANDA plugin
 
         :param plugin_name: The name of the plugin to be loaded
-        :param plugin_args: Arguments to be passed to the plugin, 
+        :param plugin_args: Arguments to be passed to the plugin,
                             aseperated by commas
-        :param file_name:   Absolute path to the plugin shared object file, 
+        :param file_name:   Absolute path to the plugin shared object file,
                             in case that the default one should not be used
         """
 

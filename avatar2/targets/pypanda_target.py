@@ -2,6 +2,7 @@ from threading import Thread
 from avatar2.targets import PandaTarget
 
 from ..watchmen import watch
+from .target import action_valid_decorator_factory, TargetStates
 
 
 class PyPandaTarget(PandaTarget):
@@ -66,6 +67,34 @@ class PyPandaTarget(PandaTarget):
                              procname=procname)
 
         return name
+
+    def disable_callback(self, name):
+        pp = self.pypanda
+        pp.disable_callback(name)
+
+    def enable_callback(self, name):
+        pp = self.pypanda
+        pp.enable_callback(name)
+
+
+    @watch('TargetReadMemory')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
+    def read_memory(self, address, size, num_words=1, raw=False):
+        if raw == False:
+            return self.protocols.memory.read_memory(address, size, num_words)
+        else:
+            return self.pypanda.physical_memory_read(address,size*num_words)
+
+
+    @watch('TargetWriteMemory')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
+    def write_memory(self, address, size, value, num_words=1, raw=False):
+        if raw == False:
+            return self.protocols.memory.write_memory(address, size, num_words)
+        else:
+            return self.pypanda.physical_memory_write(address, value)
+
+
 
     def delete_callback(self, name):
         return self.pypanda.delete_callback(name)
