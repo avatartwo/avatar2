@@ -44,11 +44,17 @@ class PyPandaTarget(PandaTarget):
 
         self.pypanda = Panda(arch=arch, extra_args=args, **kwargs)
 
-        # pypanda.run() is blocking, hence we run it in a seperate thread
-        self._thread = Thread(target=self.pypanda.run, daemon=True)
+
+        # adjust panda's signal handler to avatar2-standard
+        def SigHandler(SIG,a,b):
+            self.shutdown()
+        self.pypanda.setup_internal_signal_handler(signal_handler=SigHandler)
+
+        self._thread = Thread(target=self.pypanda.run, daemon=False)
         self._thread.start()
 
         self._connect_protocols()
+
 
 
     def register_callback(self, callback, function, name=None, enabled=True,
