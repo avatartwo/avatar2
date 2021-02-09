@@ -1,4 +1,5 @@
 from threading import Thread
+from time import sleep
 from avatar2.targets import PandaTarget
 
 from ..watchmen import watch
@@ -25,8 +26,15 @@ class PyPandaTarget(PandaTarget):
         self._thread = None
 
     def shutdown(self):
+
+
         if self._thread.is_alive():
+            self.protocols.execution.remote_disconnect()
             self.pypanda.end_analysis()
+
+            # Wait for shutdown
+            while self._thread.is_alive():
+                sleep(.01)
 
 
     @watch('TargetInit')
@@ -47,10 +55,17 @@ class PyPandaTarget(PandaTarget):
 
         # adjust panda's signal handler to avatar2-standard
         def SigHandler(SIG,a,b):
-            self.shutdown()
+            if self.state == TargetStates.RUNNING:
+                self.stop()
+                self.wait()
+
+            self.avatar.sigint_handler()
+
+
+
         self.pypanda.setup_internal_signal_handler(signal_handler=SigHandler)
 
-        self._thread = Thread(target=self.pypanda.run, daemon=False)
+        self._thread = Thread(target=self.pypanda.run, daemon=True)
         self._thread.start()
 
         self._connect_protocols()
