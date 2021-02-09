@@ -32,7 +32,7 @@ class QemuTarget(Target):
 
         # Qemu parameters
         self.system_clock_scale = system_clock_scale
-        if hasattr(self, 'executable') is False: # May be initialized by subclass
+        if hasattr(self, 'executable') is False and self.__class__ == QemuTarget:
             self.executable = (executable if executable is not None
                                else self._arch.get_qemu_executable())
         self.fw = firmware
@@ -84,7 +84,7 @@ class QemuTarget(Target):
 
         cmd_line = executable_name + machine + kernel + gdb_option \
                + stop_on_startup + self.additional_args + nographic + qmp
-        
+
         if self.log_items is not None:
             if isinstance(self.log_items, str):
                 log_items = ['-d', self.log_items]
@@ -99,7 +99,7 @@ class QemuTarget(Target):
                 log_file = ['-D', '%s/%s' % (self.avatar.output_directory,
                                              self.log_file)]
             else:
-                log_file = ['-D', '%s/%s_log.txt' % 
+                log_file = ['-D', '%s/%s_log.txt' %
                             (self.avatar.output_directory, self.name)]
 
             cmd_line += log_items + log_file
@@ -194,7 +194,7 @@ class QemuTarget(Target):
                           additional_args=self.gdb_additional_args,
                           avatar=self.avatar, origin=self,
                           )
-        qmp = QMPProtocol(self.qmp_port, origin=self)  
+        qmp = QMPProtocol(self.qmp_port, origin=self)
 
         if 'avatar-rmemory' in [i[2].qemu_name for i in
                                 self._memory_mapping.iter() if
