@@ -30,6 +30,7 @@ setup(
         'pylink-square',
         'pyusb',
     ],
+    include_package_data=True,
     url='https://github.com/avatartwo/avatar2',
     description='A Dynamic Multi-Target Orchestration Framework',
     maintainer='Marius Muench',
