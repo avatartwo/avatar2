@@ -32,7 +32,7 @@ class QemuTarget(Target):
 
         # Qemu parameters
         self.system_clock_scale = system_clock_scale
-        if hasattr(self, 'executable') is False: # May be initialized by subclass
+        if hasattr(self, 'executable') is False and self.__class__ == QemuTarget:
             self.executable = (executable if executable is not None
                                else self._arch.get_qemu_executable())
         self.fw = firmware
@@ -58,9 +58,11 @@ class QemuTarget(Target):
         self._rmem_rx_queue_name = '/{:s}_rx_queue'.format(self.name)
         self._rmem_tx_queue_name = '/{:s}_tx_queue'.format(self.name)
 
-
         self.log_items = log_items
         self.log_file  = log_file
+
+        self.qemu_config_file =  ("%s/%s_conf.json" %
+            (self.avatar.output_directory, self.name) )
 
 
     def assemble_cmd_line(self):
@@ -82,7 +84,7 @@ class QemuTarget(Target):
 
         cmd_line = executable_name + machine + kernel + gdb_option \
                + stop_on_startup + self.additional_args + nographic + qmp
-        
+
         if self.log_items is not None:
             if isinstance(self.log_items, str):
                 log_items = ['-d', self.log_items]
@@ -97,7 +99,7 @@ class QemuTarget(Target):
                 log_file = ['-D', '%s/%s' % (self.avatar.output_directory,
                                              self.log_file)]
             else:
-                log_file = ['-D', '%s/%s_log.txt' % 
+                log_file = ['-D', '%s/%s_log.txt' %
                             (self.avatar.output_directory, self.name)]
 
             cmd_line += log_items + log_file
@@ -166,8 +168,6 @@ class QemuTarget(Target):
             else:
                 self.log.warning('No cpu_model specified - are you sure?')
 
-        self.qemu_config_file =  ("%s/%s_conf.json" %
-            (self.avatar.output_directory, self.name) )
         if cmd_line is None:
             cmd_line = self.assemble_cmd_line()
 
@@ -181,6 +181,12 @@ class QemuTarget(Target):
             self._process = Popen(cmd_line, stdout=out, stderr=err)
         self.log.debug("QEMU command line: %s" % ' '.join(cmd_line))
         self.log.info("QEMU process running")
+        self._connect_protocols()
+
+    def _connect_protocols(self):
+        """
+        Internal routine to connect the various protocols to a running qemu
+        """
 
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
                           arch=self.avatar.arch,
@@ -188,7 +194,7 @@ class QemuTarget(Target):
                           additional_args=self.gdb_additional_args,
                           avatar=self.avatar, origin=self,
                           )
-        qmp = QMPProtocol(self.qmp_port, origin=self)  
+        qmp = QMPProtocol(self.qmp_port, origin=self)
 
         if 'avatar-rmemory' in [i[2].qemu_name for i in
                                 self._memory_mapping.iter() if
