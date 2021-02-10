@@ -69,17 +69,17 @@ $ ./build_*.sh
 
 **Please Note:** These scripts add the restricted repository to
 `/etc/apt/sources.list` for fetching the dependencies. If you are not comfortable
-with this, please consider building avatar² in a VM/Container or install the 
+with this, please consider building avatar² in a VM/Container or install the
 dependencies manually and adjust the scripts.
 
 # Getting started
 For discovering the power of avatar² and getting a feeling of its usage,
-we recommend highly checking out the 
+we recommend highly checking out the
 [handbook](https://github.com/avatartwo/avatar2/tree/master/handbook) here on
 github.
-Additionally, a documentation of the API is provided 
+Additionally, a documentation of the API is provided
 [here](https://avatartwo.github.io/avatar2-docs/) and some exemplary
-avatar²-scripts can be found 
+avatar²-scripts can be found
 [here](https://github.com/avatartwo/avatar2-examples).
 Additionally, another good way to get started with avatar² is to read the official
 [avatar² paper](http://s3.eurecom.fr/docs/bar18_muench.pdf) or to watch the
@@ -105,6 +105,8 @@ The following publications describe, use, or extend the avatar² framework:
     - [Paper](http://subwire.net/papers/pretender-final.pdf) - [Code](https://github.com/ucsb-seclab/pretender)
 5.  A.A. Clements, E. Gustafson, T. Scharnowski, P. Grosen, D. Fritz, C. Kruegel, G. Vigna, S. Bagchi, M. Payer. "HALucinator: Firmware Re-hosting Through Abstraction Layer Emulation." USENIX Security Symposium, August 2020.
     - [Paper](https://www.usenix.org/system/files/sec20summer_clements_prepub.pdf) - [Code](https://github.com/embedded-sec/halucinator)
+6. C. Cao, L. Guan, J. Ming, P. Liu. "Device-agnostic Firmware Execution is Possible: A Concolic Execution Approach for Peripheral Emulation." Annual Computer Security Applications Conference (ACSAC), December 2020.
+    - [Paper](https://dl.acm.org/doi/10.1145/3427228.3427280) - [Code](https://github.com/dongmu/Laelaps)
 
 
 

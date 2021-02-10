@@ -1,3 +1,29 @@
+# Version 1.4.0 (February 10th, 2021)
+
+* Major Updates:
+    * Inception debugger target and protocol for Cortex-M3
+    * PyPanda Target
+    * MIPS support
+    * Dropping support for Python 2.7
+    * Docker file/image generation for avatar2
+    * avatar-qemu updated to v5.1
+
+* New Plugins:
+    * GDB server
+    * GDB memory_map_loader
+
+* Improvements:
+    * The two-tiered breakpoint approach
+    * Add support of latest pygdbmi
+    * Supporting Ubuntu 20.04 as default image
+    * Defaulting to gdb-multiarch
+    * New boolean `log_to_stdout` kwarg for main avatar object
+
+* Bugfixes:
+    * Removed 100% CPU resource usage on idle
+    * Support new version of pygdbmi (while staying backwards compatible)
+
+
 # Version 1.3.1 (January 28th, 2020)
 
 * Major Updates:
