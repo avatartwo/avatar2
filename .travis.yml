@@ -19,26 +19,26 @@ before_script:
     - docker exec avatar2 pip3 install nose
 
 script:
-    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests-3.4 ./tests/test_remote_memoryprotocol.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests-3.4 ./tests/test_gdbprotocol.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests-3.4 ./tests/test_gdbplugin.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests-3.4 ./tests/test_inceptionprotocol.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests ./tests/test_remote_memoryprotocol.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests ./tests/test_gdbprotocol.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests ./tests/test_gdbplugin.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests ./tests/test_inceptionprotocol.py'
 
       # Test avatar-qemu
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=ARM AVATAR2_QEMU_EXECUTABLE=qemu-system-arm nosetests-3.4 ./tests/test_qemutarget.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=MIPS AVATAR2_QEMU_EXECUTABLE=qemu-system-mips nosetests-3.4 ./tests/test_qemutarget.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=qemu-system-arm nosetests-3.4 ./tests/pyperipheral/test_pyperipheral.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=ARM AVATAR2_QEMU_EXECUTABLE=qemu-system-arm nosetests ./tests/test_qemutarget.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=MIPS AVATAR2_QEMU_EXECUTABLE=qemu-system-mips nosetests ./tests/test_qemutarget.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=qemu-system-arm nosetests ./tests/pyperipheral/test_pyperipheral.py'
 
       # Test panda
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=ARM AVATAR2_QEMU_EXECUTABLE=panda-system-arm nosetests-3.4 ./tests/test_qemutarget.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=MIPS AVATAR2_QEMU_EXECUTABLE=panda-system-mips nosetests-3.4 ./tests/test_qemutarget.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm nosetests-3.4 ./tests/pyperipheral/test_pyperipheral.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm AVATAR2_PANDA_EXECUTABLE=panda-system-arm nosetests-3.4 ./tests/smoke/panda_thumb.py'
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm AVATAR2_PANDA_EXECUTABLE=panda-system-arm nosetests-3.4 ./tests/test_pypandatarget.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=ARM AVATAR2_QEMU_EXECUTABLE=panda-system-arm nosetests ./tests/test_qemutarget.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_ARCH=MIPS AVATAR2_QEMU_EXECUTABLE=panda-system-mips nosetests ./tests/test_qemutarget.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm nosetests ./tests/pyperipheral/test_pyperipheral.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm AVATAR2_PANDA_EXECUTABLE=panda-system-arm nosetests ./tests/smoke/panda_thumb.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm AVATAR2_PANDA_EXECUTABLE=panda-system-arm nosetests ./tests/test_pypandatarget.py'
 
     - docker exec avatar2 bash -c 'cd avatar2/ && python3 ./tests/hello_world.py'
     - docker exec avatar2 bash -c 'cd avatar2/ && python3 ./tests/gdb_memory_map_loader.py'
 
-    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests-3.4 --processes=-1 --process-timeout=20 ./tests/smoke/target_wait.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && nosetests --processes=-1 --process-timeout=20 ./tests/smoke/target_wait.py'
 
-    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm nosetests-3.4 --processes=-1 --process-timeout=20 ./tests/smoke/54_sync_hooks.py'
+    - docker exec avatar2 bash -c 'cd avatar2/ && AVATAR2_GDB_EXECUTABLE=gdb-multiarch AVATAR2_QEMU_EXECUTABLE=panda-system-arm nosetests --processes=-1 --process-timeout=20 ./tests/smoke/54_sync_hooks.py'
