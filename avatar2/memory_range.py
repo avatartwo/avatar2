@@ -50,7 +50,7 @@ class MemoryRange(object):
         Returns the memory range as *printable* dictionary
         """
         # Assumption: dicts saved in mrs are of primitive types only
-        expected_types = (str, bool, int, dict, AvatarPeripheral) 
+        expected_types = (str, bool, int, dict, AvatarPeripheral, list)
         if version_info < (3, 0): expected_types += (unicode, )
 
         tmp_dict = dict(self.__dict__)
