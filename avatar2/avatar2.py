@@ -55,7 +55,7 @@ class Avatar(Thread):
         self.memory_ranges = intervaltree.IntervalTree()
         self.loaded_plugins = []
         self.cpu_model = cpu_model
-        
+
         if self.cpu_model is None and hasattr(self.arch, 'cpu_model'):
             self.cpu_model = self.arch.cpu_model
         # Setup output-dir and logging
@@ -88,7 +88,7 @@ class Avatar(Thread):
         self.queue = queue.Queue()
         self.fast_queue = queue.Queue()
         self.fast_queue_listener = AvatarFastQueueProcessor(self)
-        self.message_handlers = { 
+        self.message_handlers = {
             SyscallCatchedMessage: self._handle_syscall_catched_message,
             BreakpointHitMessage: self._handle_breakpoint_hit_message,
             UpdateStateMessage: self._handle_update_state_message,
@@ -107,7 +107,7 @@ class Avatar(Thread):
         :ivar file_name: (Absolute) path to the config file
         """
         if file_name is None:
-            file_name = "%s/conf.json" % self.output_directory 
+            file_name = "%s/conf.json" % self.output_directory
         with open(file_name, 'r') as config_file:
             config = json.load(config_file)
 
@@ -143,7 +143,7 @@ class Avatar(Thread):
         conf_dict['memory_mapping'] = []
         for mr in self.memory_ranges:
             conf_dict['memory_mapping'].append(mr.data.dictify())
-        
+
         conf_dict['targets'] = []
         for t in self.targets.values():
             conf_dict['targets'].append(t.dictify())
@@ -153,7 +153,7 @@ class Avatar(Thread):
 
     def save_config(self, file_name=None, config=None):
         if file_name is None:
-            file_name = "%s/conf.json" % self.output_directory 
+            file_name = "%s/conf.json" % self.output_directory
         conf_dict = self.generate_config() if config is None else config
         with open(file_name, "w") as conf_file:
             json.dump(conf_dict, conf_file)
@@ -177,9 +177,13 @@ class Avatar(Thread):
         self.log.info("Avatar Received SIGINT")
         self.sigint_handler()
 
-    def load_plugin(self, name):
-        plugin = __import__("avatar2.plugins.%s" % name,
-                            fromlist=['avatar2.plugins'])
+    def load_plugin(self, name, local=False):
+        if local is True:
+            plugin = __import__(name, fromlist=['.'])
+        else:
+            plugin = __import__("avatar2.plugins.%s" % name,
+                                fromlist=['avatar2.plugins'])
+
         plugin.load_plugin(self)
         self.loaded_plugins += [name]
 
@@ -303,7 +307,7 @@ class Avatar(Thread):
                 to_target.regs._get_names() & from_target.regs._get_names()
                 if hasattr(to_target, 'regs') and hasattr(from_target, 'regs')
                 else self.arch.registers)
-           
+
 
             # ARM may have banked registers; Apparantly, the order in which we
             # write them is important to QEMU and could to lead bugs otherwise.
@@ -359,7 +363,7 @@ class Avatar(Thread):
 
     @watch('RemoteMemoryRead')
     def _handle_remote_memory_read_message(self, message):
-        
+
         range = self.get_memory_range(message.address)
         if not range:
             return (message.id, None, False)
@@ -441,8 +445,8 @@ class Avatar(Thread):
 
 class AvatarFastQueueProcessor(Thread):
     """
-    The avatar fast queue handles events which require immediate action, 
-    i.e. TargetStateUpdates. 
+    The avatar fast queue handles events which require immediate action,
+    i.e. TargetStateUpdates.
     After processing, they get passed to the main avatar queue for further
     handling.
     """
