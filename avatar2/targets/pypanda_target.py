@@ -41,7 +41,7 @@ class PyPandaTarget(PandaTarget):
     def init(self, **kwargs):
         from pandare import Panda
 
-        arch = self.avatar.arch.gdb_name # for now, gdbname and panda-name match
+        arch = self.avatar.arch.qemu_name
         args = self.assemble_cmd_line()[1:]
 
 
@@ -111,7 +111,7 @@ class PyPandaTarget(PandaTarget):
     @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')
     def write_memory(self, address, size, value, num_words=1, raw=False):
         if raw == False:
-            return self.protocols.memory.write_memory(address, size, num_words)
+            return self.protocols.memory.write_memory(address, size, value, num_words=num_words)
         else:
             return self.pypanda.physical_memory_write(address, value)
 
