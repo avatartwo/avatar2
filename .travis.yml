@@ -6,11 +6,11 @@ services:
     - docker
 
 
-
 before_install:
     - python3 /home/travis/build/$TRAVIS_REPO_SLUG/generate_dockerfile.py --endpoint_list avatar-qemu panda --qemu_targets arm-softmmu mips-softmmu
 
 install:
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     - docker build --tag avatar2 .
 
 
