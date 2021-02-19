@@ -150,7 +150,7 @@ class QemuTarget(Target):
 
                 elif mr.get('qemu_properties'):
                     if type(mr['qemu_properties']) == list:
-                        mr['properties'] += mr.qemu_properties
+                        mr['properties'] += mr['qemu_properties']
                     else:
                         mr['properties'].append(mr['qemu_properties'])
         del conf_dict['targets']

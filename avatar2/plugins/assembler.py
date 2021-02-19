@@ -12,7 +12,7 @@ def assemble(self, asmstr, addr=None,
                   If not specified, the current pc is used
     :param arch:  The keystone-architecture to be used.
     :param mode:  The keystone-mode to be used.
-                  If not specified, it is retrieved from avatar.arch 
+                  If not specified, it is retrieved from avatar.arch
     :returns:     Raw bytes
     """
 
@@ -22,8 +22,8 @@ def assemble(self, asmstr, addr=None,
 
     md = Ks(arch, mode)
     bytelist = md.asm(asmstr, addr)[0]
-    bytes = "".join([chr(x) for x in bytelist])
-    return bytes
+    bytes_raw = bytes(bytelist)
+    return bytes_raw
 
 def inject_asm(self, asmstr, addr=None, arch=None, mode=None):
     """
@@ -35,8 +35,8 @@ def inject_asm(self, asmstr, addr=None, arch=None, mode=None):
 
     md = Ks(arch, mode)
     bytelist = md.asm(asmstr, addr)[0]
-    bytes = bytearray(bytelist)
-    return self.write_memory(addr, 1, bytes, len(bytes), raw=True)
+    bytes_raw = bytes(bytelist)
+    return self.write_memory(addr, 1, bytes_raw, len(bytes_raw), raw=True)
 
 def target_added_callback(avatar, *args, **kwargs):
     target = kwargs['watched_return']
