@@ -1,3 +1,13 @@
+# Version 1.4.1 (February 19th, 2021)
+
+* Improvements:
+    * local argument to load_plugin
+    * Automated PyPi deploy for tagged commits (i.e. new versions)
+
+* Bugfixes:
+    * PyPandaTarget Write Memory command
+    * Removed usage of "objects" in assembler plugin
+
 # Version 1.4.0 (February 10th, 2021)
 
 * Major Updates:
