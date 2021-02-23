@@ -97,6 +97,20 @@ class PyPandaTarget(PandaTarget):
         pp = self.pypanda
         pp.enable_callback(name)
 
+    def add_hook(self, address, function, enabled=True,
+                 kernel=True, asid=None, cb_type="before_block_exec"):
+        '''
+        This function registers hook at specified address with pypanda
+        :param address: Address to be hooked.
+        :param function: Function to be executed at specified address.
+                         If the cb_type is "before_block_exec" (the default),
+                         the arguments passed to that functions are cdata
+                         pointer to the following structs:
+                         cpustate *, TranslationBlock *, hook *
+        '''
+        self.pypanda.hook(address, enabled=enabled, kernel=kernel, asid=asid,
+                          cb_type=cb_type)(function)
+
 
     @watch('TargetReadMemory')
     @action_valid_decorator_factory(TargetStates.STOPPED, 'memory')

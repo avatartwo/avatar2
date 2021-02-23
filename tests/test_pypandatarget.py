@@ -85,14 +85,15 @@ def test_nucleo_usart_read():
     data = s.recv(len(test_string), socket.MSG_WAITALL)
     assert_equal(data, test_string)
 
-recv_data = []
 
 @with_setup(setup_func, teardown_func)
 def test_panda_callback():
+    recv_data = []
     def cb(env, pc, addr, size, buf):
-        global recv_data
+
         if addr == 0x40004404:
             recv_data.append(buf[0])
+
 
     cb_handle = panda.register_callback('mmio_before_write', cb)
 
@@ -101,6 +102,26 @@ def test_panda_callback():
 
     assert_equal(bytearray(recv_data), test_string)
     panda.disable_callback(cb_handle)
+
+
+recv_data = []
+@timed(11)
+@with_setup(setup_func, teardown_func)
+def test_panda_hook():
+    def hook(env, tb, hook):
+        global recv_data
+        recv_data += [panda.pypanda.arch.get_reg(env, 'r0')]
+
+
+    panda.add_hook(0x8004622, hook) # return address of serial_putc
+
+    panda.cont()
+    panda.wait()
+
+    assert_equal(bytearray(recv_data), test_string)
+    panda.pypanda.plugins['hooks'].disable_hooking()
+
+
 
 
 
@@ -149,10 +170,13 @@ def test_nucleo_usart_debug_write():
     assert_equal(reply, test_string)
 
 
+
+
+
+
 if __name__ == '__main__':
     setup_func()
-    test_nucleo_usart_debug_read()
-    setup_func()
-    test_nucleo_usart_debug_write()
+    test_panda_hook()
+    #test_panda_callback()
     teardown_func()
 
