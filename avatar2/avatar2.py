@@ -269,21 +269,21 @@ class Avatar(Thread):
                         forwarded_to=forwarded_to, **kwargs)
 
 
-        mr_set = self.memory_ranges[address:address+size]
+        mr_set = memory_ranges[address:address+size]
         if overwrite is True and len(mr_set) > 0:
             start = min(mr_set, key=lambda x: x.begin).begin
             end   = max(mr_set, key=lambda x: x.end).end
-            self.memory_ranges.chop(address, address+size,
+            memory_ranges.chop(address, address+size,
                                     datafunc=lambda x,y:
                                     deepcopy(x.data) if y is True else x.data)
-            mr_set2 = self.memory_ranges[start:end]
+            mr_set2 = memory_ranges[start:end]
             for interval in mr_set2:
                 interval.data.address = interval.begin
                 interval.data.size = interval.end - interval.begin
                 interval.data.name = 'SPLIT_%x_%x' % (interval.data.address,
                                                    interval.data.size)
 
-        self.memory_ranges[address:address + size] = m
+        memory_ranges[address:address + size] = m
 
         return m
 
