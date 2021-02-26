@@ -1,3 +1,12 @@
+# Version 1.4.2 (February 26th, 2021)
+
+* Improvements
+    * Allow automatic splittin/overwriting of memory ranges
+    * Unicorn caller plugin
+    * Inlined Pyperipherals
+    * Add_hook for pypanda
+
+
 # Version 1.4.1 (February 19th, 2021)
 
 * Improvements:

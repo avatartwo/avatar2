@@ -49,8 +49,9 @@ class MemoryRange(object):
         """
         Returns the memory range as *printable* dictionary
         """
+        from .avatar2 import Avatar # we cannot do this import at top-level
         # Assumption: dicts saved in mrs are of primitive types only
-        expected_types = (str, bool, int, dict, AvatarPeripheral, list)
+        expected_types = (str, bool, int, dict, AvatarPeripheral, Avatar, list)
         if version_info < (3, 0): expected_types += (unicode, )
 
         tmp_dict = dict(self.__dict__)
@@ -65,6 +66,8 @@ class MemoryRange(object):
                     "Unsupported type %s for dictifying %s for mem_range at 0x%x"
                     % (type(v), k, self.address))
             if isinstance(v, AvatarPeripheral):
+                v = v.__class__.__name__
+            if isinstance(v, Avatar):
                 v = v.__class__.__name__
             mr_dict[k] = v
         return mr_dict

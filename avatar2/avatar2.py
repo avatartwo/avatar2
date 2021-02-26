@@ -13,6 +13,7 @@ import signal
 import json
 import time
 
+from copy import deepcopy
 from os import path, makedirs
 from threading import Thread, Event
 
@@ -228,11 +229,14 @@ class Avatar(Thread):
     def add_memory_range(self, address, size, name=None, permissions='rwx',
                          file=None, file_offset=None, file_bytes=None,
                          forwarded=False, forwarded_to=None, emulate=None,
-                         interval_tree=None, **kwargs):
+                         interval_tree=None, inline=False, overwrite=False,
+                         **kwargs):
         """
         Adds a memory range to avatar
 
         :param emulate:      Emulation function that will take name, address and size if set
+        :param inline:       If set to true, inline the emulation object into targets which support inlining (e.g., QEMU, PANDA).
+                             NB: This deactivates all callbacks/watchmen on this region.
         :param address:      Base-Address of the Range
         :param size:         Size of the range
         :param file:         A file backing this range, if applicable
@@ -242,9 +246,12 @@ class Avatar(Thread):
         :param forwarded_to: If forwarded is true, specify the forwarding target
         :param interval_tree:interval_tree this range shall be added to. If None,
                              the range will be added to self.memory_ranges
+        :param overwrite:    If true, overwrite existing MR if they overlap with the new one
         """
         memory_ranges = self.memory_ranges if interval_tree is None else interval_tree
-        if emulate:
+        if inline is True and emulate is None:
+            self.log.warn("inline set for non peripheral memory")
+        if emulate is not None:
             python_peripheral = emulate(name, address, size, **kwargs)
             forwarded = True
             forwarded_to = python_peripheral
@@ -252,11 +259,32 @@ class Avatar(Thread):
 
         if forwarded is True:
             kwargs.update({'qemu_name': 'avatar-rmemory'})
+        if inline is True:
+            kwargs.update({'qemu_name': 'avatar-pyperipheral'})
+            kwargs.update({'inline_module': str(python_peripheral.__module__)})
+
         m = MemoryRange(address, size, name=name, permissions=permissions,
                         file=file, file_offset=file_offset,
                         file_bytes=file_bytes, forwarded=forwarded,
                         forwarded_to=forwarded_to, **kwargs)
-        memory_ranges[address:address + size] = m
+
+
+        mr_set = self.memory_ranges[address:address+size]
+        if overwrite is True and len(mr_set) > 0:
+            start = min(mr_set, key=lambda x: x.begin).begin
+            end   = max(mr_set, key=lambda x: x.end).end
+            self.memory_ranges.chop(address, address+size,
+                                    datafunc=lambda x,y:
+                                    deepcopy(x.data) if y is True else x.data)
+            mr_set2 = self.memory_ranges[start:end]
+            for interval in mr_set2:
+                interval.data.address = interval.begin
+                interval.data.size = interval.end - interval.begin
+                interval.data.name = 'SPLIT_%x_%x' % (interval.data.address,
+                                                   interval.data.size)
+
+        self.memory_ranges[address:address + size] = m
+
         return m
 
     def get_memory_range(self, address):
@@ -295,8 +323,8 @@ class Avatar(Thread):
         :type synced_ranges:   list
         """
 
-        if from_target.state != TargetStates.STOPPED or \
-                        to_target.state != TargetStates.STOPPED:
+        if from_target.state & TargetStates.STOPPED == 0 or \
+                        to_target.state & TargetStates.STOPPED == 0:
             raise Exception("Targets must be stopped for State Transfer, \
                              but target_states are (%s, %s)" %
                             (from_target.state, to_target.state))
@@ -369,7 +397,8 @@ class Avatar(Thread):
             return (message.id, None, False)
         message.dst = range
         if not range.forwarded:
-            raise Exception("Forward request for non forwarded range received!")
+            raise Exception("Forward request for non forwarded range received!\
+                            (Address = 0x%x)" % message.address)
         if range.forwarded_to is None:
             raise Exception("Forward request for non existing target received.\
                             (Address = 0x%x)" % message.address)
