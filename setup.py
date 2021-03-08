@@ -4,7 +4,7 @@ from sys import version_info
 
 setup(
     name='avatar2',
-    version='1.4.2',
+    version='1.4.3',
     packages=['avatar2',
               'avatar2/archs',
               'avatar2/targets',
@@ -15,8 +15,10 @@ setup(
               'avatar2/installer'
               ],
     install_requires=[
+        'enum34;python_version<"3.4"',
         'pygdbmi==0.9.0.2;python_version<="3.5"',
         'pygdbmi>=0.10.0.0;python_version>"3.5"',
+        'cached_property;python_version<="3.8"',
         'intervaltree',
         'posix_ipc>=1.0.0',
         'capstone>=3.0.4',
@@ -24,7 +26,6 @@ setup(
         'parse',
         'configparser',
         'npyscreen',
-        'enum34;python_version<"3.4"',
         'unicorn',
         'bitstring',
         'pylink-square',

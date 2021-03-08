@@ -1,3 +1,14 @@
+# Version 1.4.3 (March 8th, 2021)
+
+* Improvements
+    * Remote Memory Accesses can now optionally forward the pc value if the
+      backed forwarded_to-object supports it.
+      (Currently, this is only PyPeripherals when all read/write handler have a
+      pc kwarg.)
+
+* Bugfixes:
+    * Qemu's log_file argument is now treated as absolute path
+
 # Version 1.4.2 (February 26th, 2021)
 
 * Improvements
