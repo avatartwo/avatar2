@@ -4,7 +4,7 @@ from sys import version_info
 
 setup(
     name='avatar2',
-    version='1.4.2',
+    version='1.4.3',
     packages=['avatar2',
               'avatar2/archs',
               'avatar2/targets',
@@ -20,6 +20,7 @@ setup(
         'intervaltree',
         'posix_ipc>=1.0.0',
         'capstone>=3.0.4',
+        'cached_property',
         'keystone-engine',
         'parse',
         'configparser',
