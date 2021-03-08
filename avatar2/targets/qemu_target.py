@@ -96,8 +96,7 @@ class QemuTarget(Target):
                 return cmd_line
 
             if self.log_file is not None:
-                log_file = ['-D', '%s/%s' % (self.avatar.output_directory,
-                                             self.log_file)]
+                log_file = ['-D', '%s' % self.log_file]
             else:
                 log_file = ['-D', '%s/%s_log.txt' %
                             (self.avatar.output_directory, self.name)]
