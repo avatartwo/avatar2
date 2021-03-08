@@ -1,5 +1,6 @@
 from intervaltree import IntervalTree
-
+from inspect import signature
+from cached_property import cached_property
 
 class AvatarPeripheral(object):
     def __init__(self, name, address, size, **kwargs):
@@ -10,6 +11,25 @@ class AvatarPeripheral(object):
         self.read_handler = IntervalTree()
         self.write_handler = IntervalTree()
 
+    @cached_property
+    def read_supports_pc(self):
+        """
+        Checks if all registered read-handlers support an pc parameter
+        """
+        return all(
+            'pc' in signature(rh.data).parameters for rh in self.read_handler
+        )
+
+    @cached_property
+    def write_supports_pc(self):
+        """
+        Checks if all registered read-handlers support an pc parameter
+        """
+        return all(
+            'pc' in signature(rh.data).parameters for rh in self.write_handler
+        )
+
+
     def shutdown(self):
         """
         Some peripherals will require to be shutdowned when avatar exits.
@@ -17,7 +37,8 @@ class AvatarPeripheral(object):
         """
         pass
 
-    def write_memory(self, address, size, value, num_words=1, raw=False):
+    def write_memory(self, address, size, value, num_words=1, raw=False, pc=0):
+
         if num_words != 1 or raw is True:
             raise Exception("write_memory for AvatarPeripheral does not support \
                              'num_words' or 'raw' kwarg")
@@ -31,9 +52,11 @@ class AvatarPeripheral(object):
         if len(intervals) > 1:
             raise Exception("Multiple write handler for peripheral %s\
                             at offset %d" % (self.name, offset))
-        return intervals.pop().data(offset, size, value)
 
-    def read_memory(self, address, size, num_words=1, raw=False):
+        kwargs = {} if self.write_supports_pc is False else {'pc': pc}
+        return intervals.pop().data(offset, size, value, **kwargs)
+
+    def read_memory(self, address, size, num_words=1, raw=False, pc=0):
         if num_words != 1 or raw is True:
             raise Exception("read_memory for AvatarPeripheral does not support \
                              'num_words' or 'raw' kwarg")
@@ -48,4 +71,5 @@ class AvatarPeripheral(object):
         if len(intervals) > 1:
             raise Exception("Multiple read handler for peripheral %s\
                             at offset %d" % (self.name, offset))
-        return intervals.pop().data(offset, size)
+        kwargs = {} if self.write_supports_pc is False else {'pc': pc}
+        return intervals.pop().data(offset, size, **kwargs)

@@ -403,8 +403,14 @@ class Avatar(Thread):
             raise Exception("Forward request for non existing target received.\
                             (Address = 0x%x)" % message.address)
 
+
         try:
-            mem = range.forwarded_to.read_memory(message.address, message.size, message.num_words, message.raw)
+            kwargs = {'num_words': message.num_words, 'raw': message.raw}
+            if hasattr(range.forwarded_to, 'read_supports_pc') and \
+               range.forwarded_to.read_supports_pc is True:
+                kwargs['pc'] = message.pc
+
+            mem = range.forwarded_to.read_memory(message.address, message.size, **kwargs)
             if not message.raw and message.num_words == 1 and not isinstance(mem, int):
                 raise Exception(("Forwarded read returned data of type %s "
                                  "(expected: int)" % type(mem)))
@@ -413,6 +419,7 @@ class Avatar(Thread):
             self.log.exception("RemoteMemoryRead failed: %s" % e)
             mem = -1
             success = False
+
         message.origin.protocols.remote_memory.send_response(message.id, mem,
                                                              success)
         return (message.id, mem, success)
@@ -429,8 +436,13 @@ class Avatar(Thread):
         if mem_range.forwarded_to is None:
             raise Exception("Forward request for non existing target received!")
 
+        kwargs = {}
+        if hasattr(mem_range.forwarded_to, 'write_supports_pc') and \
+           mem_range.forwarded_to.write_supports_pc is True:
+            kwargs['pc'] = message.pc
+
         success = mem_range.forwarded_to.write_memory(message.address, message.size,
-                                                      message.value)
+                                                      message.value, **kwargs)
 
         message.origin.protocols.remote_memory.send_response(message.id, 0,
                                                              success)
