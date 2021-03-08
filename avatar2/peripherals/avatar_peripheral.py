@@ -1,6 +1,13 @@
+import sys
+
 from intervaltree import IntervalTree
 from inspect import signature
-from cached_property import cached_property
+
+if sys.version_info.major == 3 and sys.version_info.minor >= 8:
+    from functools import cached_property
+else:
+    from cached_property import cached_property
+
 
 
 class AvatarPeripheral(object):
