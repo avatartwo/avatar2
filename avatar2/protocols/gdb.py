@@ -268,7 +268,7 @@ class GDBProtocol(object):
                 gdb_args += [local_arguments]
 
 
-        if sys.version_info <= (3, 5):
+        if sys.version_info <= (3, 6):
             self._gdbmi = pygdbmi.gdbcontroller.GdbController(
                 gdb_path=gdb_executable,
                 gdb_args=gdb_args,
