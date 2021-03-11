@@ -71,3 +71,33 @@ the following named arguments:
 | arch     | The architecture, as passed to capstone       |
 | mode     |   The disassemble mode, as passed to capstone |
 
+## GDB Core Dumper
+
+GDB targets can create a core dump file that can later be loaded into a 
+debugger for manual dynamic analysis.
+
+```python
+import os
+import subprocess
+
+from avatar2 import *
+
+
+GDB_PORT = 1234          
+
+avatar = Avatar(arch=archs.x86.X86_64)
+gdbserver = subprocess.Popen('gdbserver --once 127.0.0.1:%d /usr/bin/ls' % GDB_PORT, shell=True)
+target = avatar.add_target(GDBTarget, gdb_port=GDB_PORT)
+target.init()
+
+avatar.load_plugin('gdb_core_dumper')
+
+target.step()
+
+# Save core file to output directory
+target.dump_core()
+
+# Save core file to custom location
+target.dump_core("/tmp/core.1")
+
+```
