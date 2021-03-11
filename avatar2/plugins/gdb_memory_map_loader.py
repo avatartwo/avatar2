@@ -62,15 +62,6 @@ def target_added_callback(avatar, *args, **kwargs):
     add_methods(target)
 
 
-def add_methods(target):
-    target.load_memory_mappings = MethodType(load_memory_mappings_target, target)
-
-
-def target_added_callback(avatar, *args, **kwargs):
-    target = kwargs["watched_return"]
-    add_methods(target)
-
-
 def load_plugin(avatar):
     avatar.watchmen.add_watchman(
         "AddTarget", when="after", callback=target_added_callback
