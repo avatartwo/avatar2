@@ -33,7 +33,8 @@ class PyPandaTarget(PandaTarget):
             # Wait for shutdown
             while self._thread.is_alive():
                 sleep(.01)
-
+                
+        super(PyPandaTarget, self).shutdown()
 
     @watch('TargetInit')
     def init(self, **kwargs):
