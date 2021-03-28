@@ -26,16 +26,15 @@ class PyPandaTarget(PandaTarget):
         self._thread = None
 
     def shutdown(self):
-
-
-        if self._thread.is_alive():
+        if self._thread is not None and self._thread.is_alive():
             self.protocols.execution.remote_disconnect()
             self.pypanda.end_analysis()
 
             # Wait for shutdown
             while self._thread.is_alive():
                 sleep(.01)
-
+                
+        super(PyPandaTarget, self).shutdown()
 
     @watch('TargetInit')
     def init(self, **kwargs):
