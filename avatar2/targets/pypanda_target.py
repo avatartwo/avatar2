@@ -1,5 +1,6 @@
 from threading import Thread
 from time import sleep
+from os.path import abspath
 from avatar2.targets import PandaTarget
 
 from ..watchmen import watch
@@ -18,6 +19,7 @@ class PyPandaTarget(PandaTarget):
             raise RuntimeError(("PyPanda could not be found! for installation, "
                     "please follow the steps at https://github.com/"
                     "panda-re/panda/blob/master/panda/pypanda/docs/USAGE.md"))
+        kwargs['executable'] = abspath(pandare.__file__)
 
         super(PyPandaTarget, self).__init__(*args, **kwargs)
 

@@ -175,8 +175,11 @@ def test_nucleo_usart_debug_write():
 
 
 if __name__ == '__main__':
-    setup_func()
-    test_panda_hook()
+    #setup_func()
     #test_panda_callback()
-    teardown_func()
+    #teardown_func()
+    #setup_func()
+    #test_panda_hook()
+    #teardown_func()
+    pass
 
