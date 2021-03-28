@@ -1,3 +1,17 @@
+# Version 1.4.4 (March 28th, 2021)
+
+* Improvements
+    * Allow logging to be setup by external orchestration (thanks @grant-h)
+
+* New Plugins:
+    * GDB Core Dumper (thanks @AdamVanScyoc)
+
+* Bugfixes:
+    * Python version checking for selecting which version of pygdbmi to use
+    * Proper shutdown of PyPanda target (thanks @grant-h)
+    * Allow PyPanda to initialize without requiring Panda executable
+    * Allow CI to run on PRs
+
 # Version 1.4.3 (March 8th, 2021)
 
 * Improvements
