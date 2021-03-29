@@ -1,3 +1,8 @@
+# Version 1.4.5 (March 29th, 2021)
+
+* Bugfixes:
+    * Bumped version to replace broken pypi version of v1.4.4
+
 # Version 1.4.4 (March 28th, 2021)
 
 * Improvements
