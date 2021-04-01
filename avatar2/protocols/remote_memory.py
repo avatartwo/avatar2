@@ -132,6 +132,7 @@ class RemoteMemoryProtocol(object):
         try:
             self._rx_queue = MessageQueue(self.rx_queue_name, flags=O_RDONLY,
                                           read=True, write=False)
+            self._rx_queue.unlink()
         except Exception as e:
             self.log.exception("Unable to create rx_queue:")
             return False
@@ -139,6 +140,7 @@ class RemoteMemoryProtocol(object):
         try:
             self._tx_queue = MessageQueue(self.tx_queue_name, flags=O_WRONLY,
                                           read=False, write=True)
+            self._tx_queue.unlink()
         except Exception as e:
             self.log.exception("Unable to create tx_queue:")
             self._rx_queue.close()
