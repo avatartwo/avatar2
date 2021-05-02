@@ -15,6 +15,7 @@
 #ifdef TARGET_ARM
 #include "target/arm/cpu.h"
 #elif TARGET_MIPS
+    //
 #endif
 
 

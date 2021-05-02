@@ -1,7 +1,7 @@
 /*
  * Avatar2 configurable machine for dynamic creation of emulated boards
  *
- * Copyright (C) 2017-2021 Eurecom
+ * Copyright (C) 2017-2022 Eurecom
  * Written by Dario Nisi, Marius Muench, Paul Olivier & Jonas Zaddach
  *
  * Updates for MIPS, i386, and x86_64 written by Andrew Fasano for PANDA
@@ -35,8 +35,11 @@
 //plattform specific imports
 #if defined(TARGET_ARM)
 #include "target/arm/cpu.h"
-#include "hw/arm/armv7m.h"
 #include "hw/avatar/arm_helper.h"
+
+#if !defined(TARGET_AARCH64)
+#include "hw/arm/armv7m.h"
+#endif
 typedef ARMCPU THISCPU;
 
 #elif defined(TARGET_I386) || defined(TARGET_X86_64)
@@ -430,6 +433,7 @@ static void set_entry_point(QDict *conf, THISCPU *cpuu)
 #ifdef TARGET_ARM
     cpuu->env.regs[15] = entry & (~1);
     cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0;
+
 #elif defined(TARGET_I386)
     cpuu->env.eip = entry;
 
@@ -450,12 +454,13 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     THISCPU *cpuu;
     CPUState *env;
 
+//#if defined(TARGET_ARM) || define(TARGET_AARCH64) || defined(TARGET_I386) || defined(TARGET_MIPS)
 #if defined(TARGET_ARM) || defined(TARGET_I386) || defined(TARGET_MIPS)
     ObjectClass *cpu_oc;
     Object *cpuobj;
-#endif
+#endif  /* TARGET_ARM || TARGET_I386 || TARGET_MIPS */
 
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
     DeviceState *dstate; //generic device if CPU can be initiliazed via qdev-API
     BusState* sysbus = sysbus_get_default();
     int num_irq = 64;
@@ -465,7 +470,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 
 #elif defined(TARGET_MIPS)
     Error *err = NULL;
-#endif
+#endif  /* TARGET_ARM */
 
 
     cpu_type = ms->cpu_type;
@@ -476,7 +481,9 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     }
 
 
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM)
+
+#if !defined(TARGET_AARCH64)
     //create armv7m cpus together with nvic
     if (!strcmp(cpu_type, "cortex-m3")) {
 
@@ -495,6 +502,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
         cpuu = ARM_CPU(first_cpu);
 
     } else {
+#endif  /* ! TARGET_AARCH64 */
         cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, cpu_type);
         if (!cpu_oc) {
             fprintf(stderr, "Unable to find CPU definition\n");
@@ -505,7 +513,10 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 
         object_property_set_bool(cpuobj, "realized", true, &error_fatal);
         cpuu = ARM_CPU(cpuobj);
+
+#if !defined(TARGET_AARCH64)
     }
+#endif  /* ! TARGET_AARCH64 */
 
 #elif defined(TARGET_I386)
     cpu_oc = cpu_class_by_name(TYPE_X86_CPU, cpu_type);
@@ -550,8 +561,14 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 
 
 #if defined(TARGET_ARM)
+
+#if defined(TARGET_AARCH64)
+    set_feature(&cpuu->env, ARM_FEATURE_AARCH64);
+    set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
+#else
     avatar_add_banked_registers(cpuu);
     set_feature(&cpuu->env, ARM_FEATURE_CONFIGURABLE);
+#endif  /* TARGET_AARCH64 */
 
 #elif defined(TARGET_I386)
     // Ensures CS register is set correctly on x86/x86_64 CPU reset. See target/i386/cpu.c:3063
@@ -565,7 +582,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 
 #elif defined(TARGET_MIPS)
     //
-#endif
+#endif  /* TARGET_ARM */
 
     assert(cpuu != NULL);
     return cpuu;
@@ -627,6 +644,8 @@ static void configurable_machine_class_init(ObjectClass *oc, void *data)
 
 #ifdef TARGET_ARM
     mc->default_cpu_type = "arm926";
+#elif defined(TARGET_AARCH64)
+    mc->default_cpu_type = "cortex-a57";
 #elif defined(TARGET_I386)
     mc->default_cpu_type = "qemu32";
 #elif defined(TARGET_MIPS)

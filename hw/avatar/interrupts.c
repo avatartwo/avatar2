@@ -12,6 +12,9 @@
 #ifdef TARGET_ARM
 #include "target/arm/cpu.h"
 
+#if !defined(TARGET_AARCH64)
+#endif
+
 #elif defined(TARGET_MIPS)
 #include "target/mips/cpu.h"
 #endif
@@ -24,10 +27,7 @@
 extern  QemuAvatarMessageQueue *rmem_rx_queue_ref;
 extern  QemuAvatarMessageQueue *rmem_tx_queue_ref;
 
-/* Common declarations,
- * for now, only ARM target is implemented 
- */
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM)
 
 static QemuAvatarMessageQueue *irq_rx_queue_ref = NULL;
 static QemuAvatarMessageQueue *irq_tx_queue_ref = NULL;
@@ -37,12 +37,10 @@ static uint8_t ignore_irq_return_map[32] = {0};
 #endif
 
 /* Architecture specific declaration */
-#ifdef TARGET_ARM
+#if defined(TARGET_ARM)
 static bool armv7m_exception_handling_enabled = false;
-#endif
 
 
-#ifdef TARGET_ARM
 void qmp_avatar_armv7m_set_vector_table_base(int64_t num_cpu, int64_t base, Error **errp)
 {
 //#ifdef TARGET_ARM
@@ -188,5 +186,4 @@ void avatar_armv7m_exception_enter(int irq)
         }
     }
 }
-#endif
-
+#endif  /* defined(TARGET_ARM) && !defined(TARGET_AARCH64) */
