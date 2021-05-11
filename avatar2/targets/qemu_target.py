@@ -4,7 +4,10 @@ from os.path import isfile, exists
 
 from avatar2.protocols.gdb import GDBProtocol
 from avatar2.protocols.qmp import QMPProtocol
-from avatar2.protocols.remote_memory import RemoteMemoryProtocol
+try:
+    from avatar2.protocols.remote_memory import RemoteMemoryProtocol
+except ImportError:
+    RemoteMemoryProtocol = None
 from avatar2.targets import Target
 
 from avatar2.installer.config import QEMU, GDB_MULTI
@@ -280,7 +283,7 @@ class QemuTarget(Target):
             i[2].qemu_name
             for i in self._memory_mapping.iter()
             if hasattr(i[2], "qemu_name")
-        ]:
+        ] and RemoteMemoryProtocol is not None:
             rmp = RemoteMemoryProtocol(
                 self._rmem_tx_queue_name,
                 self._rmem_rx_queue_name,
