@@ -14,6 +14,7 @@ if sys.version_info < (3, 0):
     import Queue as queue
 else:
     import queue
+from collections.abc import Iterable
 
 from avatar2.targets import TargetStates
 from avatar2.message import AvatarMessage, UpdateStateMessage, BreakpointHitMessage
@@ -52,7 +53,7 @@ class OpenOCDProtocol(Thread):
         """
         if isinstance(openocd_script, str):
             self.openocd_files = [openocd_script]
-        elif isinstance(openocd_script, list):
+        elif isinstance(openocd_script, Iterable):
             self.openocd_files = openocd_script
         else:
             raise TypeError("Wrong type for OpenOCD configuration files")

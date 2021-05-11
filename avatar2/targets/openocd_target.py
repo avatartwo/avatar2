@@ -1,4 +1,5 @@
 import sys
+from collections.abc import Iterable
 
 if sys.version_info < (3, 0):
     from Queue import PriorityQueue
@@ -20,8 +21,16 @@ class OpenOCDTarget(Target):
                  **kwargs
                  ):
 
-        if openocd_script and not os.path.exists(openocd_script):
-            raise ValueError("OpenOCD script %s does not exist!" % openocd_script)
+        if isinstance(openocd_script, str) and not os.path.exists(openocd_script):
+            raise ValueError(f"OpenOCD script {openocd_script} does not exist!")
+        if isinstance(openocd_script, Iterable):
+            missing_scripts = [
+                missing for missing in openocd_script
+                if not os.path.exists(missing)
+            ]
+            if missing_scripts:
+                raise ValueError(f"OpenOCD scripts {missing_scripts} do not exist!")
+
         super(OpenOCDTarget, self).__init__(avatar, **kwargs)
 
         self.executable = (executable if executable is not None
