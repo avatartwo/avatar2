@@ -35,7 +35,7 @@ class PyPandaTarget(PandaTarget):
             # Wait for shutdown
             while self._thread.is_alive():
                 sleep(.01)
-                
+
         super(PyPandaTarget, self).shutdown()
 
     @watch('TargetInit')
@@ -64,7 +64,7 @@ class PyPandaTarget(PandaTarget):
 
 
 
-        self.pypanda.setup_internal_signal_handler(signal_handler=SigHandler)
+        self.pypanda._setup_internal_signal_handler(signal_handler=SigHandler)
 
         self._thread = Thread(target=self.pypanda.run, daemon=True)
         self._thread.start()
