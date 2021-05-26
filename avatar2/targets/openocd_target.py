@@ -20,8 +20,6 @@ class OpenOCDTarget(Target):
                  **kwargs
                  ):
 
-        if openocd_script and not os.path.exists(openocd_script):
-            raise ValueError("OpenOCD script %s does not exist!" % openocd_script)
         super(OpenOCDTarget, self).__init__(avatar, **kwargs)
 
         self.executable = (executable if executable is not None
