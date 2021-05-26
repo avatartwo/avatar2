@@ -7,7 +7,7 @@ before_install:
 - python3 /home/travis/build/$TRAVIS_REPO_SLUG/generate_dockerfile.py --endpoint_list
   avatar-qemu panda --qemu_targets arm-softmmu mips-softmmu
 install:
-- echo "$docker_password" | docker login -u "$DOCKER_USERNAME" --password-stdin || true
+- docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD" || true
 - docker build --tag avatar2 .
 before_script:
 - docker run -v /home/travis/build/$TRAVIS_REPO_SLUG:/avatar2 --name avatar2 --cap-add=SYS_PTRACE
