@@ -167,6 +167,10 @@ class QemuTarget(Target):
         Generates the configuration passed to avatar-qemus configurable machine
         """
         conf_dict = self.avatar.generate_config()
+
+        if self.cpu_model is not None:
+            conf_dict["cpu_model"] = self.cpu_model
+
         conf_dict["entry_address"] = self.entry_address
         if self.fw is not None:
             conf_dict["kernel"] = self.fw
