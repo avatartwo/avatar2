@@ -21,7 +21,7 @@ class ARM(Architecture):
     qemu_name = 'arm'
     gdb_name = 'arm'
     registers = {'r0': 0, 'r1': 1, 'r2': 2, 'r3': 3, 'r4': 4, 'r5': 5, 'r6': 6,
-                 'r7': 7, 'r8': 8, 'r9': 9, 'r10': 10, 'r11': 11, 'r12': 12,
+                 'r7': 7, 'r8': 8, 'r9': 9, 'r10': 10, 'r11': 11, 'r12': 12, 'ip': 12,
                  'sp': 13, 'lr': 14, 'pc': 15, 'cpsr': 25,
                  }
     unicorn_registers = {'r0': UC_ARM_REG_R0, 'r1': UC_ARM_REG_R1, 'r2': UC_ARM_REG_R2,
