@@ -1,3 +1,16 @@
+# Version 1.4.6 (June 21st, 2021)
+
+* Improvements
+    * Add build and unit tests to Github Actions
+    * Add 'ip' alias for ARM register 12 
+
+* Bugfizes:
+    * Unlink RemoteMemory message queue after opened (thanks @grant-h)
+    * Adjust API to recent pypanda version (0.1.1.2)
+    * Handle ImportError with RemoteMemoryProtocol on darwin (thanks @fabianfreyer)
+    * Allow OpenOCDTarget to pass a list of multiple scripts (thanks @fabianfreyer)
+    * Override in config file the avatar cpu_model when QEmuTarget specify it
+
 # Version 1.4.5 (March 29th, 2021)
 
 * Bugfixes:
