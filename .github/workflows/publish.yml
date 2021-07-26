@@ -1,0 +1,29 @@
+name: Publish to PyPI
+
+on:
+    push:
+        tag:
+            - v1.*
+
+jobs:
+    build-n-publish:
+        if: github.repository == 'avatartwo/avatar2'
+        runs-on: ubuntu-20.04
+        steps:
+            - name: Check out repository code
+              uses: actions/checkout@v2
+
+            - name: Build a binary wheel and a source tarball
+              run: python3 setup.py sdist bdist_wheel
+
+            - name: Check package
+              run: python3 -m twine check dist/*
+
+            - name: Publish to Test PyPI
+              uses: pypa/gh-action-pypi-publish@release/v1
+              with:
+                  user: __token__
+                  password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+                  repository_url: https://test.pypi.org/legacy/
+
+
