@@ -447,7 +447,7 @@ class Target(object):
         return self.protocols.execution.remove_breakpoint(bkptno)
 
     def update_state(self, state):
-        self.log.info("State changed to to %s" % TargetStates(state))
+        self.log.info("State changed to %s", TargetStates(state))
         self.state = state
 
     @watch('TargetWait')
