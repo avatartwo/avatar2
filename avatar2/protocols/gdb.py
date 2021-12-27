@@ -294,10 +294,10 @@ class GDBProtocol(object):
         self.shutdown()
 
     def shutdown(self):
-        if self._communicator is not None:
+        if hasattr(self, "_communicator") and self._communicator is not None:
             self._communicator.stop()
             self._communicator = None
-        if self._gdbmi is not None:
+        if hasattr(self, "_gdbmi") and self._gdbmi is not None:
             self._gdbmi.exit()
             self._gdbmi = None
 
