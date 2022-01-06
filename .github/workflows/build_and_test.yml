@@ -5,15 +5,15 @@ on:
         branches:
             - 'main'
             - 'dev/*'
-    pull_request:
-        branches:
-            - 'main'
-            - 'dev/*'
+              #pull_request:
+              #    branches:
+              #        - 'main'
+              #        - 'dev/*'
 
 jobs:
     build_container:
         if: github.repository == 'avatartwo/avatar2'
-        runs-on: ubuntu-20.04
+        runs-on: self-hosted
         steps:
             - name: Check out repository code
               uses: actions/checkout@v2
@@ -41,7 +41,7 @@ jobs:
 
     test_cases:
         if: github.repository == 'avatartwo/avatar2'
-        runs-on: ubuntu-20.04
+        runs-on: self-hosted
         needs: [build_container]
         steps:
             - name: Check out repository code
