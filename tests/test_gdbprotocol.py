@@ -9,7 +9,7 @@ from nose.tools import *
 
 SLEEP_TIME = 1
 
-MEM_ADDR = 0x555555554000
+MEM_BASE = 0
 port = 4444
 p = None
 g = None
@@ -20,7 +20,7 @@ x86_regs = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
 
 
 def setup_helloworld():
-    global p, g, port
+    global p, g, port, MEM_BASE
 
 
     binary = '%s/tests/binaries/hello_world' % os.getcwd()
@@ -35,6 +35,8 @@ def setup_helloworld():
     g = GDBProtocol(arch=avatar2.archs.X86_64)
     g.remote_connect(port=port)
 
+    # Base addresses can change across kernel versions due to PIE binaries
+    MEM_BASE = g.get_symbol("main")[1] & ~0xfff
 
 def setup_inf_loop():
     global p, g, port
@@ -84,13 +86,13 @@ def test_break_run_and_read_write_mem():
     
     time.sleep(SLEEP_TIME)
 
-    ret = g.read_memory(MEM_ADDR, 4)
+    ret = g.read_memory(MEM_BASE, 4)
     assert_equal(ret, 0x464c457f)
 
-    ret = g.write_memory(MEM_ADDR, 4, 0x41414141)
+    ret = g.write_memory(MEM_BASE, 4, 0x41414141)
     assert_equal(ret, True)
 
-    ret = g.read_memory(MEM_ADDR, 4)
+    ret = g.read_memory(MEM_BASE, 4)
     assert_equal(ret, 0x41414141)
 
 @with_setup(setup_inf_loop, teardown_func)
@@ -112,7 +114,8 @@ def test_continue_stopping_stepping():
 
 @with_setup(setup_helloworld, teardown_func)
 def test_watchpoint():
-    ret = g.set_watchpoint(0x555555554754, read=True,
+    # .rodata string
+    ret = g.set_watchpoint(MEM_BASE + 0x754, read=True,
                            write=False)
     assert_equal(ret, True)
 
@@ -122,7 +125,7 @@ def test_watchpoint():
     
     time.sleep(SLEEP_TIME)
 
-    ret = g.read_memory(MEM_ADDR, 4)
+    ret = g.read_memory(MEM_BASE, 4)
     assert_equal(ret, 0x464c457f)
 
 if __name__ == '__main__':
