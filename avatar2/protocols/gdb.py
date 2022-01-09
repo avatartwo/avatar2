@@ -336,15 +336,7 @@ class GDBProtocol(object):
 
         return ret
 
-    def remote_connect(self, ip='127.0.0.1', port=3333):
-        """
-        connect to a remote gdb server
-
-        :param ip: ip of the remote gdb-server (default: localhost)
-        :param port: port of the remote gdb-server (default: port)
-        :returns: True on successful connection
-        """
-
+    def _remote_connect_common(self, remote_string, transport_setup=None):
         req = ['-gdb-set', 'target-async', 'on']
         ret, resp = self._sync_request(req, GDB_PROT_DONE)
         if not ret:
@@ -355,8 +347,6 @@ class GDBProtocol(object):
 
         req = ['-gdb-set', 'architecture', self._arch.gdb_name]
         ret, resp = self._sync_request(req, GDB_PROT_DONE)
-
-
         if not ret:
             self.log.critical(
                 "Unable to set architecture, received response: %s" %
@@ -378,7 +368,11 @@ class GDBProtocol(object):
                     resp)
                 raise Exception("GDBProtocol was unable to set endianness")
 
-        req = ['-target-select', 'remote', '%s:%d' % (ip, int(port))]
+        # transport unique setup, if applicable
+        if transport_setup:
+            transport_setup()
+
+        req = ['-target-select', 'remote', remote_string]
         ret, resp = self._sync_request(req, GDB_PROT_CONN)
 
         self.log.debug(
@@ -392,6 +386,17 @@ class GDBProtocol(object):
 
         return ret
 
+    def remote_connect(self, ip='127.0.0.1', port=3333):
+        """
+        connect to a remote gdb server via TCP
+
+        :param ip: ip of the remote gdb-server (default: localhost)
+        :param port: port of the remote gdb-server (default: port)
+        :returns: True on successful connection
+        """
+
+        return self._remote_connect_common('%s:%d' % (ip, int(port)))
+
     def remote_connect_serial(self, device='/dev/ttyACM0', baud_rate=38400,
                               parity='none'):
         """
@@ -403,49 +408,24 @@ class GDBProtocol(object):
         :returns: True on successful connection
         """
 
-        req = ['-gdb-set', 'architecture', self._arch.gdb_name]
-        ret, resp = self._sync_request(req, GDB_PROT_DONE)
-        if not ret:
-            self.log.critical(
-                "Unable to set architecture, received response: %s" %
-                resp)
-            raise Exception(("GDBProtocol was unable to set the architecture\n"
-                             "Did you select the right gdb_executable?"))
+        def serial_setup():
+            if parity not in ['none', 'even', 'odd']:
+                self.log.critical("Parity must be none, even or odd")
+                raise Exception("Cannot set parity to %s" % parity)
 
-        if parity not in ['none', 'even', 'odd']:
-            self.log.critical("Parity must be none, even or odd")
-            raise Exception("Cannot set parity to %s" % parity)
+            req = ['-gdb-set', 'serial', 'parity', '%s' % parity]
+            ret, resp = self._sync_request(req, GDB_PROT_DONE)
+            if not ret:
+                self.log.critical("Unable to set parity")
+                raise Exception("GDBProtocol was unable to set parity")
 
-        req = ['-gdb-set', 'mi-async', 'on']
-        ret, resp = self._sync_request(req, GDB_PROT_DONE)
-        if not ret:
-            self.log.critical(
-                "Unable to set GDB/MI to async, received response: %s" %
-                resp)
-            raise Exception("GDBProtocol was unable to connect")
+            req = ['-gdb-set', 'serial', 'baud', '%i' % baud_rate]
+            ret, resp = self._sync_request(req, GDB_PROT_DONE)
+            if not ret:
+                self.log.critical("Unable to set baud rate")
+                raise Exception("GDBProtocol was unable to set Baudrate")
 
-        req = ['-gdb-set', 'serial', 'parity', '%s' % parity]
-        ret, resp = self._sync_request(req, GDB_PROT_DONE)
-        if not ret:
-            self.log.critical("Unable to set parity")
-            raise Exception("GDBProtocol was unable to set parity")
-
-        req = ['-gdb-set', 'serial', 'baud', '%i' % baud_rate]
-        ret, resp = self._sync_request(req, GDB_PROT_DONE)
-        if not ret:
-            self.log.critical("Unable to set baud rate")
-            raise Exception("GDBProtocol was unable to set Baudrate")
-
-        req = ['-target-select', 'remote', '%s' % device]
-        ret, resp = self._sync_request(req, GDB_PROT_CONN)
-
-        self.log.debug(
-            "Attempted to connect to target. Received response: %s" %
-            resp)
-
-        self.update_target_regs()
-
-        return ret
+        return self._remote_connect_common(device, transport_setup=serial_setup)
 
     def remote_disconnect(self):
         """
