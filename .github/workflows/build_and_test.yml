@@ -5,15 +5,15 @@ on:
         branches:
             - 'main'
             - 'dev/*'
-              #pull_request:
-              #    branches:
-              #        - 'main'
-              #        - 'dev/*'
+    pull_request:
+      branches:
+          - 'main'
+          - 'dev/*'
 
 jobs:
-    build_container:
+    build_and_test:
         if: github.repository == 'avatartwo/avatar2'
-        runs-on: self-hosted
+        runs-on: ubuntu-20.04
         steps:
             - name: Check out repository code
               uses: actions/checkout@v2
@@ -26,37 +26,6 @@ jobs:
 
             - name: Test import avatar2 
               run: docker run --rm avatar2 bash -c "python3 -c 'import avatar2'"
-
-            - name: Save and compress the docker image
-              run: |
-                  docker save avatar2 -o avatar2-image.tar
-                  tar zcvf avatar2-image.tar.gz avatar2-image.tar
-
-            - name: Upload docker image
-              uses: actions/upload-artifact@v2
-              with:
-                  name: docker-artifact
-                  path: avatar2-image.tar.gz
-                  retention-days: 1
-
-    test_cases:
-        if: github.repository == 'avatartwo/avatar2'
-        runs-on: self-hosted
-        needs: [build_container]
-        steps:
-            - name: Check out repository code
-              uses: actions/checkout@v2
-
-            - name: Download docker image
-              uses: actions/download-artifact@v2
-              with:
-                  name: docker-artifact
-
-            - name: Load docker image
-              run: |
-                  tar zxvf avatar2-image.tar.gz
-                  docker load --input avatar2-image.tar
-                  docker image ls
 
             - name: Run avatar2 container
               run: |
