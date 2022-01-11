@@ -17,7 +17,7 @@ jobs:
         runs-on: ubuntu-20.04
         steps:
             - name: Install dependencies
-              uses: |
+              run: |
                 apt-get update
                 apt-get upgrade -y
                 apt-get install -y -m -f --install-suggests python3 python3-pip python3-setuptools python3-dev cmake build-essential libcapstone3 libcapstone-dev
@@ -29,21 +29,21 @@ jobs:
               uses: actions/checkout@v2
 
             - name: Build avatar2
-              uses: |
+              run: |
                 cd ${{ github.workspace }}
                 python3 setup.py install
 
             - name: Install debuggers targets
-              uses: |
+              run: |
                 apt-get install -y -m -f --install-suggests gdb gdb-multiarch openocd
 
             - name: Build avatar-qemu target
-              uses: |
+              run: |
                 cd ${{ github.workspace }}/targets
                 echo yes | ./build_qemu.sh
 
             - name: Run unit tests
-              uses: |
+              run: |
                 cd ${{ github.workspace }}
                 python3 ./tests/hello_world.py
                 python3 ./tests/gdb_memory_map_loader.py
