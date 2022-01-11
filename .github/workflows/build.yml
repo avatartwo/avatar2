@@ -18,10 +18,10 @@ jobs:
         steps:
             - name: Install dependencies
               run: |
-                apt-get update
-                apt-get upgrade -y
-                apt-get install -y -m -f --install-suggests python3 python3-pip python3-setuptools python3-dev cmake build-essential libcapstone3 libcapstone-dev
-                apt-get install -y -m -f --install-suggests
+                sudo apt-get update
+                sudo apt-get upgrade -y
+                sudo apt-get install -y -m -f --install-suggests python3 python3-pip python3-setuptools python3-dev cmake build-essential libcapstone3 libcapstone-dev
+                sudo apt-get install -y -m -f --install-suggests
                 pip3 install --upgrade pip
                 pip3 install nose2
 
@@ -35,7 +35,7 @@ jobs:
 
             - name: Install debuggers targets
               run: |
-                apt-get install -y -m -f --install-suggests gdb gdb-multiarch openocd
+                sudo apt-get install -y -m -f --install-suggests gdb gdb-multiarch openocd
 
             - name: Build avatar-qemu target
               run: |
