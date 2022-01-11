@@ -31,7 +31,7 @@ jobs:
             - name: Build avatar2
               run: |
                 cd ${{ github.workspace }}
-                python3 setup.py install
+                sudo python3 setup.py install
 
             - name: Install debuggers targets
               run: |
