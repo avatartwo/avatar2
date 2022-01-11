@@ -42,9 +42,6 @@ jobs:
                 cd ${{ github.workspace }}/targets
                 echo yes | ./build_qemu.sh
 
-                #- name: Build panda target
-                #uses:
-
             - name: Run unit tests
               uses: |
                 cd ${{ github.workspace }}
