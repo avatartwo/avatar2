@@ -1,9 +1,14 @@
 #!/bin/bash
+# Usage ./build_qemu.sh [architectures]
+# example:  ./build_qemu.sh arm-softmmu,mips-softmmu
+#
+
 source /etc/os-release
 
 repo="deb-src http://archive.ubuntu.com/ubuntu/ $UBUNTU_CODENAME-security main restricted"
 apt_src="/etc/apt/sources.list"
 QEMU_NPROC=$(QEMU_NPROC:-$(nproc))
+TARGET_LIST="arm-softmmu,mips-softmmu"
 
 if [[ "$ID" == "ubuntu" ]]
 then
@@ -28,6 +33,14 @@ else
     echo "You may have to install dependencies manually"
 fi
 
+
+if [[ $# -ge 1 ]]
+then
+    TARGET_LIST="$1"
+fi
+echo "Building for targets: $TARGET_LIST"
+
+
 cd `dirname "$BASH_SOURCE"`/src/
 git submodule update --init avatar-qemu 
 
@@ -36,7 +49,9 @@ git submodule update --init dtc
 
 mkdir -p ../../build/qemu/
 cd ../../build/qemu
-../../src/avatar-qemu/configure --disable-sdl --target-list=arm-softmmu 
+../../src/avatar-qemu/configure \
+    --disable-sdl \
+    --target-list=$TARGET_LIST
 
 make -j $QEMU_NPROC
 

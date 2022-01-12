@@ -39,20 +39,25 @@ jobs:
             - name: Build avatar-qemu target
               run: |
                 cd ${{ github.workspace }}/targets
-                echo yes | ./build_qemu.sh
+                echo yes | ./build_qemu.sh arm-softmmu,mips-softmmu
+                cd build/qemu
+                sudo make install
 
             - name: Build panda target
               run: |
                 git clone https://github.com/panda-re/panda.git
                 cd panda
                 git checkout 5fb8a5098d0647a13e5e7d39d20ff9f04242572d
-                sudo ./panda/scripts/install_ubuntu.sh
+                sudo ./panda/scripts/install_ubuntu.sh arm-softmmu,mips-softmmu
+                cd build
+                sudo make install
 
             - name: Run unit tests
               env: 
                 AVATAR2_ARCH: ARM
                 AVATAR2_GDB_EXECUTABLE: gdb-multiarch
               run: |
+                env
                 cd ${{ github.workspace }}
                 python3 ./tests/hello_world.py
                 python3 ./tests/gdb_memory_map_loader.py
@@ -64,6 +69,7 @@ jobs:
                 AVATAR2_QEMU_EXECUTABLE: qemu-system-arm
                 AVATAR2_PANDA_EXECUTABLE: panda-system-arm
               run: |
+                env
                 cd ${{ github.workspace }}
                 nose2 -v
 
@@ -74,6 +80,7 @@ jobs:
                 AVATAR2_QEMU_EXECUTABLE: qemu-system-mips
                 AVATAR2_PANDA_EXECUTABLE: panda-system-mips
               run: |
+                env
                 cd ${{ github.workspace }}
                 nose2 -v
 
