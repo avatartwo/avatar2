@@ -269,7 +269,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
     char * data = NULL;
     const char * name;
     MemoryRegion * ram;
-    uint64_t address;
+    uint64_t address, alias_address;
     int is_rom;
     MemoryRegion *sysmem = get_system_memory();
 
@@ -302,6 +302,17 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
     printf("Configurable: Adding memory region %s (size: 0x%"
            PRIx64 ") at address 0x%" PRIx64 "\n", name, size, address);
     memory_region_add_subregion(sysmem, address, ram);
+
+    if(qdict_haskey(mapping, "alias_at")) {
+        QDICT_ASSERT_KEY_TYPE(mapping, "alias_at", QTYPE_QNUM);
+        alias_address = qdict_get_int(mapping, "alias_at");
+
+        printf("Configurable: Adding alias to region %s at address 0x%" PRIx64 "\n", name, alias_address);
+        MemoryRegion *alias;
+        alias =  g_new(MemoryRegion, 1);
+        memory_region_init_alias(alias, NULL, name, ram, 0, size);
+        memory_region_add_subregion(sysmem, alias_address, alias);
+    }
 
     if (qdict_haskey(mapping, "file"))
     {
@@ -351,7 +362,7 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
 
         }
 
-        printf("Configurable: Inserting %"
+        printf("Configurable: Inserting 0x%"
                PRIx64 " bytes of data in memory region %s\n", data_size, name);
         //Size of data to put into a RAM region needs to fit in the RAM region
         g_assert(data_size <= size);
