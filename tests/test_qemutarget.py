@@ -16,7 +16,6 @@ from avatar2.message import *
 
 
 TEST_DIR = '/tmp/testava'
-ARCH = None
 ARM_BASE_ADDR   = 0x08000000
 MIPS_BASE_ADDR  = 0x1fc00000
 
@@ -148,10 +147,10 @@ class QemuTargetTestCase(unittest.TestCase):
 
         mem = qemu.read_memory(self.rom_addr, 4)
 
-        if ARCH == 'ARM':
+        if self.arch == 'ARM':
             self.assertEqual(mem, 0xe3a0101e, mem)
 
-        elif ARCH == 'MIPS':
+        elif self.arch == 'MIPS':
             #self.assertEqual(mem, 0x2409001e, mem)
             self.assertEqual(mem, 0x1e000924, mem)
 

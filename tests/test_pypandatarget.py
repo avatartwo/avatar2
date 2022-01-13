@@ -7,8 +7,6 @@ from time import sleep
 from avatar2 import *
 from avatar2.peripherals.nucleo_usart import *
 
-from pandare import ffi
-
 
 
 PORT = 9997
