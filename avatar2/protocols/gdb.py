@@ -397,6 +397,15 @@ class GDBProtocol(object):
 
         return self._remote_connect_common('%s:%d' % (ip, int(port)))
 
+    def remote_connect_unix(self, unix_path):
+        """
+        connect to a remote gdb server via a UNIX domain socket path
+
+        :param unix_path: path of the UNIX domain socket
+        :returns: True on successful connection
+        """
+        return self._remote_connect_common(unix_path)
+
     def remote_connect_serial(self, device='/dev/ttyACM0', baud_rate=38400,
                               parity='none'):
         """

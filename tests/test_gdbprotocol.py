@@ -5,6 +5,7 @@ import subprocess
 import os
 import time
 
+from test_utils import unix2tcp
 from nose.tools import *
 
 SLEEP_TIME = 1
@@ -37,6 +38,28 @@ def setup_helloworld():
 
     # Base addresses can change across kernel versions due to PIE binaries
     MEM_BASE = g.get_symbol("main")[1] & ~0xfff
+
+def setup_helloworld_unix():
+    global p, g, port, MEM_BASE
+
+    socket_path ='/tmp/test_socket'
+    unix2tcp(socket_path, "127.0.0.1", port)
+
+    binary = '%s/tests/binaries/hello_world' % os.getcwd()
+    p = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % port, binary],
+                        stderr=subprocess.PIPE)
+
+    out = str(p.stderr.readline())
+    assert_equal(binary in out, True)
+    out = str(p.stderr.readline())
+    assert_equal(str(port) in out, True)
+
+    g = GDBProtocol(arch=avatar2.archs.X86_64)
+    g.remote_connect_unix(socket_path)
+
+    # Base addresses can change across kernel versions due to PIE binaries
+    MEM_BASE = g.get_symbol("main")[1] & ~0xfff
+
 
 def setup_inf_loop():
     global p, g, port
@@ -73,6 +96,12 @@ def test_register_read_and_write():
     ret = g.read_register('rax')
     assert_equal(ret, 1678)
 
+@with_setup(setup_helloworld_unix, teardown_func)
+def test_register_read_and_write_unix():
+    ret = g.write_register('rax', 1678)
+    assert_equal(ret, True)
+    ret = g.read_register('rax')
+    assert_equal(ret, 1678)
 
 @with_setup(setup_helloworld, teardown_func)
 def test_break_run_and_read_write_mem():
