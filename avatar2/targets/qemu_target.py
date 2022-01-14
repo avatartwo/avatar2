@@ -25,6 +25,7 @@ class QemuTarget(Target):
         firmware=None,
         gdb_executable=None,
         gdb_port=3333,
+        gdb_unix_socket_path=None,
         additional_args=None,
         gdb_additional_args=None,
         gdb_verbose=False,
@@ -58,6 +59,7 @@ class QemuTarget(Target):
         )
 
         self.gdb_port = gdb_port
+        self.gdb_unix_socket_path = gdb_unix_socket_path
         self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
         self.gdb_verbose = gdb_verbose
 
@@ -90,7 +92,10 @@ class QemuTarget(Target):
 
         machine = ["-machine", "configurable"]
         kernel = ["-kernel", self.qemu_config_file]
-        gdb_option = ["-gdb", "tcp::" + str(self.gdb_port)]
+        if self.gdb_unix_socket_path:
+            gdb_option = ["-gdb", "unix:%s,server,nowait" % str(self.gdb_unix_socket_path)]
+        else:
+            gdb_option = ["-gdb", "tcp::" + str(self.gdb_port)]
         stop_on_startup = ["-S"]
         nographic = ["-nographic"]  # , "-monitor", "/dev/null"]
         qmp = ["-qmp", "tcp:127.0.0.1:%d,server,nowait" % self.qmp_port]
@@ -301,10 +306,20 @@ class QemuTarget(Target):
         self.protocols.monitor = qmp
         self.protocols.remote_memory = rmp
 
-        if gdb.remote_connect(port=self.gdb_port) and qmp.connect():
+        connect_success = True
+
+        if self.gdb_unix_socket_path:
+            connect_success = connect_success and gdb.remote_connect_unix(self.gdb_unix_socket_path)
+        else:
+            connect_success = connect_success and gdb.remote_connect(port=self.gdb_port)
+
+        connect_success = connect_success and qmp.connect()
+
+        if connect_success:
             self.log.info("Connected to remote target")
         else:
             self.log.warning("Connection to remote target failed")
+
         if rmp:
             rmp.connect()
         self.wait()

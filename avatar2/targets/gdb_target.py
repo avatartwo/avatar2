@@ -8,6 +8,7 @@ class GDBTarget(Target):
     def __init__(self, avatar,
                  gdb_executable=None, gdb_additional_args=None, 
                  gdb_ip='127.0.0.1', gdb_port=3333,
+                 gdb_unix_socket_path=None,
                  gdb_serial_device='/dev/ttyACM0',
                  gdb_serial_baud_rate=38400,
                  gdb_serial_parity='none',
@@ -26,6 +27,7 @@ class GDBTarget(Target):
         self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
         self.gdb_ip = gdb_ip
         self.gdb_port = gdb_port
+        self.gdb_unix_socket_path = gdb_unix_socket_path
         self.gdb_serial_device = gdb_serial_device
         self.gdb_serial_baud_rate = gdb_serial_baud_rate
         self.gdb_serial_parity = gdb_serial_parity
@@ -49,7 +51,12 @@ class GDBTarget(Target):
         # If we are debugging a program locally,
         # we do not need to establish any connections
         if not self._local_binary:
-            if not self._serial:
+            if self.gdb_unix_socket_path is not None:
+                if gdb.remote_connect_unix(self.gdb_unix_socket_path):
+                    self.log.info("Connected to Target")
+                else:
+                    self.log.warning("Connecting failed")
+            elif not self._serial:
                 if gdb.remote_connect(ip=self.gdb_ip, port=self.gdb_port):
                     self.log.info("Connected to Target")
                 else:

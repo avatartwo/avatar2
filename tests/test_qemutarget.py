@@ -73,17 +73,18 @@ class FakeTarget(object):
         return True
 
 
-def setup():
+def setup(gdb_unix_socket_path=None):
     global qemu
     global avatar
     global fake_target
 
     arch = setup_ARCH()
 
-    avatar = Avatar(arch=arch, output_directory=test_dir)
+    avatar = Avatar(arch=arch, output_directory=test_dir, configure_logging=False)
     qemu = QemuTarget(avatar, name='qemu_test',
                       #firmware="./tests/binaries/qemu_arm_test",
                       firmware='%s/firmware' % test_dir,
+                      gdb_unix_socket_path=gdb_unix_socket_path,
                       )
     fake_target = FakeTarget()
 
@@ -127,13 +128,22 @@ def teardown():
 
 
 @with_setup(setup, teardown)
-def test_initilization():
+def test_initialization():
     global qemu
 
     qemu.init()
     qemu.wait()
     assert_equal(qemu.state, TargetStates.STOPPED)
 
+@with_setup(lambda: setup(gdb_unix_socket_path="/tmp/test_sock"), teardown)
+def test_initialization_unix():
+    global qemu
+
+    qemu.init()
+    qemu.wait()
+
+    assert_equal(qemu.state, TargetStates.STOPPED)
+    qemu.shutdown()
 
 @with_setup(setup, teardown)
 def test_step():
