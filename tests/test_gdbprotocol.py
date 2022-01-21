@@ -12,7 +12,6 @@ import re
 
 SLEEP_TIME = 1
 
-MEM_ADDR = 0x555555400000
 PORT = 4444
 
 X86_REGS = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
@@ -103,7 +102,7 @@ class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
         
         time.sleep(SLEEP_TIME)
 
-        ret = gdb.read_memory(MEM_ADDR, 4)
+        ret = gdb.read_memory(self.base_address, 4)
         self.assertEqual(ret, 0x464c457f, ret)
 
 
@@ -132,3 +131,6 @@ class GDBProtocolTestCaseOnInfiniteLoop(GdbProtocolTestCase):
         time.sleep(SLEEP_TIME)
 
 
+
+if __name__ == '__main__':
+    unittest.main()
