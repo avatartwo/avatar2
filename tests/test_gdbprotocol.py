@@ -6,12 +6,13 @@ import avatar2
 import subprocess
 import os
 import time
+import re
 
 
 
 SLEEP_TIME = 1
 
-MEM_ADDR = 0x555555554000
+MEM_ADDR = 0x555555400000
 PORT = 4444
 
 X86_REGS = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
@@ -40,6 +41,11 @@ class GdbProtocolTestCase(unittest.TestCase):
         
         gdb = GDBProtocol(arch=avatar2.archs.X86_64)
         gdb.remote_connect(port=PORT)
+
+        # let's resolve the base address of the binary
+        ret, out = gdb.console_command("p &main")
+        main_addr = int(re.search("0x[0-9a-f]+", out).group(0), 16)
+        self.base_address = main_addr - main_addr % 0x1000
 
 
     def tearDown(self):
@@ -77,17 +83,17 @@ class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
         
         time.sleep(SLEEP_TIME)
 
-        ret = gdb.read_memory(MEM_ADDR, 4)
+        ret = gdb.read_memory(self.base_address, 4)
         self.assertEqual(ret, 0x464c457f, ret)
 
-        ret = gdb.write_memory(MEM_ADDR, 4, 0x41414141)
+        ret = gdb.write_memory(self.base_address, 4, 0x41414141)
         self.assertEqual(ret, True, ret)
 
-        ret = gdb.read_memory(MEM_ADDR, 4)
+        ret = gdb.read_memory(self.base_address, 4)
         self.assertEqual(ret, 0x41414141, ret)
 
     def test_watchpoint(self):
-        ret = gdb.set_watchpoint(0x555555554754, read=True,
+        ret = gdb.set_watchpoint(self.base_address+0x754, read=True,
                                     write=False)
         self.assertEqual(ret, True, ret)
 
@@ -101,8 +107,8 @@ class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
         self.assertEqual(ret, 0x464c457f, ret)
 
 
-
 class GDBProtocolTestCaseOnInfiniteLoop(GdbProtocolTestCase):
+
 
     def setUp(self):
         binary = '%s/tests/binaries/infinite_loop' % os.getcwd()
@@ -124,4 +130,5 @@ class GDBProtocolTestCaseOnInfiniteLoop(GdbProtocolTestCase):
         self.assertEqual(ret, True, ret)
 
         time.sleep(SLEEP_TIME)
+
 
