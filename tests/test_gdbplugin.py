@@ -13,7 +13,7 @@ from os.path import dirname, abspath
 
 
 
-SLEEP_TIME = 2
+SLEEP_TIME = 4
 
 # TODO: Resolve those dynamically.
 # They can change based on the environment. Unfortunately, for now

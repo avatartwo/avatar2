@@ -10,7 +10,7 @@ import re
 
 
 
-SLEEP_TIME = 1
+SLEEP_TIME = 2
 
 PORT = 4444
 
