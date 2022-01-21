@@ -147,10 +147,10 @@ class QemuTargetTestCase(unittest.TestCase):
 
         mem = qemu.read_memory(self.rom_addr, 4)
 
-        if self.arch == 'ARM':
+        if isinstance(self.arch, ARM):
             self.assertEqual(mem, 0xe3a0101e, mem)
 
-        elif self.arch == 'MIPS':
+        elif isinstance(self.arch, MIPS_24KF):
             #self.assertEqual(mem, 0x2409001e, mem)
             self.assertEqual(mem, 0x1e000924, mem)
 

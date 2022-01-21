@@ -47,11 +47,11 @@ class PypandaTargetTestCase(unittest.TestCase):
                                                 entry_address=0x08005105)
 
             # Define the various memory ranges and store references to them
-            sefl.avatar.add_memory_range(0x08000000, 0x1000000, file=firmware)
-            sefl.avatar.add_memory_range(0x20000000, 0x14000)
-            sefl.avatar.add_memory_range(0x40023000, 0x1000)
+            avatar.add_memory_range(0x08000000, 0x1000000, file=firmware)
+            avatar.add_memory_range(0x20000000, 0x14000)
+            avatar.add_memory_range(0x40023000, 0x1000)
 
-            sefl.avatar.init_targets()
+            avatar.init_targets()
 
             panda.pypanda.register_pyperipheral(NucleoUSART('USART', 0x40004400, 0x100,
                                                                  nucleo_usart_port=PORT))
