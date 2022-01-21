@@ -147,13 +147,12 @@ class QemuTargetTestCase(unittest.TestCase):
 
         mem = qemu.read_memory(self.rom_addr, 4)
 
-        if isinstance(self.arch, ARM):
+        if self.arch == ARM:
             self.assertEqual(mem, 0xe3a0101e, mem)
 
-        elif isinstance(self.arch, MIPS_24KF):
+        elif self.arch == MIPS_24KF:
             #self.assertEqual(mem, 0x2409001e, mem)
             self.assertEqual(mem, 0x1e000924, mem)
-
         else:
             self.assertTrue(False, "Architecture not supported")
 
@@ -186,3 +185,6 @@ class QemuTargetTestCase(unittest.TestCase):
         remote_memory_read = qemu.read_memory(0x101f2000,4)
         self.assertEqual(remote_memory_read, 0xdeadbeef, remote_memory_read)
 
+
+if __name__ == '__main__':
+    unittest.main()
