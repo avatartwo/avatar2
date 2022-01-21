@@ -160,3 +160,7 @@ class PypandaTargetTestCase(unittest.TestCase):
         reply =  sk.recv(len(TEST_STRING), socket.MSG_WAITALL)
         self.assertEqual(reply, TEST_STRING, reply)
 
+
+
+if __name__ == '__main__':
+    unittest.main()

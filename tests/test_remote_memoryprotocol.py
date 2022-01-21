@@ -53,3 +53,6 @@ class RemoteMemoryTestCase(unittest.TestCase):
         self.assertEqual(msg.size, magic5)
 
 
+
+if __name__ == '__main__':
+    unittest.main()

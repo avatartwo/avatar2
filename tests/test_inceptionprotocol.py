@@ -148,3 +148,7 @@ class InceptionProtocolTestCase(unittest.TestCase):
         self.assertEqual(self.i._fakecm3.fake_write_val, 0x8badf00d, self.i._fakecm3.fake_write_val)
 
 
+
+
+if __name__ == '__main__':
+    unittest.main()

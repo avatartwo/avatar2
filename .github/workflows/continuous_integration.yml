@@ -74,7 +74,9 @@ jobs:
                 python3 ./tests/test_inceptionprotocol.py
                 python3 ./tests/test_pypandatarget.py
                 python3 ./tests/test_qemutarget.py
-                AVATAR2_QEMU_EXECUTABLE=panda-system-arm python3 ./tests/test_qemutarget.py
+                export AVATAR2_QEMU_EXECUTABLE=panda-system-arm 
+                env | grep AVATAR2_QEMU_EXECUTABLE 
+                python3 ./tests/test_qemutarget.py
                 python3 ./tests/test_remote_memoryprotocol.py
 
             - name: Run unit tests for MIPS

@@ -140,5 +140,7 @@ class TestCaseOnInfiniteLoop(GdbPluginTestCase):
         ret = gdb.step()
         self.assertEqual(ret, True, ret)
 
+
+
 if __name__ == '__main__':
     unittest.main()
