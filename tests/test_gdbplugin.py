@@ -15,8 +15,11 @@ from os.path import dirname, abspath
 
 SLEEP_TIME = 2
 
-MEM_ADDR = 0x555555554000
-MAIN_ADDR = 0x5555555546b4
+# TODO: Resolve those dynamically.
+# They can change based on the environment. Unfortunately, for now
+# The GDB stub cannot resolve them
+MEM_ADDR = 0x555555400000
+MAIN_ADDR = 0x5555554006b4
 
 XML_PATH = dirname(abspath((__file__))) \
          + '/../avatar2/plugins/gdb/x86_64-target.xml'
@@ -137,3 +140,5 @@ class TestCaseOnInfiniteLoop(GdbPluginTestCase):
         ret = gdb.step()
         self.assertEqual(ret, True, ret)
 
+if __name__ == '__main__':
+    unittest.main()
