@@ -44,13 +44,11 @@ jobs:
                 sudo make install
 
             - name: Build panda target
-              env:
-                  prefix: /usr/local
               run: |
                 git clone https://github.com/panda-re/panda.git
                 cd panda
                 git checkout 5fb8a5098d0647a13e5e7d39d20ff9f04242572d
-                sudo ./panda/scripts/install_ubuntu.sh i386-softmmu,arm-softmmu,mips-softmmu
+                sudo prefix=/usr/local ./panda/scripts/install_ubuntu.sh i386-softmmu,arm-softmmu,mips-softmmu
                 cd build
                 sudo make install
 
