@@ -56,7 +56,7 @@ class PypandaTargetTestCase(unittest.TestCase):
             panda.pypanda.register_pyperipheral(NucleoUSART('USART', 0x40004400, 0x100,
                                                                  nucleo_usart_port=PORT))
 
-            time.sleep(.1)
+            time.sleep(.2)
 
             sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sk.connect(('127.0.0.1', PORT))
