@@ -43,14 +43,6 @@ jobs:
                 cd build/qemu
                 sudo make install
 
-            - name: Build panda target
-              run: |
-                git clone https://github.com/panda-re/panda.git
-                cd panda
-                git checkout 5fb8a5098d0647a13e5e7d39d20ff9f04242572d
-                sudo prefix=/usr/local ./panda/scripts/install_ubuntu.sh i386-softmmu,arm-softmmu,mips-softmmu
-                cd build
-                sudo make install
 
             - name: Run unit tests
               env: 
@@ -72,11 +64,8 @@ jobs:
                 python3 ./tests/test_gdbplugin.py
                 python3 ./tests/test_gdbprotocol.py
                 python3 ./tests/test_inceptionprotocol.py
-                python3 ./tests/test_pypandatarget.py
                 python3 ./tests/test_remote_memoryprotocol.py
                 python3 ./tests/test_qemutarget.py
-                # Manually overwrite the avatar2_qemu_executable env var to test compability between qemu and panda
-                AVATAR2_QEMU_EXECUTABLE=panda-system-arm  python3 ./tests/test_qemutarget.py
 
             - name: Run unit tests for MIPS
               env: 
@@ -89,10 +78,39 @@ jobs:
                 python3 ./tests/test_gdbplugin.py
                 python3 ./tests/test_gdbprotocol.py
                 python3 ./tests/test_inceptionprotocol.py
-                python3 ./tests/test_pypandatarget.py
                 python3 ./tests/test_remote_memoryprotocol.py
                 python3 ./tests/test_qemutarget.py
-                # Manually overwrite the avatar2_qemu_executable env var to test compability between qemu and panda
-                AVATAR2_QEMU_EXECUTABLE=panda-system-mips python3 ./tests/test_qemutarget.py
 
+
+            - name: Build panda target
+              run: |
+                git clone https://github.com/panda-re/panda.git
+                cd panda
+                git checkout 5fb8a5098d0647a13e5e7d39d20ff9f04242572d
+                sudo prefix=/usr/local ./panda/scripts/install_ubuntu.sh i386-softmmu,arm-softmmu,mips-softmmu
+                cd build
+                sudo make install
+
+
+            - name: Run unit tests on panda target for ARM
+              env:
+                AVATAR2_ARCH: ARM
+                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+                AVATAR2_QEMU_EXECUTABLE: panda-system-arm
+                AVATAR2_PANDA_EXECUTABLE: panda-system-arm
+              run: |
+                cd ${{ github.workspace }}
+                python3 ./tests/test_pypandatarget.py
+                python3 ./tests/test_qemutarget.py
+
+            - name: Run unit tests on panda target for MIPS
+              env:
+                AVATAR2_ARCH: MIPS
+                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+                AVATAR2_QEMU_EXECUTABLE: panda-system-mips
+                AVATAR2_PANDA_EXECUTABLE: panda-system-mips
+              run: |
+                cd ${{ github.workspace }}
+                python3 ./tests/test_pypandatarget.py
+                AVATAR2_QEMU_EXECUTABLE=panda-system-mips python3 ./tests/test_qemutarget.py
 
