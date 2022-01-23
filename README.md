@@ -1,5 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/avatar2.svg)](https://badge.fury.io/py/avatar2)
-[![Build Status](https://travis-ci.org/avatartwo/avatar2.svg?branch=master)](https://travis-ci.org/avatartwo/avatar2)
+[![CI](https://github.com/avatartwo/avatar2/actions/workflows/continuous_integration.yml/badge.svg)](https://github.com/avatartwo/avatar2/actions/workflows/continuous_integration.yml)
 
 <img src="./avatar_logo.png" width="40%" height="40%"><br/>
 
