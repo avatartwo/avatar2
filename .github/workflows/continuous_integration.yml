@@ -98,8 +98,11 @@ jobs:
                 cd panda
                 git checkout 5fb8a5098d0647a13e5e7d39d20ff9f04242572d
                 sudo prefix=/usr/local ./panda/scripts/install_ubuntu.sh i386-softmmu,arm-softmmu,mips-softmmu
-                cd build
+                pushd build
                 sudo make install
+                # install pandare in the current python environment
+                cd ../panda/python/core
+                python setup.py install
 
 
             - name: Run unit tests on panda target for ARM
