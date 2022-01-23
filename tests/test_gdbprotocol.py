@@ -18,8 +18,6 @@ X86_REGS = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
             u'r8', u'r9', u'r10', u'r11', u'r12', u'r13', u'r14', u'r15',
             u'rip', u'eflags', u'cs', u'ss', u'ds', u'es', u'fs', u'gs']
 
-process = None
-gdb = None
 
 
 class GdbProtocolTestCase(unittest.TestCase):
@@ -28,28 +26,27 @@ class GdbProtocolTestCase(unittest.TestCase):
         pass 
 
     def setup_env(self, binary):
-        global process, gdb
 
-        process = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % PORT, binary],
+        self.process = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % PORT, binary],
                                     stderr=subprocess.PIPE)
         
-        out = str(process.stderr.readline())
+        out = str(self.process.stderr.readline())
         self.assertEqual(binary in out, True, out)
-        out = str(process.stderr.readline())
+        out = str(self.process.stderr.readline())
         self.assertEqual(str(PORT) in out, True, out)
         
-        gdb = GDBProtocol(arch=avatar2.archs.X86_64)
-        gdb.remote_connect(port=PORT)
+        self.gdb = GDBProtocol(arch=avatar2.archs.X86_64)
+        self.gdb.remote_connect(port=PORT)
 
         # let's resolve the base address of the binary
-        ret, out = gdb.console_command("p &main")
+        ret, out = self.gdb.console_command("p &main")
         main_addr = int(re.search("0x[0-9a-f]+", out).group(0), 16)
         self.base_address = main_addr - main_addr % 0x1000
 
 
     def tearDown(self):
-        gdb.shutdown()
-        process.terminate()
+        self.gdb.shutdown()
+        self.process.terminate()
 
 
 class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
@@ -60,49 +57,49 @@ class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
 
 
     def test_register_names(self):
-        regs = gdb.get_register_names()
+        regs = self.gdb.get_register_names()
         
         self.assertListEqual(regs[:len(X86_REGS)], X86_REGS)
 
     def test_register_read_and_write(self):
 
-        ret = gdb.write_register('rax', 1678)
+        ret = self.gdb.write_register('rax', 1678)
         self.assertEqual(ret, True, ret)
-        ret = gdb.read_register('rax')
+        ret = self.gdb.read_register('rax')
         self.assertEqual(ret, 1678, ret)
 
     def test_break_run_and_read_write_mem(self):
 
-        ret = gdb.set_breakpoint('main')
+        ret = self.gdb.set_breakpoint('main')
         self.assertEqual(ret, True, ret)
 
-        ret = gdb.cont()
+        ret = self.gdb.cont()
         self.assertEqual(ret, True, ret)
         # todo: enable waiting
         
         time.sleep(SLEEP_TIME)
 
-        ret = gdb.read_memory(self.base_address, 4)
+        ret = self.gdb.read_memory(self.base_address, 4)
         self.assertEqual(ret, 0x464c457f, ret)
 
-        ret = gdb.write_memory(self.base_address, 4, 0x41414141)
+        ret = self.gdb.write_memory(self.base_address, 4, 0x41414141)
         self.assertEqual(ret, True, ret)
 
-        ret = gdb.read_memory(self.base_address, 4)
+        ret = self.gdb.read_memory(self.base_address, 4)
         self.assertEqual(ret, 0x41414141, ret)
 
     def test_watchpoint(self):
-        ret = gdb.set_watchpoint(self.base_address+0x754, read=True,
+        ret = self.gdb.set_watchpoint(self.base_address+0x754, read=True,
                                     write=False)
         self.assertEqual(ret, True, ret)
 
-        ret = gdb.cont()
+        ret = self.gdb.cont()
         self.assertEqual(ret, True, ret)
 
         
         time.sleep(SLEEP_TIME)
 
-        ret = gdb.read_memory(self.base_address, 4)
+        ret = self.gdb.read_memory(self.base_address, 4)
         self.assertEqual(ret, 0x464c457f, ret)
 
 
@@ -116,16 +113,16 @@ class GDBProtocolTestCaseOnInfiniteLoop(GdbProtocolTestCase):
 
     def test_continue_stopping_stepping(self):
 
-        ret = gdb.cont()
+        ret = self.gdb.cont()
         self.assertEqual(ret, True, ret)
 
 
-        ret = gdb.stop()
+        ret = self.gdb.stop()
         self.assertEqual(ret, True, ret)
 
         time.sleep(SLEEP_TIME)
 
-        ret = gdb.step()
+        ret = self.gdb.step()
         self.assertEqual(ret, True, ret)
 
         time.sleep(SLEEP_TIME)

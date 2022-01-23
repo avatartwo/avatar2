@@ -113,39 +113,39 @@ class FakeIPCortexM3(IPCortexM3):
 class InceptionProtocolTestCase(unittest.TestCase):
 
     def setUp(self):
-       self.i = FakeIPCortexM3()
-       self.i.connect()
-       self.i.reset()
+       self.ip = FakeIPCortexM3()
+       self.ip.connect()
+       self.ip.reset()
 
     def tearDown(self):
-        self.i.shutdown()
+        self.ip.shutdown()
 
 
     def test_register_read_and_write(self):
 
-        ret = self.i.write_register('R0', 2020)
+        ret = self.ip.write_register('R0', 2020)
         self.assertEqual(ret, True, ret)
 
-        ret = self.i.read_register('r0')
+        ret = self.ip.read_register('r0')
         self.assertEqual(ret, 0xdeadbeef, ret)
 
     def test_break_run_and_read_write_mem(self):
 
-        ret = self.i.set_breakpoint(0x8000000)
+        ret = self.ip.set_breakpoint(0x8000000)
         self.assertEqual(ret, True, ret)
 
-        ret = self.i.cont()
+        ret = self.ip.cont()
         self.assertEqual(ret, True, ret)
 
         #time.sleep(SLEEP_TIME)
 
-        ret = self.i.read_memory(MEM_ADDR, 4)
+        ret = self.ip.read_memory(MEM_ADDR, 4)
         self.assertEqual(ret, 0xdeadbeef, ret)
 
-        ret = self.i.write_memory(MEM_ADDR, 4, 0x8badf00d)
+        ret = self.ip.write_memory(MEM_ADDR, 4, 0x8badf00d)
         self.assertEqual(ret, True, ret)
-        self.assertEqual(self.i._fakecm3.fake_write_addr, MEM_ADDR, self.i._fakecm3.fake_write_addr)
-        self.assertEqual(self.i._fakecm3.fake_write_val, 0x8badf00d, self.i._fakecm3.fake_write_val)
+        self.assertEqual(self.ip._fakecm3.fake_write_addr, MEM_ADDR, self.ip._fakecm3.fake_write_addr)
+        self.assertEqual(self.ip._fakecm3.fake_write_val, 0x8badf00d, self.ip._fakecm3.fake_write_val)
 
 
 

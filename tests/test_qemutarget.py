@@ -51,10 +51,6 @@ X86_64_BIN = (b'\x48\xc7\xc3\x1e\x00\x00\x00'   # mov rbx, 0x1e
               b'\x48\x21\xc0'                   # and rax, rax
               b'\x48\x21\xc0')                  # and rax, rax
 
-avatar = None
-qemu = None
-fake_target = None
-
 
 
 class FakeTarget(object):
@@ -79,27 +75,27 @@ class QemuTargetTestCase(unittest.TestCase):
 
 
     def setUp(self):
-        global avatar, qemu, fake_target
 
         self.rom_addr = None
         self.arch = None
         self.setup_arch()
 
-        avatar = Avatar(arch=self.arch, output_directory=TEST_DIR)
-        qemu = QemuTarget(avatar, name='qemu_test',
-                          #firmware="./tests/binaries/qemu_arm_test",
-                          firmware='%s/firmware' % TEST_DIR,
-                         )
-        fake_target = FakeTarget()
+        self.avatar = Avatar(arch=self.arch, output_directory=TEST_DIR)
+        self.qemu = QemuTarget(self.avatar, name='qemu_test',
+                               #firmware="./tests/binaries/qemu_arm_test",
+                               firmware='%s/firmware' % TEST_DIR,
+                              )
+        self.fake_target = FakeTarget()
 
-        dev1 = avatar.add_memory_range(0x101f2000, 0x1000, 'dev1', forwarded=True, 
-                                       forwarded_to=fake_target,
-                                       qemu_name='avatar-rmemory')
+        dev1 = self.avatar.add_memory_range(0x101f2000, 0x1000, 'dev1', forwarded=True, 
+                                            forwarded_to=self.fake_target,
+                                            qemu_name='avatar-rmemory')
 
-        mem1 = avatar.add_memory_range(self.rom_addr, 0x1000, 'mem1', 
-                                       #file='%s/tests/binaries/qemu_arm_test' %
-                                       #   os.getcwd())
-                                       file='%s/firmware' % TEST_DIR)
+        mem1 = self.avatar.add_memory_range(self.rom_addr, 0x1000, 'mem1', 
+                                            #file='%s/tests/binaries/qemu_arm_test' %
+                                            #   os.getcwd())
+                                            file='%s/firmware' % TEST_DIR
+                                           )
 
     def setup_arch(self):
 
@@ -123,29 +119,29 @@ class QemuTargetTestCase(unittest.TestCase):
             f.write(firmware)
 
     def tearDown(self):
-        qemu.shutdown()
+        self.qemu.shutdown()
 
 
     def test_initilization(self):
-        qemu.init()
-        qemu.wait()
-        self.assertEqual(qemu.state, TargetStates.STOPPED, qemu.state)
+        self.qemu.init()
+        self.qemu.wait()
+        self.assertEqual(self.qemu.state, TargetStates.STOPPED, self.qemu.state)
 
     def test_step(self):
-        qemu.init()
-        qemu.wait()
+        self.qemu.init()
+        self.qemu.wait()
 
-        qemu.regs.pc=self.rom_addr
-        qemu.step()
+        self.qemu.regs.pc=self.rom_addr
+        self.qemu.step()
 
-        pc = qemu.regs.pc
+        pc = self.qemu.regs.pc
         self.assertEqual(pc, self.rom_addr + 4, pc)
 
     def test_memory_read(self):
-        qemu.init()
-        qemu.wait()
+        self.qemu.init()
+        self.qemu.wait()
 
-        mem = qemu.read_memory(self.rom_addr, 4)
+        mem = self.qemu.read_memory(self.rom_addr, 4)
 
         if self.arch == ARM:
             self.assertEqual(mem, 0xe3a0101e, mem)
@@ -157,32 +153,32 @@ class QemuTargetTestCase(unittest.TestCase):
             self.assertTrue(False, "Architecture not supported")
 
     def test_memory_write(self):
-        qemu.init()
-        qemu.wait()
+        self.qemu.init()
+        self.qemu.wait()
 
-        qemu.write_memory(self.rom_addr, 4, 0x41414141)
-        mem = qemu.read_memory(self.rom_addr, 4)
+        self.qemu.write_memory(self.rom_addr, 4, 0x41414141)
+        mem = self.qemu.read_memory(self.rom_addr, 4)
         self.assertEqual(mem, 0x41414141, mem)
 
     def test_remote_memory_write(self):
-        qemu.init()
-        qemu.wait()
-        remote_memory_write = qemu.write_memory(0x101f2000,4,0x41414141)
+        self.qemu.init()
+        self.qemu.wait()
+        remote_memory_write = self.qemu.write_memory(0x101f2000,4,0x41414141)
         self.assertEqual(remote_memory_write, True)
 
-        addr = fake_target.fake_write_addr
-        size = fake_target.fake_write_size
-        val  = fake_target.fake_write_val
+        addr = self.fake_target.fake_write_addr
+        size = self.fake_target.fake_write_size
+        val  = self.fake_target.fake_write_val
         self.assertEqual(addr, 0x101f2000, addr)
         self.assertEqual(size, 4, size)
         self.assertEqual(val, 0x41414141, val)
 
     def test_remote_memory_read(self):
-        qemu.init()
-        qemu.wait()
-        self.assertEqual(qemu.state, TargetStates.STOPPED, qemu.state)
+        self.qemu.init()
+        self.qemu.wait()
+        self.assertEqual(self.qemu.state, TargetStates.STOPPED, self.qemu.state)
 
-        remote_memory_read = qemu.read_memory(0x101f2000,4)
+        remote_memory_read = self.qemu.read_memory(0x101f2000,4)
         self.assertEqual(remote_memory_read, 0xdeadbeef, remote_memory_read)
 
 
