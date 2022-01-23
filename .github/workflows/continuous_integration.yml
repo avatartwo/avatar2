@@ -39,7 +39,7 @@ jobs:
             - name: Build avatar2
               run: |
                 cd ${{ github.workspace }}
-                sudo python3 setup.py install
+                python setup.py install
 
 
             - name: Install debuggers targets
@@ -60,8 +60,8 @@ jobs:
                 AVATAR2_GDB_EXECUTABLE: gdb-multiarch
               run: |
                 cd ${{ github.workspace }}
-                python3 ./tests/hello_world.py
-                python3 ./tests/gdb_memory_map_loader.py
+                python ./tests/hello_world.py
+                python ./tests/gdb_memory_map_loader.py
 
             - name: Run unit tests for ARM
               env: 
@@ -71,11 +71,11 @@ jobs:
                 AVATAR2_PANDA_EXECUTABLE: panda-system-arm
               run: |
                 cd ${{ github.workspace }}
-                python3 ./tests/test_gdbplugin.py
-                python3 ./tests/test_gdbprotocol.py
-                python3 ./tests/test_inceptionprotocol.py
-                python3 ./tests/test_remote_memoryprotocol.py
-                python3 ./tests/test_qemutarget.py
+                python ./tests/test_gdbplugin.py
+                python ./tests/test_gdbprotocol.py
+                python ./tests/test_inceptionprotocol.py
+                python ./tests/test_remote_memoryprotocol.py
+                python ./tests/test_qemutarget.py
 
             - name: Run unit tests for MIPS
               env: 
@@ -85,11 +85,11 @@ jobs:
                 AVATAR2_PANDA_EXECUTABLE: panda-system-mips
               run: |
                 cd ${{ github.workspace }}
-                python3 ./tests/test_gdbplugin.py
-                python3 ./tests/test_gdbprotocol.py
-                python3 ./tests/test_inceptionprotocol.py
-                python3 ./tests/test_remote_memoryprotocol.py
-                python3 ./tests/test_qemutarget.py
+                python ./tests/test_gdbplugin.py
+                python ./tests/test_gdbprotocol.py
+                python ./tests/test_inceptionprotocol.py
+                python ./tests/test_remote_memoryprotocol.py
+                python ./tests/test_qemutarget.py
 
 
             - name: Build panda target
@@ -110,8 +110,8 @@ jobs:
                 AVATAR2_PANDA_EXECUTABLE: panda-system-arm
               run: |
                 cd ${{ github.workspace }}
-                python3 ./tests/test_pypandatarget.py
-                python3 ./tests/test_qemutarget.py
+                python ./tests/test_pypandatarget.py
+                python ./tests/test_qemutarget.py
 
             - name: Run unit tests on panda target for MIPS
               env:
@@ -121,6 +121,6 @@ jobs:
                 AVATAR2_PANDA_EXECUTABLE: panda-system-mips
               run: |
                 cd ${{ github.workspace }}
-                python3 ./tests/test_pypandatarget.py
-                AVATAR2_QEMU_EXECUTABLE=panda-system-mips python3 ./tests/test_qemutarget.py
+                python ./tests/test_pypandatarget.py
+                python ./tests/test_qemutarget.py
 
