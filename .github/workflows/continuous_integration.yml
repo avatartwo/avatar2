@@ -14,18 +14,24 @@ on:
 jobs:
     build:
         if: github.repository == 'avatartwo/avatar2'
-        runs-on: ${{ matrix.os }}
+        runs-on: ubuntu-20.04
         strategy:
             fail-fast: false
             matrix:
-                os: [ubuntu-20.04]
-                python: [3.7, 3.8, 3.9, 3.10]
+                python-version: ["3.7", "3.8", "3.9", "3.10"]
+
         steps:
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v2
+              with:
+                python-version: ${{ matrix.python-version }}
+
             - name: Install dependencies
               run: |
                 sudo apt-get update
                 sudo apt-get upgrade -y
-                sudo apt-get install -y -m -f --install-suggests python3 python3-pip python3-setuptools python3-dev cmake build-essential git libcapstone3 libcapstone-dev
+                sudo apt-get install -y -m -f --install-suggests cmake build-essential git libcapstone3 libcapstone-dev
+
 
             - name: Check out repository code
               uses: actions/checkout@v2
@@ -34,6 +40,7 @@ jobs:
               run: |
                 cd ${{ github.workspace }}
                 sudo python3 setup.py install
+
 
             - name: Install debuggers targets
               run: |
