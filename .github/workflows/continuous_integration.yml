@@ -15,9 +15,10 @@ jobs:
     build:
         if: github.repository == 'avatartwo/avatar2'
         runs-on: ${{ matrix.os }}
-        fail-fast: false
-        matrix:
-            os: [ubuntu-20.04, ubuntu-18.04]
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-20.04, ubuntu-18.04]
         steps:
             - name: Install dependencies
               run: |
