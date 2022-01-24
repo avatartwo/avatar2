@@ -13,7 +13,7 @@ from os.path import dirname, abspath, realpath
 
 
 
-SLEEP_TIME = 4
+SLEEP_TIME = .1
 
 # TODO: Resolve those dynamically.
 # They can change based on the environment. Unfortunately, for now
@@ -63,6 +63,16 @@ class GdbPluginTestCase(unittest.TestCase):
         self.gdb = GDBProtocol(arch=avatar2.archs.X86_64)
         self.gdb.remote_connect(port=PORT)
 
+
+    def wait_stopped(self):
+        # As we do not have access to avatar synchronizing target states
+        # on this level, we apply this little hack to synchronize the target
+        while True:
+            ret, out = self.gdb.console_command('info program')
+            if 'Program stopped' in out:
+                break
+            time.sleep(SLEEP_TIME)
+
     def tearDown(self):
         self.sk.shutdown()
         self.avatar.shutdown()
@@ -77,7 +87,6 @@ class TestCaseOnHelloWorld(GdbPluginTestCase):
         dir_path = dirname(realpath(__file__))
         binary = '%s/binaries/hello_world' % dir_path
         self.setup_env(binary)
-
 
     def test_register_names(self):
         regs = self.gdb.get_register_names()
@@ -99,9 +108,8 @@ class TestCaseOnHelloWorld(GdbPluginTestCase):
 
         ret = self.gdb.cont()
         self.assertEqual(ret, True, ret)
-        # todo: enable waiting
-        
-        time.sleep(SLEEP_TIME)
+
+        self.wait_stopped()
 
         ret = self.gdb.read_memory(MEM_ADDR, 4)
         self.assertEqual(ret, 0x464c457f, ret)
@@ -126,15 +134,15 @@ class TestCaseOnInfiniteLoop(GdbPluginTestCase):
         ret = self.gdb.cont()
         self.assertEqual(ret, True, ret)
 
-        time.sleep(SLEEP_TIME)
-
         ret = self.gdb.stop()
         self.assertEqual(ret, True, ret)
 
-        time.sleep(SLEEP_TIME)
+        self.wait_stopped()
 
         ret = self.gdb.step()
         self.assertEqual(ret, True, ret)
+
+        self.wait_stopped()
 
 
 

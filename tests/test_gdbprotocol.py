@@ -11,7 +11,7 @@ import re
 from os.path import dirname, realpath
 
 
-SLEEP_TIME = 2
+SLEEP_TIME = .1
 
 PORT = 4444
 
@@ -43,6 +43,15 @@ class GdbProtocolTestCase(unittest.TestCase):
         ret, out = self.gdb.console_command("p &main")
         main_addr = int(re.search("0x[0-9a-f]+", out).group(0), 16)
         self.base_address = main_addr - main_addr % 0x1000
+
+    def wait_stopped(self):
+        # As we do not have access to avatar synchronizing target states
+        # on this level, we apply this little hack to synchronize the target
+        while True:
+            ret, out = self.gdb.console_command('info program')
+            if 'Program stopped' in out:
+                break
+            time.sleep(SLEEP_TIME)
 
 
     def tearDown(self):
@@ -77,9 +86,8 @@ class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
 
         ret = self.gdb.cont()
         self.assertEqual(ret, True, ret)
-        # todo: enable waiting
-        
-        time.sleep(SLEEP_TIME)
+
+        self.wait_stopped()
 
         ret = self.gdb.read_memory(self.base_address, 4)
         self.assertEqual(ret, 0x464c457f, ret)
@@ -98,8 +106,8 @@ class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
         ret = self.gdb.cont()
         self.assertEqual(ret, True, ret)
 
+        self.wait_stopped()
         
-        time.sleep(SLEEP_TIME)
 
         ret = self.gdb.read_memory(self.base_address, 4)
         self.assertEqual(ret, 0x464c457f, ret)
@@ -123,12 +131,12 @@ class GDBProtocolTestCaseOnInfiniteLoop(GdbProtocolTestCase):
         ret = self.gdb.stop()
         self.assertEqual(ret, True, ret)
 
-        time.sleep(SLEEP_TIME)
+        self.wait_stopped()
 
         ret = self.gdb.step()
         self.assertEqual(ret, True, ret)
 
-        time.sleep(SLEEP_TIME)
+        self.wait_stopped()
 
 
 
