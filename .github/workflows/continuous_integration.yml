@@ -32,7 +32,8 @@ jobs:
                 sudo apt-get upgrade -y
                 sudo apt-get install -y -m -f --install-suggests cmake build-essential git libcapstone3 libcapstone-dev
                 python -m pip install --upgrade pip
-                pip install "cffi>1.14.3"
+                pip install pytest
+                pip install "cffi>1.14.3"   # for pypanda
 
 
             - name: Check out repository code
@@ -70,28 +71,26 @@ jobs:
                 AVATAR2_ARCH: ARM
                 AVATAR2_GDB_EXECUTABLE: gdb-multiarch
                 AVATAR2_QEMU_EXECUTABLE: qemu-system-arm
-                AVATAR2_PANDA_EXECUTABLE: panda-system-arm
               run: |
-                cd ${{ github.workspace }}
-                python ./tests/test_gdbplugin.py
-                python ./tests/test_gdbprotocol.py
-                python ./tests/test_inceptionprotocol.py
-                python ./tests/test_remote_memoryprotocol.py
-                python ./tests/test_qemutarget.py
+                cd ${{ github.workspace }}/tests
+                pytest test_gdbplugin.py \
+                       test_gdbprotocol.py \
+                       test_inceptionprotocol.py \
+                       test_remote_memoryprotocol.py \
+                       test_qemutarget.py
 
             - name: Run unit tests for MIPS
               env: 
                 AVATAR2_ARCH: MIPS
                 AVATAR2_GDB_EXECUTABLE: gdb-multiarch
                 AVATAR2_QEMU_EXECUTABLE: qemu-system-mips
-                AVATAR2_PANDA_EXECUTABLE: panda-system-mips
               run: |
-                cd ${{ github.workspace }}
-                python ./tests/test_gdbplugin.py
-                python ./tests/test_gdbprotocol.py
-                python ./tests/test_inceptionprotocol.py
-                python ./tests/test_remote_memoryprotocol.py
-                python ./tests/test_qemutarget.py
+                cd ${{ github.workspace }}/tests
+                pytest test_gdbplugin.py \
+                       test_gdbprotocol.py \
+                       test_inceptionprotocol.py \
+                       test_remote_memoryprotocol.py \
+                       test_qemutarget.py
 
 
             - name: Build panda target
@@ -114,9 +113,9 @@ jobs:
                 AVATAR2_QEMU_EXECUTABLE: panda-system-arm
                 AVATAR2_PANDA_EXECUTABLE: panda-system-arm
               run: |
-                cd ${{ github.workspace }}
-                python ./tests/test_pypandatarget.py
-                python ./tests/test_qemutarget.py
+                cd ${{ github.workspace }}/tests
+                pytest test_pypandatarget.py \
+                       test_qemutarget.py
 
             - name: Run unit tests on panda target for MIPS
               env:
@@ -125,7 +124,7 @@ jobs:
                 AVATAR2_QEMU_EXECUTABLE: panda-system-mips
                 AVATAR2_PANDA_EXECUTABLE: panda-system-mips
               run: |
-                cd ${{ github.workspace }}
-                python ./tests/test_pypandatarget.py
-                python ./tests/test_qemutarget.py
+                cd ${{ github.workspace }}/tests
+                pytest test_pypandatarget.py \
+                       test_qemutarget.py
 
