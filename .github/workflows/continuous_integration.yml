@@ -102,6 +102,7 @@ jobs:
                 sudo make install
                 # install pandare in the current python environment
                 cd ../panda/python/core
+                sudo chown -R $(id -u):$(id -u) pandare
                 python setup.py install
 
 
