@@ -82,6 +82,7 @@ jobs:
             - name: Run unit tests for MIPS
               env: 
                 AVATAR2_ARCH: MIPS
+                python setup.py install
                 AVATAR2_GDB_EXECUTABLE: gdb-multiarch
                 AVATAR2_QEMU_EXECUTABLE: qemu-system-mips
                 AVATAR2_PANDA_EXECUTABLE: panda-system-mips
@@ -102,10 +103,9 @@ jobs:
                 sudo prefix=/usr/local ./panda/scripts/install_ubuntu.sh i386-softmmu,arm-softmmu,mips-softmmu
                 pushd build
                 sudo make install
-                # install pandare in the current python environment
-                cd ../panda/python/core
-                sudo chown -R $(id -u):$(id -u) pandare
-                python setup.py install
+                # Install pandare in the matrix python environment
+                sudo chown -R $(id -u):$(id -u) ../panda/python/core
+                pip install ../panda/python/core
 
 
             - name: Run unit tests on panda target for ARM
