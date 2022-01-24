@@ -8,6 +8,7 @@ import os
 import time
 import re
 
+from os.path import dirname, realpath
 
 
 SLEEP_TIME = 2
@@ -52,7 +53,7 @@ class GdbProtocolTestCase(unittest.TestCase):
 class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
 
     def setUp(self):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
+        dir_path = dirname(realpath(__file__))
         binary = '%s/binaries/hello_world' % dir_path
         self.setup_env(binary)
 
@@ -108,7 +109,7 @@ class GDBProtocolTestCaseOnInfiniteLoop(GdbProtocolTestCase):
 
 
     def setUp(self):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
+        dir_path = dirname(realpath(__file__))
         binary = '%s/binaries/infinite_loop' % dir_path
         self.setup_env(binary)
 

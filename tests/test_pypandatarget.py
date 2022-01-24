@@ -1,7 +1,7 @@
 import unittest
 
 import socket
-from os.path import abspath
+from os.path import dirname, realpath
 from time import sleep
 
 from avatar2 import *
@@ -12,9 +12,10 @@ from avatar2.peripherals.nucleo_usart import *
 PORT = 9997
 TEST_STRING = bytearray(b'Hello World !\n')
 
-sram_dump = './tests/pyperipheral/sram_dump.bin'
-rcc_dump  = './tests/pyperipheral/rcc_dump.bin'
-firmware  = './tests/pyperipheral/firmware.bin'
+dir_path = dirname(realpath(__file__))
+sram_dump = '%s/pyperipheral/sram_dump.bin' % dir_path
+rcc_dump  = '%s/pyperipheral/rcc_dump.bin' % dir_path
+firmware  = '%s/pyperipheral/firmware.bin' % dir_path
 
 with open(sram_dump, 'rb') as f:
     sram_data = f.read()

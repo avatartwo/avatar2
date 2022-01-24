@@ -9,7 +9,7 @@ import time
 
 import sys
 
-from os.path import dirname, abspath
+from os.path import dirname, abspath, realpath
 
 
 
@@ -74,7 +74,7 @@ class GdbPluginTestCase(unittest.TestCase):
 class TestCaseOnHelloWorld(GdbPluginTestCase):
 
     def setUp(self):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
+        dir_path = dirname(realpath(__file__))
         binary = '%s/binaries/hello_world' % dir_path
         self.setup_env(binary)
 
@@ -116,7 +116,7 @@ class TestCaseOnHelloWorld(GdbPluginTestCase):
 class TestCaseOnInfiniteLoop(GdbPluginTestCase):
 
     def setUp(self):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
+        dir_path = dirname(realpath(__file__))
         binary = '%s/binaries/infinite_loop' % dir_path
         self.setup_env(binary)
 
