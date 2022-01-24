@@ -23,68 +23,68 @@ with open(sram_dump, 'rb') as f:
 with open(rcc_dump, 'rb') as f:
     rcc_data = f.read()
 
-panda = None
-sk = None
-
 
 
 class PypandaTargetTestCase(unittest.TestCase):
+
+    panda = None
+    avatar = None
+    sk = None
+
+    @classmethod
+    def setUpClass(cls):
+
+        # Initiate the avatar-object
+        cls.avatar = Avatar(output_directory='/tmp/avatar', arch=ARM_CORTEX_M3)
+
+        cls.panda = cls.avatar.add_target(PyPandaTarget, gdb_port=1236,
+                                            entry_address=0x08005105)
+
+        # Define the various memory ranges and store references to them
+        cls.avatar.add_memory_range(0x08000000, 0x1000000, file=firmware)
+        cls.avatar.add_memory_range(0x20000000, 0x14000)
+        cls.avatar.add_memory_range(0x40023000, 0x1000)
+
+        cls.avatar.init_targets()
+
+        cls.panda.pypanda.register_pyperipheral(NucleoUSART('USART', 0x40004400, 0x100,
+                                                             nucleo_usart_port=PORT))
+
+        time.sleep(1)
+
+        cls.sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        cls.sk.connect(('127.0.0.1', PORT))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.panda.shutdown()
+        cls.avatar.shutdown()
+        cls.sk.close()
+        time.sleep(10)
+
 
     #@timed(7)
     def setUp(self):
 
         self.recv_data = []
 
-        if panda is None:
-            self.setup_panda()
+        self.panda.write_memory(0x20000000, len(sram_data), sram_data, raw=True)
+        self.panda.write_memory(0x40023000, len(rcc_data), rcc_data, raw=True)
 
-        panda.write_memory(0x20000000, len(sram_data), sram_data, raw=True)
-        panda.write_memory(0x40023000, len(rcc_data), rcc_data, raw=True)
+        self.panda.regs.pc = 0x08005105
+        self.panda.regs.sp = 0x20014000
 
-        panda.regs.pc = 0x08005105
-        panda.regs.sp = 0x20014000
-
-        panda.bp(0x0800419c) # Termination breakpoint to avoid qemu dying
-
-    def setup_panda(self):
-        # There is only one pypanda instance in the process space allowed.
-        # Unfortunately, we need a lot of hacks to make this working for CI tests.
-        # So, beware the globals!
-        global panda, sk
-
-        # Initiate the avatar-object
-        self.avatar = Avatar(output_directory='/tmp/avatar', arch=ARM_CORTEX_M3)
-
-        panda = self.avatar.add_target(PyPandaTarget, gdb_port=1236,
-                                            entry_address=0x08005105)
-
-        # Define the various memory ranges and store references to them
-        self.avatar.add_memory_range(0x08000000, 0x1000000, file=firmware)
-        self.avatar.add_memory_range(0x20000000, 0x14000)
-        self.avatar.add_memory_range(0x40023000, 0x1000)
-
-        self.avatar.init_targets()
-
-        panda.pypanda.register_pyperipheral(NucleoUSART('USART', 0x40004400, 0x100,
-                                                             nucleo_usart_port=PORT))
-
-        time.sleep(1)
-
-        sk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sk.connect(('127.0.0.1', PORT))
+        self.panda.bp(0x0800419c) # Termination breakpoint to avoid qemu dying
 
     #@timed(8)
     def tearDown(self):
-        #panda.shutdown()
-        #self.avatar.shutdown()
-        #time.sleep(1)
         pass
 
 
     def test_nucleo_usart_read(self):
-        panda.cont()
+        self.panda.cont()
 
-        data = sk.recv(len(TEST_STRING), socket.MSG_WAITALL)
+        data = self.sk.recv(len(TEST_STRING), socket.MSG_WAITALL)
         self.assertEqual(data, TEST_STRING, data)
 
 
@@ -96,29 +96,29 @@ class PypandaTargetTestCase(unittest.TestCase):
                 recv_data.append(buf[0])
 
 
-        cb_handle = panda.register_callback('mmio_before_write', cb)
+        cb_handle = self.panda.register_callback('mmio_before_write', cb)
 
-        panda.cont()
-        panda.wait()
+        self.panda.cont()
+        self.panda.wait()
 
         self.assertEqual(bytearray(recv_data), TEST_STRING, bytearray(recv_data))
-        panda.disable_callback(cb_handle)
+        self.panda.disable_callback(cb_handle)
 
 
     #@timed(11)
     def test_panda_hook(self):
         def hook(env, tb, hook):
             #global recv_data
-            self.recv_data += [panda.pypanda.arch.get_reg(env, 'r0')]
+            self.recv_data += [self.panda.pypanda.arch.get_reg(env, 'r0')]
 
 
-        panda.add_hook(0x8004622, hook) # return address of serial_putc
+        self.panda.add_hook(0x8004622, hook) # return address of serial_putc
 
-        panda.cont()
-        panda.wait()
+        self.panda.cont()
+        self.panda.wait()
 
         self.assertEqual(bytearray(self.recv_data), TEST_STRING, bytearray(self.recv_data))
-        panda.pypanda.plugins['hooks'].disable_hooking()
+        self.panda.pypanda.plugins['hooks'].disable_hooking()
 
 
 
@@ -126,10 +126,10 @@ class PypandaTargetTestCase(unittest.TestCase):
     def test_nucleo_usart_debug_read(self):
 
         # pyperipherals in debug mode need to be read from/written to directly
-        pyperiph = panda.pypanda.pyperipherals[0]
+        pyperiph = self.panda.pypanda.pyperipherals[0]
 
 
-        sk.send(b'Hello World')
+        self.sk.send(b'Hello World')
 
         reply = bytearray()
         time.sleep(.1)
@@ -139,7 +139,7 @@ class PypandaTargetTestCase(unittest.TestCase):
 
         self.assertEqual(reply, b'Hello World', reply)
 
-        sk.send(b'Hello World')
+        self.sk.send(b'Hello World')
         reply = bytearray()
         time.sleep(.1)
         while pyperiph.read_memory(0x40004400,1) & (1<<5) != 0:
@@ -150,18 +150,18 @@ class PypandaTargetTestCase(unittest.TestCase):
 
     #@timed(11)
     def test_nucleo_usart_debug_write(self):
-        pyperiph = panda.pypanda.pyperipherals[0]
+        pyperiph = self.panda.pypanda.pyperipherals[0]
 
         time.sleep(1)
         for c in TEST_STRING:
             pyperiph.write_memory(0x40004404, 1, c)
-        reply =  sk.recv(len(TEST_STRING), socket.MSG_WAITALL)
+        reply =  self.sk.recv(len(TEST_STRING), socket.MSG_WAITALL)
         self.assertEqual(reply, TEST_STRING, reply)
 
         time.sleep(.1)
         for c in TEST_STRING:
             pyperiph.write_memory(0x40004404, 4, c)
-        reply =  sk.recv(len(TEST_STRING), socket.MSG_WAITALL)
+        reply =  self.sk.recv(len(TEST_STRING), socket.MSG_WAITALL)
         self.assertEqual(reply, TEST_STRING, reply)
 
 

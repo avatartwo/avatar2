@@ -114,8 +114,8 @@ jobs:
                 AVATAR2_PANDA_EXECUTABLE: panda-system-arm
               run: |
                 cd ${{ github.workspace }}/tests
-                pytest test_pypandatarget.py \
-                       test_qemutarget.py
+                pytest test_qemutarget.py \
+                       test_pypandatarget.py
 
             - name: Run unit tests on panda target for MIPS
               env:
@@ -125,6 +125,6 @@ jobs:
                 AVATAR2_PANDA_EXECUTABLE: panda-system-mips
               run: |
                 cd ${{ github.workspace }}/tests
-                pytest test_pypandatarget.py \
-                       test_qemutarget.py
+                pytest test_qemutarget.py \
+                       test_pypandatarget.py
 
