@@ -87,6 +87,8 @@ class PypandaTargetTestCase(unittest.TestCase):
         data = self.sk.recv(len(TEST_STRING), socket.MSG_WAITALL)
         self.assertEqual(data, TEST_STRING, data)
 
+        self.panda.wait()
+
 
     def test_panda_callback(self):
         recv_data = []
