@@ -1,3 +1,11 @@
+import unittest
+
+import tempfile
+import os
+import time
+import intervaltree
+import logging
+
 from avatar2 import QemuTarget
 from avatar2 import MemoryRange
 from avatar2 import Avatar
@@ -6,23 +14,12 @@ from avatar2.targets import Target, TargetStates
 from avatar2.message import *
 
 
-import tempfile
-import os
-import time
-import intervaltree
-import logging
 
-from nose.tools import *
+TEST_DIR = '/tmp/testava'
+ARM_BASE_ADDR   = 0x08000000
+MIPS_BASE_ADDR  = 0x1fc00000
 
-
-qemu = None
-fake_target = None
-ARCH = None
-rom_addr = None
-test_dir = '/tmp/testava'
-
-
-arm_bin = (b'\x1e\x10\xa0\xe3'      # mov r1, #0x1e
+ARM_BIN = (b'\x1e\x10\xa0\xe3'      # mov r1, #0x1e
            b'\x00\x00\x20\xe0'      # eor r0, r0, r0
            b'\x01\x00\x80\xe2'      # add r0, r0, #1
            b'\x01\x00\x50\xe1'      # cmp r0, r1
@@ -30,7 +27,7 @@ arm_bin = (b'\x1e\x10\xa0\xe3'      # mov r1, #0x1e
            b'\x00\x00\x00\xe0'      # and r0, r0, r0
            b'\x00\x00\x00\xe0')     # and r0, r0, r0
 
-mips_bin = (b'\x24\x09\x00\x1e'     # addiu $t1, $zero, 0x1e
+MIPS_BIN = (b'\x24\x09\x00\x1e'     # addiu $t1, $zero, 0x1e
             b'\x01\x08\x40\x26'     # xor $t0, $t0, $t0
             b'\x21\x08\x00\x01'     # addi $t0, $t0, 1
             b'\x15\x09\xff\xfe'     # bne $t0, $t1, 8
@@ -38,7 +35,7 @@ mips_bin = (b'\x24\x09\x00\x1e'     # addiu $t1, $zero, 0x1e
             b'\x01\x08\x40\x24'     # and $t0, $t0, $t0
             b'\x01\x08\x40\x24')    # and $t0, $t0, $t0
 
-x86_bin = (b'\xbb\x1e\x00\x00\x00'  # mov ebx, 0x1e
+X86_BIN = (b'\xbb\x1e\x00\x00\x00'  # mov ebx, 0x1e
            b'\x31\xc0'              # xor eax, eax
            b'\x83\xc0\x01'          # add eax, 1
            b'\x39\xd8'              # cmp eax, ebx
@@ -46,7 +43,7 @@ x86_bin = (b'\xbb\x1e\x00\x00\x00'  # mov ebx, 0x1e
            b'\x21\xc0'              # and eax, eax
            b'\x21\xc0')             # and eax, eax
 
-x86_64_bin = (b'\x48\xc7\xc3\x1e\x00\x00\x00'   # mov rbx, 0x1e
+X86_64_BIN = (b'\x48\xc7\xc3\x1e\x00\x00\x00'   # mov rbx, 0x1e
               b'\x48\x31\xc0'                   # xor rax, rax
               b'\x48\x83\xc0\x01'               # add rax, 1
               b'\x48\x39\xd8'                   # cmp rax, rbx
@@ -73,144 +70,118 @@ class FakeTarget(object):
         return True
 
 
-def setup():
-    global qemu
-    global avatar
-    global fake_target
 
-    arch = setup_ARCH()
-
-    avatar = Avatar(arch=arch, output_directory=test_dir)
-    qemu = QemuTarget(avatar, name='qemu_test',
-                      #firmware="./tests/binaries/qemu_arm_test",
-                      firmware='%s/firmware' % test_dir,
-                      )
-    fake_target = FakeTarget()
-
-    dev1 = avatar.add_memory_range(0x101f2000, 0x1000, 'dev1', forwarded=True, 
-                                   forwarded_to=fake_target,
-                                   qemu_name='avatar-rmemory')
-
-    mem1 = avatar.add_memory_range(rom_addr, 0x1000, 'mem1', 
-                                #file='%s/tests/binaries/qemu_arm_test' %
-                                #   os.getcwd())
-                                file='%s/firmware' % test_dir)
-
-def setup_ARCH():
-    global ARCH
-    global rom_addr
-
-    ARCH = os.getenv('AVATAR2_ARCH')
-
-    if ARCH == 'ARM':
-        arch = ARM
-        firmware = arm_bin
-        rom_addr = 0x08000000
-
-    elif ARCH == 'MIPS':
-        arch = MIPS_24KF
-        firmware = mips_bin
-        rom_addr = 0x1fc00000
-
-    else:
-        assert False, 'Invalid Achitecture'
-
-    if not os.path.exists(test_dir): os.makedirs(test_dir)
-    with open('%s/firmware' % test_dir, 'wb') as f:
-        f.write(firmware)
-
-    return arch
-
-def teardown():
-    global qemu
-    qemu.shutdown()
+class QemuTargetTestCase(unittest.TestCase):
 
 
-@with_setup(setup, teardown)
-def test_initilization():
-    global qemu
+    def setUp(self):
 
-    qemu.init()
-    qemu.wait()
-    assert_equal(qemu.state, TargetStates.STOPPED)
+        self.rom_addr = None
+        self.arch = None
+        self.setup_arch()
 
+        self.avatar = Avatar(arch=self.arch, output_directory=TEST_DIR)
+        self.qemu = QemuTarget(self.avatar, name='qemu_test',
+                               #firmware="./tests/binaries/qemu_arm_test",
+                               firmware='%s/firmware' % TEST_DIR,
+                              )
+        self.fake_target = FakeTarget()
 
-@with_setup(setup, teardown)
-def test_step():
-    global qemu
-    global ARCH
+        dev1 = self.avatar.add_memory_range(0x101f2000, 0x1000, 'dev1', forwarded=True, 
+                                            forwarded_to=self.fake_target,
+                                            qemu_name='avatar-rmemory')
 
-    qemu.init()
-    qemu.wait()
+        mem1 = self.avatar.add_memory_range(self.rom_addr, 0x1000, 'mem1', 
+                                            #file='%s/tests/binaries/qemu_arm_test' %
+                                            #   os.getcwd())
+                                            file='%s/firmware' % TEST_DIR
+                                           )
 
-    qemu.regs.pc=rom_addr
-    qemu.step()
-    assert_equal(qemu.regs.pc, rom_addr + 4)
+    def setup_arch(self):
 
+        ARCH = os.getenv('AVATAR2_ARCH')
 
-@with_setup(setup, teardown)
-def test_memory_read():
-    global qemu
-    global ARCH
+        if ARCH == 'ARM':
+            self.arch = ARM
+            self.rom_addr = ARM_BASE_ADDR 
+            firmware = ARM_BIN
 
-    qemu.init()
-    qemu.wait()
+        elif ARCH == 'MIPS':
+            self.arch = MIPS_24KF
+            self.rom_addr = MIPS_BASE_ADDR
+            firmware = MIPS_BIN
 
-    mem = qemu.read_memory(rom_addr,4)
+        else:
+            self.assertTrue(False, 'Invalid Achitecture')
 
-    if ARCH == 'ARM':
-        assert_equal(mem, 0xe3a0101e)
+        if not os.path.exists(TEST_DIR): os.makedirs(TEST_DIR)
+        with open('%s/firmware' % TEST_DIR, 'wb') as f:
+            f.write(firmware)
 
-    elif ARCH == 'MIPS':
-        #assert_equal(mem, 0x2409001e)
-        assert_equal(mem, 0x1e000924)
-
-    else:
-        assert False, "Architecture not supported"
-
-
-@with_setup(setup, teardown)
-def test_memory_write():
-    global qemu
-
-    qemu.init()
-    qemu.wait()
-
-    qemu.write_memory(rom_addr,4, 0x41414141)
-    mem = qemu.read_memory(rom_addr,4)
-    assert_equal(mem, 0x41414141)
+    def tearDown(self):
+        self.qemu.shutdown()
 
 
-@with_setup(setup, teardown)
-def test_remote_memory_write():
-    global qemu
-    global avatar
+    def test_initilization(self):
+        self.qemu.init()
+        self.qemu.wait()
+        self.assertEqual(self.qemu.state, TargetStates.STOPPED, self.qemu.state)
 
-    qemu.init()
-    qemu.wait()
-    remote_memory_write = qemu.write_memory(0x101f2000,4,0x41414141)
-    assert_equal(remote_memory_write, True)
+    def test_step(self):
+        self.qemu.init()
+        self.qemu.wait()
 
-    assert_equal(fake_target.fake_write_addr, 0x101f2000)
-    assert_equal(fake_target.fake_write_size, 4)
-    assert_equal(fake_target.fake_write_val, 0x41414141)
+        self.qemu.regs.pc=self.rom_addr
+        self.qemu.step()
 
+        pc = self.qemu.regs.pc
+        self.assertEqual(pc, self.rom_addr + 4, pc)
 
-@with_setup(setup, teardown)
-def test_remote_memory_read():
-    global qemu
-    global avatar
+    def test_memory_read(self):
+        self.qemu.init()
+        self.qemu.wait()
 
-    qemu.init()
-    qemu.wait()
-    assert_equal(qemu.state, TargetStates.STOPPED)
+        mem = self.qemu.read_memory(self.rom_addr, 4)
 
-    remote_memory_read = qemu.read_memory(0x101f2000,4)
-    assert_equal(remote_memory_read, 0xdeadbeef)
+        if self.arch == ARM:
+            self.assertEqual(mem, 0xe3a0101e, mem)
+
+        elif self.arch == MIPS_24KF:
+            #self.assertEqual(mem, 0x2409001e, mem)
+            self.assertEqual(mem, 0x1e000924, mem)
+        else:
+            self.assertTrue(False, "Architecture not supported")
+
+    def test_memory_write(self):
+        self.qemu.init()
+        self.qemu.wait()
+
+        self.qemu.write_memory(self.rom_addr, 4, 0x41414141)
+        mem = self.qemu.read_memory(self.rom_addr, 4)
+        self.assertEqual(mem, 0x41414141, mem)
+
+    def test_remote_memory_write(self):
+        self.qemu.init()
+        self.qemu.wait()
+        remote_memory_write = self.qemu.write_memory(0x101f2000,4,0x41414141)
+        self.assertEqual(remote_memory_write, True)
+
+        addr = self.fake_target.fake_write_addr
+        size = self.fake_target.fake_write_size
+        val  = self.fake_target.fake_write_val
+        self.assertEqual(addr, 0x101f2000, addr)
+        self.assertEqual(size, 4, size)
+        self.assertEqual(val, 0x41414141, val)
+
+    def test_remote_memory_read(self):
+        self.qemu.init()
+        self.qemu.wait()
+        self.assertEqual(self.qemu.state, TargetStates.STOPPED, self.qemu.state)
+
+        remote_memory_read = self.qemu.read_memory(0x101f2000,4)
+        self.assertEqual(remote_memory_read, 0xdeadbeef, remote_memory_read)
+
 
 
 if __name__ == '__main__':
-    setup()
-    #test_remote_memory()
-    test_initilization()
-    teardown()
+    unittest.main()

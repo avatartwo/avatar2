@@ -1,14 +1,14 @@
-from avatar2.protocols.inception import IPCortexM3
-#import avatar2
+import unittest
 
 import struct
 import ctypes
 
-from nose.tools import *
+from avatar2.protocols.inception import IPCortexM3
+
+
 
 SLEEP_TIME = 1
 MEM_ADDR = 0x12345678
-i = None
 
 
 
@@ -110,49 +110,45 @@ class FakeIPCortexM3(IPCortexM3):
 
 # ****************************************************************************
 
-def setup():
-   global i
+class InceptionProtocolTestCase(unittest.TestCase):
 
-   i = FakeIPCortexM3()
-   i.connect()
-   i.reset()
+    def setUp(self):
+       self.ip = FakeIPCortexM3()
+       self.ip.connect()
+       self.ip.reset()
 
-
-def teardown():
-    i.shutdown()
-
-
-@with_setup(setup, teardown)
-def test_register_read_and_write():
-
-    ret = i.write_register('R0', 2020)
-    assert_equal(ret, True)
-
-    ret = i.read_register('r0')
-    assert_equal(ret, 0xdeadbeef)
+    def tearDown(self):
+        self.ip.shutdown()
 
 
-@with_setup(setup, teardown)
-def test_break_run_and_read_write_mem():
+    def test_register_read_and_write(self):
 
-    ret = i.set_breakpoint(0x8000000)
-    assert_equal(ret, True)
+        ret = self.ip.write_register('R0', 2020)
+        self.assertEqual(ret, True, ret)
 
-    ret = i.cont()
-    assert_equal(ret, True)
+        ret = self.ip.read_register('r0')
+        self.assertEqual(ret, 0xdeadbeef, ret)
 
-    #time.sleep(SLEEP_TIME)
+    def test_break_run_and_read_write_mem(self):
 
-    ret = i.read_memory(MEM_ADDR, 4)
-    assert_equal(ret, 0xdeadbeef)
+        ret = self.ip.set_breakpoint(0x8000000)
+        self.assertEqual(ret, True, ret)
 
-    ret = i.write_memory(MEM_ADDR, 4, 0x8badf00d)
-    assert_equal(ret, True)
-    assert_equal(i._fakecm3.fake_write_addr, MEM_ADDR)
-    assert_equal(i._fakecm3.fake_write_val, 0x8badf00d)
+        ret = self.ip.cont()
+        self.assertEqual(ret, True, ret)
+
+        #time.sleep(SLEEP_TIME)
+
+        ret = self.ip.read_memory(MEM_ADDR, 4)
+        self.assertEqual(ret, 0xdeadbeef, ret)
+
+        ret = self.ip.write_memory(MEM_ADDR, 4, 0x8badf00d)
+        self.assertEqual(ret, True, ret)
+        self.assertEqual(self.ip._fakecm3.fake_write_addr, MEM_ADDR, self.ip._fakecm3.fake_write_addr)
+        self.assertEqual(self.ip._fakecm3.fake_write_val, 0x8badf00d, self.ip._fakecm3.fake_write_val)
+
+
 
 
 if __name__ == '__main__':
-    setup()
-    test_break_run_and_read_write_mem()
-    teardown()
+    unittest.main()

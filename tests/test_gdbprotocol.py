@@ -1,131 +1,144 @@
+import unittest
+
 from avatar2.protocols.gdb import GDBProtocol
 import avatar2
 
 import subprocess
 import os
 import time
+import re
 
-from nose.tools import *
+from os.path import dirname, realpath
 
-SLEEP_TIME = 1
 
-MEM_ADDR = 0x555555554000
-port = 4444
-p = None
-g = None
+SLEEP_TIME = .1
 
-x86_regs = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
+PORT = 4444
+
+X86_REGS = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
             u'r8', u'r9', u'r10', u'r11', u'r12', u'r13', u'r14', u'r15',
             u'rip', u'eflags', u'cs', u'ss', u'ds', u'es', u'fs', u'gs']
 
 
-def setup_helloworld():
-    global p, g, port
+
+class GdbProtocolTestCase(unittest.TestCase):
+
+    def setUp(self):
+        pass 
+
+    def setup_env(self, binary):
+
+        self.process = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % PORT, binary],
+                                    stderr=subprocess.PIPE)
+        
+        out = str(self.process.stderr.readline())
+        self.assertEqual(binary in out, True, out)
+        out = str(self.process.stderr.readline())
+        self.assertEqual(str(PORT) in out, True, out)
+        
+        self.gdb = GDBProtocol(arch=avatar2.archs.X86_64)
+        self.gdb.remote_connect(port=PORT)
+
+        # let's resolve the base address of the binary
+        ret, out = self.gdb.console_command("p &main")
+        main_addr = int(re.search("0x[0-9a-f]+", out).group(0), 16)
+        self.base_address = main_addr - main_addr % 0x1000
+
+    def wait_stopped(self):
+        # As we do not have access to avatar synchronizing target states
+        # on this level, we apply this little hack to synchronize the target
+        while True:
+            ret, out = self.gdb.console_command('info program')
+            if 'Program stopped' in out:
+                break
+            time.sleep(SLEEP_TIME)
 
 
-    binary = '%s/tests/binaries/hello_world' % os.getcwd()
-    p = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % port, binary],
-                        stderr=subprocess.PIPE)
-    
-    out = str(p.stderr.readline())
-    assert_equal(binary in out, True)
-    out = str(p.stderr.readline())
-    assert_equal(str(port) in out, True)
-    
-    g = GDBProtocol(arch=avatar2.archs.X86_64)
-    g.remote_connect(port=port)
+    def tearDown(self):
+        self.gdb.shutdown()
+        self.process.terminate()
 
 
-def setup_inf_loop():
-    global p, g, port
+class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
 
-    binary = '%s/tests/binaries/infinite_loop' % os.getcwd()
-    p = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % port, binary],
-                        stderr=subprocess.PIPE)
-
-    out = str(p.stderr.readline())
-    assert_equal(binary in out, True)
-    out = str(p.stderr.readline())
-    assert_equal(str(port) in out, True)
-
-    g = GDBProtocol(arch=avatar2.archs.X86_64)
-    g.remote_connect(port=port)
+    def setUp(self):
+        dir_path = dirname(realpath(__file__))
+        binary = '%s/binaries/hello_world' % dir_path
+        self.setup_env(binary)
 
 
-def teardown_func():
-    g.shutdown()
-    p.terminate()
+    def test_register_names(self):
+        regs = self.gdb.get_register_names()
+        
+        self.assertListEqual(regs[:len(X86_REGS)], X86_REGS)
 
-@with_setup(setup_helloworld, teardown_func)
-def test_register_names():
-    regs = g.get_register_names()
-    
-    assert_list_equal(regs[:len(x86_regs)], x86_regs)
+    def test_register_read_and_write(self):
 
+        ret = self.gdb.write_register('rax', 1678)
+        self.assertEqual(ret, True, ret)
+        ret = self.gdb.read_register('rax')
+        self.assertEqual(ret, 1678, ret)
 
-@with_setup(setup_helloworld, teardown_func)
-def test_register_read_and_write():
+    def test_break_run_and_read_write_mem(self):
 
-    ret = g.write_register('rax', 1678)
-    assert_equal(ret, True)
-    ret = g.read_register('rax')
-    assert_equal(ret, 1678)
+        ret = self.gdb.set_breakpoint('main')
+        self.assertEqual(ret, True, ret)
 
+        ret = self.gdb.cont()
+        self.assertEqual(ret, True, ret)
 
-@with_setup(setup_helloworld, teardown_func)
-def test_break_run_and_read_write_mem():
+        self.wait_stopped()
 
-    ret = g.set_breakpoint('main')
-    assert_equal(ret, True)
+        ret = self.gdb.read_memory(self.base_address, 4)
+        self.assertEqual(ret, 0x464c457f, ret)
 
-    ret = g.cont()
-    assert_equal(ret, True)
-    # todo: enable waiting
-    
-    time.sleep(SLEEP_TIME)
+        ret = self.gdb.write_memory(self.base_address, 4, 0x41414141)
+        self.assertEqual(ret, True, ret)
 
-    ret = g.read_memory(MEM_ADDR, 4)
-    assert_equal(ret, 0x464c457f)
+        ret = self.gdb.read_memory(self.base_address, 4)
+        self.assertEqual(ret, 0x41414141, ret)
 
-    ret = g.write_memory(MEM_ADDR, 4, 0x41414141)
-    assert_equal(ret, True)
+    def test_watchpoint(self):
+        ret = self.gdb.set_watchpoint(self.base_address+0x754, read=True,
+                                    write=False)
+        self.assertEqual(ret, True, ret)
 
-    ret = g.read_memory(MEM_ADDR, 4)
-    assert_equal(ret, 0x41414141)
+        ret = self.gdb.cont()
+        self.assertEqual(ret, True, ret)
 
-@with_setup(setup_inf_loop, teardown_func)
-def test_continue_stopping_stepping():
+        self.wait_stopped()
+        
 
-    ret = g.cont()
-    assert_equal(ret, True)
+        ret = self.gdb.read_memory(self.base_address, 4)
+        self.assertEqual(ret, 0x464c457f, ret)
 
 
-    ret = g.stop()
-    assert_equal(ret, True)
+class GDBProtocolTestCaseOnInfiniteLoop(GdbProtocolTestCase):
 
-    time.sleep(SLEEP_TIME)
 
-    ret = g.step()
-    assert_equal(ret, True)
+    def setUp(self):
+        dir_path = dirname(realpath(__file__))
+        binary = '%s/binaries/infinite_loop' % dir_path
+        self.setup_env(binary)
 
-    time.sleep(SLEEP_TIME)
 
-@with_setup(setup_helloworld, teardown_func)
-def test_watchpoint():
-    ret = g.set_watchpoint(0x555555554754, read=True,
-                           write=False)
-    assert_equal(ret, True)
+    def test_continue_stopping_stepping(self):
 
-    ret = g.cont()
-    assert_equal(ret, True)
+        ret = self.gdb.cont()
+        self.assertEqual(ret, True, ret)
 
-    
-    time.sleep(SLEEP_TIME)
 
-    ret = g.read_memory(MEM_ADDR, 4)
-    assert_equal(ret, 0x464c457f)
+        ret = self.gdb.stop()
+        self.assertEqual(ret, True, ret)
+
+        self.wait_stopped()
+
+        ret = self.gdb.step()
+        self.assertEqual(ret, True, ret)
+
+        self.wait_stopped()
+
+
 
 if __name__ == '__main__':
-    setup_helloworld()
-    test_break_run_and_read_write_mem() 
-    teardown_func()
+    unittest.main()
