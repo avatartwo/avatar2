@@ -1,4 +1,5 @@
 import sys
+from pkg_resources import packaging
 from threading import Thread, Event, Condition
 from struct import pack, unpack
 from codecs import encode
@@ -267,8 +268,8 @@ class GDBProtocol(object):
             if local_arguments is not None:
                 gdb_args += [local_arguments]
 
-
-        if sys.version_info <= (3, 6):
+        # See breaking change in pygdbmi: https://github.com/cs01/pygdbmi/releases
+        if packaging.version.parse(pygdbmi.__version__) < packaging.version.parse("0.10.0.0"):
             self._gdbmi = pygdbmi.gdbcontroller.GdbController(
                 gdb_path=gdb_executable,
                 gdb_args=gdb_args,
@@ -293,10 +294,10 @@ class GDBProtocol(object):
         self.shutdown()
 
     def shutdown(self):
-        if self._communicator is not None:
+        if hasattr(self, "_communicator") and self._communicator is not None:
             self._communicator.stop()
             self._communicator = None
-        if self._gdbmi is not None:
+        if hasattr(self, "_gdbmi") and self._gdbmi is not None:
             self._gdbmi.exit()
             self._gdbmi = None
 
