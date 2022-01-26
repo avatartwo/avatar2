@@ -1,8 +1,5 @@
 import unittest
 
-from avatar2.protocols.gdb import GDBProtocol
-import avatar2
-
 import subprocess
 import os
 import time
@@ -10,11 +7,15 @@ import re
 
 from os.path import dirname, realpath
 
+import avatar2
+from avatar2.protocols.gdb import GDBProtocol
+
+from utils import unix2tcp
+
+
 
 SLEEP_TIME = .1
-
 PORT = 4444
-
 X86_REGS = [u'rax', u'rbx', u'rcx', u'rdx', u'rsi', u'rdi', u'rbp', u'rsp',
             u'r8', u'r9', u'r10', u'r11', u'r12', u'r13', u'r14', u'r15',
             u'rip', u'eflags', u'cs', u'ss', u'ds', u'es', u'fs', u'gs']
@@ -26,7 +27,7 @@ class GdbProtocolTestCase(unittest.TestCase):
     def setUp(self):
         pass 
 
-    def setup_env(self, binary):
+    def setup_env(self, binary, unix_socket=False):
 
         self.process = subprocess.Popen(['gdbserver', '--once', '127.0.0.1:%d' % PORT, binary],
                                     stderr=subprocess.PIPE)
@@ -37,12 +38,18 @@ class GdbProtocolTestCase(unittest.TestCase):
         self.assertEqual(str(PORT) in out, True, out)
         
         self.gdb = GDBProtocol(arch=avatar2.archs.X86_64)
-        self.gdb.remote_connect(port=PORT)
 
-        # let's resolve the base address of the binary
-        ret, out = self.gdb.console_command("p &main")
-        main_addr = int(re.search("0x[0-9a-f]+", out).group(0), 16)
-        self.base_address = main_addr - main_addr % 0x1000
+        if unix_socket is True:
+            socket_path ='/tmp/test_socket'
+            unix2tcp(socket_path, "127.0.0.1", PORT)
+            self.gdb.remote_connect_unix(socket_path)
+
+        else:
+            self.gdb.remote_connect(port=PORT)
+
+        # Base addresses can change across kernel versions due to PIE binaries
+        self.base_address = self.gdb.get_symbol("main")[1] & ~0xfff
+
 
     def wait_stopped(self):
         # As we do not have access to avatar synchronizing target states
@@ -113,8 +120,15 @@ class GDBProtocolTestCaseOnHelloWorld(GdbProtocolTestCase):
         self.assertEqual(ret, 0x464c457f, ret)
 
 
-class GDBProtocolTestCaseOnInfiniteLoop(GdbProtocolTestCase):
+class GDBProtocolWithUnixSocketTestCase(GDBProtocolTestCaseOnHelloWorld):
 
+    def setUp(self):
+        dir_path = dirname(realpath(__file__))
+        binary = '%s/binaries/hello_world' % dir_path
+        self.setup_env(binary, unix_socket=True)
+
+
+class GDBProtocolTestCaseOnInfiniteLoop(GdbProtocolTestCase):
 
     def setUp(self):
         dir_path = dirname(realpath(__file__))

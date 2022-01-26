@@ -75,15 +75,18 @@ class QemuTargetTestCase(unittest.TestCase):
 
 
     def setUp(self):
+        self.setup_env()
 
+    def setup_env(self, gdb_unix_socket_path=None):
         self.rom_addr = None
         self.arch = None
         self.setup_arch()
 
-        self.avatar = Avatar(arch=self.arch, output_directory=TEST_DIR)
+        self.avatar = Avatar(arch=self.arch, output_directory=TEST_DIR, configure_logging=False)
         self.qemu = QemuTarget(self.avatar, name='qemu_test',
                                #firmware="./tests/binaries/qemu_arm_test",
                                firmware='%s/firmware' % TEST_DIR,
+                               gdb_unix_socket_path=gdb_unix_socket_path,
                               )
         self.fake_target = FakeTarget()
 
@@ -180,6 +183,17 @@ class QemuTargetTestCase(unittest.TestCase):
 
         remote_memory_read = self.qemu.read_memory(0x101f2000,4)
         self.assertEqual(remote_memory_read, 0xdeadbeef, remote_memory_read)
+
+
+class QemuTargetWithUnixSocketTestCase(QemuTargetTestCase):
+
+    def setUp(self):
+        self.setup_env(gdb_unix_socket_path="/tmp/test_sock")
+
+    #def test_initialization():
+    #    self.qemu.init()
+    #    self.qemu.wait()
+    #    self.assertEqual(qemu.state, TargetStates.STOPPED, self.qemu.state)
 
 
 
