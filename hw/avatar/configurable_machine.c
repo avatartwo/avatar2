@@ -464,11 +464,10 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     const char *cpu_type;
     THISCPU *cpuu;
     CPUState *env;
+    Object *cpuobj;
 
-//#if defined(TARGET_ARM) || define(TARGET_AARCH64) || defined(TARGET_I386) || defined(TARGET_MIPS)
 #if defined(TARGET_ARM) || defined(TARGET_I386) || defined(TARGET_MIPS)
     ObjectClass *cpu_oc;
-    Object *cpuobj;
 #endif  /* TARGET_ARM || TARGET_I386 || TARGET_MIPS */
 
 #if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
@@ -560,7 +559,8 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
     }
 
 #elif defined(TARGET_PPC)
-    cpuu = cpu_ppc_init(cpu_type);
+    cpuobj = object_new(cpu_type);
+    cpuu = POWERPC_CPU(cpuobj);
 #endif
 
 
@@ -663,7 +663,7 @@ static void configurable_machine_class_init(ObjectClass *oc, void *data)
     mc->default_cpu_type = "24Kf";
     //mc->default_cpu_type = "mips32r6-generic";
 #elif defined(TARGET_PPC)
-    mc->default_cpu_type = "e500v2_v30";
+    mc->default_cpu_type = POWERPC_CPU_TYPE_NAME("e500v2_v30");
 #endif
 }
 

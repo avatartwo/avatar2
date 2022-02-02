@@ -1,4 +1,5 @@
 # -*- Mode: Python -*-
+# vim: filetype=python
 
 ##
 # = avatar additions
@@ -13,10 +14,10 @@
 ##
 { 'command': 'avatar-armv7m-enable-irq',
   'data': {
-      'irq_rx_queue_name': 'str', 'irq_tx_queue_name': 'str',
-      'rmem_rx_queue_name': 'str', 'rmem_tx_queue_name': 'str'
+      'irq-rx-queue-name': 'str', 'irq-tx-queue-name': 'str',
+      'rmem-rx-queue-name': 'str', 'rmem-tx-queue-name': 'str'
   },
-  'if': 'defined(TARGET_ARM)'
+  'if': 'TARGET_ARM'
 }
 
 ##
@@ -27,7 +28,7 @@
 # avatar-qemu only
 ##
 { 'command': 'avatar-armv7m-disable-irq',
-  'if': 'defined(TARGET_ARM)'
+  'if': 'TARGET_ARM'
 }
 
 ##
@@ -38,8 +39,8 @@
 # avatar-qemu only
 ##
 { 'command': 'avatar-armv7m-inject-irq',
-  'data': {'num_cpu': 'int', 'num_irq': 'int' },
-  'if': 'defined(TARGET_ARM)'
+  'data': {'num-cpu': 'int', 'num-irq': 'int' },
+  'if': 'TARGET_ARM'
 }
 
 ##
@@ -50,8 +51,8 @@
 # avatar-qemu only
 ##
 { 'command': 'avatar-armv7m-ignore-irq-return',
-  'data': {'num_irq': 'int' },
-  'if': 'defined(TARGET_ARM)'
+  'data': {'num-irq': 'int' },
+  'if': 'TARGET_ARM'
 }
 
 
@@ -63,8 +64,8 @@
 # avatar-qemu only
 ##
 { 'command': 'avatar-armv7m-unignore-irq-return',
-  'data': {'num_irq': 'int' },
-  'if': 'defined(TARGET_ARM)'
+  'data': {'num-irq': 'int' },
+  'if': 'TARGET_ARM'
 }
 
 ##
@@ -75,8 +76,8 @@
 # avatar-qemu only
 ##
 { 'command': 'avatar-armv7m-set-vector-table-base',
-  'data': {'num_cpu': 'int', 'base': 'int' },
-  'if': 'defined(TARGET_ARM)'
+  'data': {'num-cpu': 'int', 'base': 'int' },
+  'if': 'TARGET_ARM'
 }
 
 

@@ -2975,6 +2975,9 @@ foreach target : target_dirs
       exe_name += '-unsigned'
     endif
 
+    # To link configurable machine with mqueue.h
+    link_args += ['-lrt']
+
     emulator = executable(exe_name, exe['sources'],
                install: true,
                c_args: c_args,

@@ -93,4 +93,4 @@
 { 'include': 'audio.json' }
 { 'include': 'acpi.json' }
 { 'include': 'pci.json' }
-{ 'include': 'avatar.json' }
+{ 'include': 'avatar-target.json' }

@@ -1,58 +1,46 @@
-
 #include "qemu/osdep.h"
 #include "qemu/log.h"
 #include "qemu/error-report.h"
 #include "qemu-common.h"
-#include "qapi/qapi-commands-avatar.h"
+#include "qapi/qapi-commands-avatar-target.h"
 #include "qapi/error.h"
 
 #include "hw/sysbus.h"
 #include "sysemu/sysemu.h"
 
-#ifdef TARGET_ARM
 #include "target/arm/cpu.h"
-
-#if !defined(TARGET_AARCH64)
-#endif
-
-#elif defined(TARGET_MIPS)
-#include "target/mips/cpu.h"
-#endif
 
 #include "hw/avatar/interrupts.h"
 #include "hw/avatar/avatar_posix.h"
 #include "hw/avatar/remote_memory.h"
 
 
+
 extern  QemuAvatarMessageQueue *rmem_rx_queue_ref;
 extern  QemuAvatarMessageQueue *rmem_tx_queue_ref;
 
-#if defined(TARGET_ARM)
 
 static QemuAvatarMessageQueue *irq_rx_queue_ref = NULL;
 static QemuAvatarMessageQueue *irq_tx_queue_ref = NULL;
 
 static uint64_t req_id;
 static uint8_t ignore_irq_return_map[32] = {0};
-#endif
 
-/* Architecture specific declaration */
-#if defined(TARGET_ARM)
 static bool armv7m_exception_handling_enabled = false;
+
 
 
 void qmp_avatar_armv7m_set_vector_table_base(int64_t num_cpu, int64_t base, Error **errp)
 {
-//#ifdef TARGET_ARM
     qemu_log_mask(LOG_AVATAR, "Changing NVIC base to%lx\n", base & 0xffffff80);
     ARMCPU *armcpu = ARM_CPU(qemu_get_cpu(num_cpu));
     /* MM: qemu now has multiple vecbases, we may need to fix this */
     armcpu->env.v7m.vecbase[armcpu->env.v7m.secure] = base & 0xffffff80;
-//#endif
 }
 
 
-void avatar_armv7m_nvic_forward_write(uint32_t offset, uint32_t value, unsigned size){
+void avatar_armv7m_nvic_forward_write(uint32_t offset, uint32_t value, unsigned size)
+{
     int ret;
     RemoteMemoryResp resp;
 
@@ -129,13 +117,11 @@ void qmp_avatar_armv7m_unignore_irq_return(int64_t num_irq, Error **errp)
 
 void qmp_avatar_armv7m_inject_irq(int64_t num_cpu,int64_t num_irq, Error **errp)
 {
-//#ifdef TARGET_ARM
     qemu_log_mask(LOG_AVATAR, "Injecting exception 0x%lx\n", num_irq);
     ARMCPU *armcpu = ARM_CPU(qemu_get_cpu(num_cpu));
     CPUARMState *env = &armcpu->env;
     /*  MM: for now, we can only inject non-secure irqs */
     armv7m_nvic_set_pending(env->nvic, num_irq, false);
-//#endif
 }
 
 
@@ -186,4 +172,3 @@ void avatar_armv7m_exception_enter(int irq)
         }
     }
 }
-#endif  /* defined(TARGET_ARM) && !defined(TARGET_AARCH64) */
