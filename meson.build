@@ -51,6 +51,7 @@ endforeach
 have_user = have_linux_user or have_bsd_user
 have_tools = 'CONFIG_TOOLS' in config_host
 have_block = have_system or have_tools
+have_avatar = 'CONFIG_AVATAR' in config_host
 
 python = import('python').find_installation()
 
@@ -2975,8 +2976,10 @@ foreach target : target_dirs
       exe_name += '-unsigned'
     endif
 
-    # To link configurable machine with mqueue.h
-    link_args += ['-lrt']
+    if have_avatar
+      # To link the configurable machine with mqueue.h
+      link_args += ['-lrt']
+    endif
 
     emulator = executable(exe_name, exe['sources'],
                install: true,
@@ -3215,6 +3218,7 @@ summary_info += {'vhost-user-blk server support': have_vhost_user_blk_server}
 summary_info += {'vhost-user-fs support': config_host.has_key('CONFIG_VHOST_USER_FS')}
 summary_info += {'vhost-vdpa support': config_host.has_key('CONFIG_VHOST_VDPA')}
 summary_info += {'build guest agent': config_host.has_key('CONFIG_GUEST_AGENT')}
+summary_info += {'avatar2 support': config_host.has_key('CONFIG_AVATAR')}
 summary(summary_info, bool_yn: true, section: 'Configurable features')
 
 # Compilation information

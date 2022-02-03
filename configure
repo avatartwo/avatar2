@@ -366,6 +366,7 @@ ninja=""
 gio="$default_feature"
 skip_meson=no
 slirp_smbd="$default_feature"
+avatar="yes"
 
 # The following Meson options are handled manually (still they
 # are included in the automatically generated help message)
@@ -1185,6 +1186,10 @@ for opt do
   ;;
   --disable-slirp-smbd) slirp_smbd=no
   ;;
+  --enable-avatar) avatar=yes
+  ;;
+  --disable-avatar) avatar=no
+  ;;
   # backwards compatibility options
   --enable-trace-backend=*) meson_option_parse "--enable-trace-backends=$optarg" "$optarg"
   ;;
@@ -1470,6 +1475,7 @@ cat << EOF
   rng-none        dummy RNG, avoid using /dev/(u)random and getrandom()
   gio             libgio support
   slirp-smbd      use smbd (at path --smbd=*) in slirp networking
+  avatar          configurable machine and avatar2 support
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -3810,6 +3816,10 @@ fi
 
 if test "$safe_stack" = "yes"; then
   echo "CONFIG_SAFESTACK=y" >> $config_host_mak
+fi
+
+if test "$avatar" = "yes"; then
+    echo "CONFIG_AVATAR=y" >> $config_host_mak
 fi
 
 # If we're using a separate build tree, set it up now.

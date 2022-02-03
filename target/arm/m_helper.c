@@ -33,8 +33,9 @@
 #include "exec/cpu_ldst.h"
 #include "semihosting/common-semi.h"
 #endif
-
+#ifdef CONFIG_AVATAR
 #include "hw/avatar/interrupts.h"
+#endif
 
 
 static void v7m_msr_xpsr(CPUARMState *env, uint32_t mask,
@@ -1411,7 +1412,9 @@ static void do_v7m_exception_exit(ARMCPU *cpu)
                   " previous exception %d\n",
                   excret, env->v7m.exception);
 
+#ifdef CONFIG_AVATAR
     avatar_armv7m_exception_exit(env->v7m.exception, excret);
+#endif
 
     if ((excret & R_V7M_EXCRET_RES1_MASK) != R_V7M_EXCRET_RES1_MASK) {
         qemu_log_mask(LOG_GUEST_ERROR, "M profile: zero high bits in exception "

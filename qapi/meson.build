@@ -59,7 +59,6 @@ if have_system
     'rdma',
     'rocker',
     'tpm',
-    'avatar-target',
   ]
 endif
 if have_system or have_tools
@@ -67,6 +66,12 @@ if have_system or have_tools
     'ui',
   ]
 endif
+if have_avatar
+  qapi_all_modules += [
+    'avatar-target',
+  ]
+endif
+
 
 qapi_storage_daemon_modules = [
   'block-core',
