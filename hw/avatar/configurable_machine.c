@@ -24,6 +24,7 @@
 
 //general imports
 #include "qemu/osdep.h"
+#include "qemu/error-report.h"
 #include "sysemu/sysemu.h"
 #include "exec/address-spaces.h"
 #include "hw/hw.h"
@@ -94,8 +95,8 @@ static QDict * load_configuration(const char * filename)
 
     if (!filedata)
     {
-        fprintf(stderr, "%ld\n", filesize);
-        fprintf(stderr, "Out of memory\n");
+        error_printf("%ld\n", filesize);
+        error_printf("Out of memory\n");
         exit(1);
     }
 
@@ -103,7 +104,7 @@ static QDict * load_configuration(const char * filename)
 
     if (err != filesize)
     {
-        fprintf(stderr, "Reading configuration file failed\n");
+        error_printf("Reading configuration file failed\n");
         exit(1);
     }
 
@@ -112,14 +113,14 @@ static QDict * load_configuration(const char * filename)
     obj = qobject_from_json(filedata, &qerr);
     if (!obj || qobject_type(obj) != QTYPE_QDICT)
     {
-        fprintf(stderr, "Error parsing JSON configuration file\n");
+        error_printf("Error parsing JSON configuration file\n");
         exit(1);
     }
 
     obj_dict = qobject_to(QDict, obj);
     if (!obj_dict) {
         qobject_unref(obj);
-        fprintf(stderr, "Invalid JSON object given");
+        error_printf("Invalid JSON object given");
         exit(1);
     }
 
@@ -515,7 +516,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 #endif  /* ! TARGET_AARCH64 */
         cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, cpu_type);
         if (!cpu_oc) {
-            fprintf(stderr, "Unable to find CPU definition\n");
+            error_printf("Unable to find CPU definition\n");
             exit(1);
         }
 
@@ -531,7 +532,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 #elif defined(TARGET_I386)
     cpu_oc = cpu_class_by_name(TYPE_X86_CPU, cpu_type);
     if (!cpu_oc) {
-        fprintf(stderr, "Unable to find CPU definition\n");
+        error_printf("Unable to find CPU definition\n");
         exit(1);
     }
 
@@ -545,7 +546,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 #elif defined(TARGET_MIPS)
     cpu_oc = cpu_class_by_name(TYPE_MIPS_CPU, cpu_type);
     if (!cpu_oc) {
-        fprintf(stderr, "Unable to find CPU definition\n");
+        error_printf("Unable to find CPU definition\n");
         exit(1);
     }
 
@@ -566,7 +567,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 
     env = (CPUState *) &(cpuu->env);
     if (!env) {
-        fprintf(stderr, "Unable to find CPU definition\n");
+        error_printf("Unable to find CPU definition\n");
         exit(1);
     }
 
