@@ -668,7 +668,7 @@ static void configurable_machine_class_init(ObjectClass *oc, void *data)
 }
 
 static const TypeInfo configurable_machine_type = {
-    .name       =  MACHINE_TYPE_NAME("configurable"),
+    .name       = MACHINE_TYPE_NAME("configurable"),
     .parent     = TYPE_MACHINE,
     .class_init = configurable_machine_class_init,
 };
