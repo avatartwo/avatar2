@@ -10,7 +10,7 @@ else:
 
 
 class JLinkTarget(Target):
-    def __init__(self, avatar, serial, interface, device, **kwargs):
+    def __init__(self, avatar, serial=None, device="ARM7", interface="swd", **kwargs):
         """
         Create a JLink target instance
         :param avatar: The avatar instance

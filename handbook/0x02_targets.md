@@ -106,7 +106,7 @@ Easy to use. For example, with Segger JLink hardware devices, developers do not 
 
 | name                | type  | default | purpose                                                                                         |
 |---------------------|-------|---------|-------------------------------------------------------------------------------------------------|
-| serial              | str   |"123456" | JLink emulator serial number. JLink Onboard provides default number "123456" |
+| serial              | str   | None    | JLink emulator serial number. Default None, which leaves JLink the choice where to connect to. |
 | device              | str   | "ARM7"  | Device name which should be avaliable for used JLink emulator                |
 | interface           | str   | "swd"   | "swd" or "jtag" interface                                                    |
 

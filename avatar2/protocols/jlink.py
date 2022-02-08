@@ -26,12 +26,12 @@ class JLinkProtocol(Thread):
     :ivar origin:   the target utilizing this protocol
     """
 
-    def __init__(self, serial="12345678", device="ARM7", interface="swd", avatar=None, origin=None):
+    def __init__(self, serial=None, device="ARM7", interface="swd", avatar=None, origin=None):
         self._shutdown = Event()
         self.avatar = avatar
         self._origin = origin
         self.jlink = pylink.JLink()
-        self.jlink.open(serial)
+        self.jlink.open(serial_no=serial)
         if interface == "swd": # swd is more generic than jtag
             self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
         self.log = logging.getLogger('%s.%s' %
