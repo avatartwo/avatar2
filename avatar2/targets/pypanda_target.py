@@ -18,7 +18,7 @@ class PyPandaTarget(PandaTarget):
         except ImportError:
             raise RuntimeError(("PyPanda could not be found! for installation, "
                     "please follow the steps at https://github.com/"
-                    "panda-re/panda/blob/master/panda/pypanda/docs/USAGE.md"))
+                    "panda-re/panda/blob/dev/panda/python/docs/USAGE.md"))
         kwargs['executable'] = abspath(pandare.__file__)
 
         super(PyPandaTarget, self).__init__(*args, **kwargs)

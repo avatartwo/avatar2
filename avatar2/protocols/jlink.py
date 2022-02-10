@@ -1,4 +1,6 @@
 import sys
+import string
+import binascii
 import pylink
 from time import sleep
 from threading import Thread, Event, Condition
@@ -24,12 +26,14 @@ class JLinkProtocol(Thread):
     :ivar origin:   the target utilizing this protocol
     """
 
-    def __init__(self, serial="12345678", device="ARM7", avatar=None, origin=None):
+    def __init__(self, serial=None, device="ARM7", interface="swd", avatar=None, origin=None):
         self._shutdown = Event()
         self.avatar = avatar
-        self.origin = origin
+        self._origin = origin
         self.jlink = pylink.JLink()
-        self.jlink.open(serial)
+        self.jlink.open(serial_no=serial)
+        if interface == "swd": # swd is more generic than jtag
+            self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD)
         self.log = logging.getLogger('%s.%s' %
                                      (origin.log.name, self.__class__.__name__)
                                      ) if origin else \
@@ -71,8 +75,8 @@ class JLinkProtocol(Thread):
             name = self.jlink.register_name(idx)
             regs[name] = idx
 
-        if hasattr(self.origin, 'regs'):
-            self.origin.regs._update(regs)
+        if hasattr(self._origin, 'regs'):
+            self._origin.regs._update(regs)
 
     def run(self):
         # Target state management thread
@@ -84,25 +88,25 @@ class JLinkProtocol(Thread):
         try:
             while not self._shutdown.is_set():
                 is_halted = self.jlink.halted()
-                if is_halted and self.origin.state == TargetStates.RUNNING:
+                if is_halted and self._origin.state == TargetStates.RUNNING:
                     # We just halted
                     # But did we hit a BP?
                     self.log.debug("JLink Target is halting...")
-                    avatar_msg = UpdateStateMessage(self.origin, TargetStates.STOPPED)
+                    avatar_msg = UpdateStateMessage(self._origin, TargetStates.STOPPED)
                     self.avatar.fast_queue.put(avatar_msg)
-                    self.origin.wait()
+                    self._origin.wait()
                     self.log.debug("JLink target has halted")
                     pc = self.get_pc()
                     if self.jlink.breakpoint_find(pc):
                         self.log.debug("JLink Target hit breakpoint %d" % self.jlink.breakpoint_find(pc))
-                        avatar_msg = BreakpointHitMessage(self.origin, self.jlink.breakpoint_find(pc), pc)
+                        avatar_msg = BreakpointHitMessage(self._origin, self.jlink.breakpoint_find(pc), pc)
                         self.avatar.queue.put(avatar_msg)
 
-                elif not is_halted and self.origin.state == TargetStates.STOPPED:
-                    self.log.debug("About to resume target.")
-                    avatar_msg = UpdateStateMessage(self.origin, TargetStates.RUNNING)
+                elif not is_halted and self._origin.state == TargetStates.STOPPED:
+                    self.log.info("About to resume target.")
+                    avatar_msg = UpdateStateMessage(self._origin, TargetStates.RUNNING)
                     self.avatar.fast_queue.put(avatar_msg)
-                    while self.origin.state != TargetStates.RUNNING:
+                    while self._origin.state != TargetStates.RUNNING:
                         pass
                     self.log.debug("JLink target has resumed")
         except:
@@ -147,7 +151,7 @@ class JLinkProtocol(Thread):
         """Writes memory
 
         :param address:   Address to write to
-        :param wordsize:  the size of the write (1, 2, 4 or 8)
+        :param wordsize:  the size of the write (1, 2, 4)
         :param val:       the written value
         :type val:        int if num_words == 1 and raw == False
                           list if num_words > 1 and raw == False
@@ -162,37 +166,66 @@ class JLinkProtocol(Thread):
                 raise ValueError("val had zero length")
             new_val = [ord(v) for v in val]
             val = new_val
+        if not isinstance(val, list):
+            val = [val]
         try:
-            self.jlink.memory_write(address, contents)
+            self.jlink.memory_write(address, data=val, nbits=wordsize * 8)
             return True
         except pylink.JLinkException:
             return False
 
-    def read_memory(self, address, wordsize=4, num_words=1, raw=False):
+    def read_memory(self, address, wordsize=1, num_words=1, raw=False):
         """reads memory
 
         :param address:   Address to write to
-        :param wordsize:  the size of a read word (1, 2, 4 or 8) 
+        :param wordsize:  the size of a read word (1, 2, 4). 
+                          nbits if provided, must be either 8, 16, or 32.
+                          If not provided, always reads num_units bytes.
+                          Ref https://pylink.readthedocs.io/en/latest/pylink.html
         :param num_words: the amount of read words
         :param raw:       Whether the read memory should be returned unprocessed
         :return:          The read memory
         """
 
-        ret = self.jlink.memory_read(address, num_units=num_words, nbits=wordsize)
+        ret = self.jlink.memory_read(address, num_units=num_words, nbits=wordsize * 8) # nbits indicate bits of each unit
 
         if raw:
-            raw_mem = "".join([newint.to_bytes(i, length=int(math.ceil(i.bit_length() / 8.0))) for i in ret])
+            raw_mem = b''
+            for i in ret:
+                raw_mem += i.to_bytes(wordsize, "little")
             return raw_mem
-        return ret
+        if num_words==1:
+            return ret[0]
+        else:
+            return ret
 
     def read_register(self, reg):
-        the_reg = tolower(reg)
+        """read_register
+        jlink supported registers: ['R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10', 'R11', 'R12', 'R13 (SP)', 'R14', 'R15 (PC)', 'XPSR', 'MSP', 'PSP', 'APSR', 'EPSR', 'IPSR', 'PRIMASK', 'BASEPRI', 'FAULTMASK', 'CONTROL', 'BASEPRI_MAX', 'IAPSR', 'EAPSR', 'IEPSR', 'FPSCR', 'FPS0', 'FPS1', 'FPS2', 'FPS3', 'FPS4', 'FPS5', 'FPS6', 'FPS7', 'FPS8', 'FPS9', 'FPS10', 'FPS11', 'FPS12', 'FPS13', 'FPS14', 'FPS15', 'FPS16', 'FPS17', 'FPS18', 'FPS19', 'FPS20', 'FPS21', 'FPS22', 'FPS23', 'FPS24', 'FPS25', 'FPS26', 'FPS27', 'FPS28', 'FPS29', 'FPS30', 'FPS31', 'CycleCnt', 'MSP_NS', 'PSP_NS', 'MSP_S', 'PSP_S', 'MSPLIM_S', 'PSPLIM_S', 'MSPLIM_NS', 'PSPLIM_NS', 'CFBP_S', 'CFBP_NS', 'PRIMASK_NS', 'BASEPRI_NS', 'FAULTMASK_NS', 'CONTROL_NS', 'BASEPRI_MAX_NS', 'PRIMASK_S', 'BASEPRI_S', 'FAULTMASK_S', 'CONTROL_S', 'BASEPRI_MAX_S', 'MSPLIM', 'PSPLIM', 'BASEPRI_BASE0', 'FAULTMASK_BASE0', 'CONTROL_BASE0', 'BASEPRI_MAX_BASE0']
+        :param reg: register name string
+        :return: register value
+        """
+        the_reg = reg.upper() # all register names are upper, not lower
+        # jlink has no reg named ip, lr, cpsr. So transfer them
+        if the_reg == 'IP': 
+            the_reg = 'R12'
+        if the_reg == 'LR':
+            the_reg = 'R14'
+        if the_reg == 'CPSR':
+            the_reg = 'XPSR'
         the_idx = -1
         for idx in self.jlink.register_list():
-            if the_reg == self.jlink.register_name(idx):
-                the_idx = idx
-                break
-        return self.register_read(the_idx)
+            if(idx == 13 or idx == 15): # R13 (SP) and R15 (PC) need special operation
+                if the_reg in self.jlink.register_name(idx):
+                    the_idx = idx
+                    break
+            else:
+                if the_reg == self.jlink.register_name(idx): 
+                    the_idx = idx
+                    break
+        if(the_idx == -1):
+            self.log.exception("Do not find target register")
+        return self.jlink.register_read(the_idx)
 
     def get_pc(self):
         # Get PC a shitty way
@@ -203,12 +236,19 @@ class JLinkProtocol(Thread):
     def write_register(self, reg, val):
         """Set one register on the target
         :returns: True on success"""
-        the_reg = tolower(reg)
+        the_reg = reg.upper()
         the_idx = -1
         for idx in self.jlink.register_list():
-            if the_reg == self.jlink.register_name(idx):
-                the_idx = idx
-                break
+            if(idx == 13 or idx == 15): # R13 (SP) and R15 (PC) need special operation
+                if the_reg in self.jlink.register_name(idx):
+                    the_idx = idx
+                    break
+            else:
+                if the_reg == self.jlink.register_name(idx): 
+                    the_idx = idx
+                    break
+        if(the_idx == -1):
+            self.log.exception("Do not find target register")
         return self.jlink.register_write(the_idx, val)
         
     def step(self):

@@ -100,6 +100,16 @@ parameters can be specified on a OpenOCDTarget:
 | gdb_additional_args | [str] | []      | List with additional arguments which shall be passed to gdb                                     |
 | gdb_port            | int   | 3333    | Port on which the gdbserver being connected to listens                                          |
 
+## JLinkTarget
+The JLinkTarget provides similar functions as OpenOCDTarget. It could use SWD and JTAG interface to control the physical devices.
+Easy to use. For example, with Segger JLink hardware devices, developers do not need to prepare the configuration files which are needed by OpenOCD for each devices. The following parameters can be specified on a JLinkTarget:
+
+| name                | type  | default | purpose                                                                                         |
+|---------------------|-------|---------|-------------------------------------------------------------------------------------------------|
+| serial              | str   | None    | JLink emulator serial number. Default None, which leaves JLink the choice where to connect to. |
+| device              | str   | "ARM7"  | Device name which should be avaliable for used JLink emulator                |
+| interface           | str   | "swd"   | "swd" or "jtag" interface                                                    |
+
 ## QemuTarget
 Qemu is a full-system emulator which has beed modified for avatar² in order to
 allow a complete free (hardware-) configuration of the system to be emulated and

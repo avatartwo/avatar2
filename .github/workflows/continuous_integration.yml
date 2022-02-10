@@ -1,0 +1,130 @@
+name: CI
+
+on: 
+    push: 
+        branches:
+            - 'main'
+            - 'dev**'
+    pull_request:
+        branches:
+            - 'main'
+            - 'dev**'
+
+
+jobs:
+    build:
+        if: github.repository == 'avatartwo/avatar2'
+        runs-on: ubuntu-20.04
+        strategy:
+            fail-fast: false
+            matrix:
+                python-version: ["3.7", "3.8", "3.9"]
+
+        steps:
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v2
+              with:
+                python-version: ${{ matrix.python-version }}
+
+            - name: Install dependencies
+              run: |
+                sudo apt-get update
+                sudo apt-get upgrade -y
+                sudo apt-get install -y -m -f --install-suggests cmake build-essential git libcapstone3 libcapstone-dev
+                python -m pip install --upgrade pip
+                pip install pytest
+                pip install "cffi>1.14.3"   # for pypanda
+
+
+            - name: Check out repository code
+              uses: actions/checkout@v2
+
+            - name: Build avatar2
+              run: |
+                cd ${{ github.workspace }}
+                python setup.py install
+
+
+            - name: Install debuggers targets
+              run: |
+                sudo apt-get install -y -m -f --install-suggests gdb gdb-multiarch openocd
+
+            - name: Build avatar-qemu target
+              run: |
+                cd ${{ github.workspace }}/targets
+                echo yes | ./build_qemu.sh arm-softmmu,mips-softmmu
+                cd src/avatar-qemu/build
+                sudo make install
+
+
+            - name: Run unit tests
+              env: 
+                AVATAR2_ARCH: ARM
+                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+              run: |
+                cd ${{ github.workspace }}
+                python ./tests/hello_world.py
+                python ./tests/gdb_memory_map_loader.py
+
+            - name: Run unit tests for ARM
+              env: 
+                AVATAR2_ARCH: ARM
+                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+                AVATAR2_QEMU_EXECUTABLE: qemu-system-arm
+              run: |
+                cd ${{ github.workspace }}/tests
+                pytest test_gdbplugin.py \
+                       test_gdbprotocol.py \
+                       test_inceptionprotocol.py \
+                       test_remote_memoryprotocol.py \
+                       test_qemutarget.py
+
+            - name: Run unit tests for MIPS
+              env: 
+                AVATAR2_ARCH: MIPS
+                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+                AVATAR2_QEMU_EXECUTABLE: qemu-system-mips
+              run: |
+                cd ${{ github.workspace }}/tests
+                pytest test_gdbplugin.py \
+                       test_gdbprotocol.py \
+                       test_inceptionprotocol.py \
+                       test_remote_memoryprotocol.py \
+                       test_qemutarget.py
+
+
+            - name: Build panda target
+              run: |
+                git clone https://github.com/panda-re/panda.git
+                cd panda
+                git checkout 5fb8a5098d0647a13e5e7d39d20ff9f04242572d
+                sudo prefix=/usr/local ./panda/scripts/install_ubuntu.sh i386-softmmu,arm-softmmu,mips-softmmu
+                pushd build
+                sudo make install
+                # Install pandare in the matrix python environment
+                sudo chown -R $(id -u):$(id -u) ../panda/python/core
+                pip install ../panda/python/core
+
+
+            - name: Run unit tests on panda target for ARM
+              env:
+                AVATAR2_ARCH: ARM
+                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+                AVATAR2_QEMU_EXECUTABLE: panda-system-arm
+                AVATAR2_PANDA_EXECUTABLE: panda-system-arm
+              run: |
+                cd ${{ github.workspace }}/tests
+                pytest test_qemutarget.py \
+                       test_pypandatarget.py
+
+            - name: Run unit tests on panda target for MIPS
+              env:
+                AVATAR2_ARCH: MIPS
+                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+                AVATAR2_QEMU_EXECUTABLE: panda-system-mips
+                AVATAR2_PANDA_EXECUTABLE: panda-system-mips
+              run: |
+                cd ${{ github.workspace }}/tests
+                pytest test_qemutarget.py \
+                       test_pypandatarget.py
+

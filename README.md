@@ -1,5 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/avatar2.svg)](https://badge.fury.io/py/avatar2)
-[![Build Status](https://travis-ci.org/avatartwo/avatar2.svg?branch=master)](https://travis-ci.org/avatartwo/avatar2)
+[![CI](https://github.com/avatartwo/avatar2/actions/workflows/continuous_integration.yml/badge.svg)](https://github.com/avatartwo/avatar2/actions/workflows/continuous_integration.yml)
 
 <img src="./avatar_logo.png" width="40%" height="40%"><br/>
 
@@ -107,7 +107,8 @@ The following publications describe, use, or extend the avatar² framework:
     - [Paper](https://www.usenix.org/system/files/sec20summer_clements_prepub.pdf) - [Code](https://github.com/embedded-sec/halucinator)
 6. C. Cao, L. Guan, J. Ming, P. Liu. "Device-agnostic Firmware Execution is Possible: A Concolic Execution Approach for Peripheral Emulation." Annual Computer Security Applications Conference (ACSAC), December 2020.
     - [Paper](https://dl.acm.org/doi/10.1145/3427228.3427280) - [Code](https://github.com/dongmu/Laelaps)
-
+7. G. Hernandez, M. Muench, D. Maier, A. Milburn, S. Park, T. Scharnowski, T. Tucker, P. Traynor, K. R.B. Butler. "FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware." Symposium on Network and Distributed System Security (NDSS), April 2022.
+    - [Paper](https://github.com/FirmWire/FirmWire/blob/main/firmwire-ndss22.pdf?raw=true) - [Code](https://github.com/FirmWire/FirmWire)
 
 
 # Acknowledgements

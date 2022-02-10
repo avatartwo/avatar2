@@ -1,10 +1,22 @@
+# Version 1.4.7 (February 10th, 2022)
+
+* Improvements
+    * Change CI to Github Actions
+    * avatar-qemu updated to v6.2
+    * Allow unix sockets for GDBProtocol (thanks @grant-h)
+
+* Bugfixes:
+    * JLink target and protocol, operational now (thanks @TheSilentDawn)
+    * pygdbmi version checking (tanks @jcnauta)
+    * Error messages (thanks @mborgerson and @lacraig2)
+
 # Version 1.4.6 (June 21st, 2021)
 
 * Improvements
     * Add build and unit tests to Github Actions
     * Add 'ip' alias for ARM register 12 
 
-* Bugfizes:
+* Bugfixes:
     * Unlink RemoteMemory message queue after opened (thanks @grant-h)
     * Adjust API to recent pypanda version (0.1.1.2)
     * Handle ImportError with RemoteMemoryProtocol on darwin (thanks @fabianfreyer)
