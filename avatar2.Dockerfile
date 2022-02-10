@@ -30,11 +30,11 @@ ARG QEMU_TARGETS="arm-softmmu,mips-softmmu"
 RUN sed -i '/deb-src .*-security main restricted/s/^#//g' /etc/apt/sources.list
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get build-dep -y qemu && \
-    apt-get install -y git
+    apt-get install -y git ninja-build
 
 RUN git clone https://github.com/avatartwo/avatar-qemu /root/avatar-qemu/
 RUN cd /root/avatar-qemu/ && \
-    git checkout dev/qemu-5.1
+    git checkout dev/qemu-6.2
 RUN mkdir -p /root/avatar-qemu/build && cd /root/avatar-qemu/build && \
     ../configure \
         --disable-sdl \

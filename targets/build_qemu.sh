@@ -2,23 +2,29 @@
 # Usage ./build_qemu.sh [architectures]
 # example:  ./build_qemu.sh arm-softmmu,mips-softmmu
 #
-
 source /etc/os-release
 
-repo="deb-src http://archive.ubuntu.com/ubuntu/ $UBUNTU_CODENAME-security main restricted"
-apt_src="/etc/apt/sources.list"
-QEMU_NPROC=$(QEMU_NPROC:-$(nproc))
 TARGET_LIST="arm-softmmu,mips-softmmu"
+REPO="deb-src http://archive.ubuntu.com/ubuntu/ $UBUNTU_CODENAME-security main restricted"
+APT_SRC="/etc/apt/sources.list"
+QEMU_NPROC=${QEMU_NPROC:-$(nproc)}
+
+
+set -ex
 
 if [[ "$ID" == "ubuntu" ]]
 then
-    if ! grep -q '^deb-src .*'$UBUNTU_CODENAME'-security main restricted' $apt_src;
+    if [ $EUID -ne 0 ]; then
+          SUDO=sudo
+    fi
+
+    if ! grep -q '^deb-src .*'$UBUNTU_CODENAME'-security main restricted' $APT_SRC;
     then
-        echo "[WARNING] This script is about to add '$repo' to $apt_src"
+        echo "[WARNING] This script is about to add '$REPO' to $APT_SRC"
         read -p "Do you want to continue? (Yes/No) " cont
         case $cont in
             Yes|yes|Y|y ) 
-                sudo bash -c "echo '$repo' >> $apt_src"
+                $SUDO bash -c "echo '$REPO' >> $APT_SRC"
                 echo "Continuing installation..."
                 ;;
             * ) echo "Aborting..."
@@ -26,8 +32,10 @@ then
                 ;;
         esac
     fi
-    sudo apt-get update
-    sudo apt-get build-dep -y qemu
+
+    $SUDO apt-get update
+    DEBIAN_FRONTEND=noninteractive $SUDO apt-get build-dep -y qemu
+    $SUDO apt-get install -y git ninja-build
 else
     echo "[Warning] Attempting to run installation on a non-ubuntu system."
     echo "You may have to install dependencies manually"
@@ -47,11 +55,14 @@ git submodule update --init avatar-qemu
 cd avatar-qemu
 git submodule update --init dtc
 
-mkdir -p ../../build/qemu/
-cd ../../build/qemu
-../../src/avatar-qemu/configure \
+mkdir -p build
+cd build
+../configure \
     --disable-sdl \
     --target-list=$TARGET_LIST
 
 make -j $QEMU_NPROC
 
+echo ""
+echo "Export the following env variable:"
+echo "export AVATAR2_PANDA_EXECUTABLE=$PWD/arm-softmmu/qemu-system-arm"
