@@ -53,7 +53,7 @@ jobs:
               run: |
                 cd ${{ github.workspace }}/targets
                 echo yes | ./build_qemu.sh arm-softmmu,mips-softmmu
-                cd build/qemu
+                cd src/avatar-qemu/build
                 sudo make install
 
 
