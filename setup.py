@@ -4,7 +4,7 @@ from sys import version_info
 
 setup(
     name='avatar2',
-    version='1.4.6',
+    version='1.4.7',
     packages=['avatar2',
               'avatar2/archs',
               'avatar2/targets',
