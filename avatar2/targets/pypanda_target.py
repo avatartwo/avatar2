@@ -119,7 +119,33 @@ class PyPandaTarget(PandaTarget):
         if raw == False:
             return self.protocols.memory.read_memory(address, size, num_words)
         else:
-            return self.pypanda.physical_memory_read(address,size*num_words)
+            # pypanda does not support physical reads across multiple regions
+            ranges = self.avatar.memory_ranges[address:address+size]
+
+            # In case avatar is not used to provide memory backings, or only one
+            # range is found, just return read memory
+            if len(ranges) < 2:
+                return self.pypanda.physical_memory_read(address,size*num_words)
+            else:
+                # We need to merge contents of the regions
+                ranges = sorted(ranges)
+
+                # but first, verify that they are adjacent
+                last_end = ranges[0].end
+                for range in ranges[1:]:
+                    if last_end != range.data.address:
+                        raise Exception("Tried to read memory across non-consecutive mapped ranges")
+                    last_end = range.data.address + range.data.size
+
+                # get memory from first range; needs special indexing as read can start within range
+                mem = self.pypanda.physical_memory_read(address, ranges[0].end - address)
+
+                for range in ranges[1:]:
+                    to_read = range.data.size \
+                        if len(mem) + range.data.size < size \
+                        else size - len(mem)
+                    mem += self.pypanda.physical_memory_read(range.begin, to_read)
+                return mem
 
 
     @watch('TargetWriteMemory')
@@ -128,7 +154,33 @@ class PyPandaTarget(PandaTarget):
         if raw == False:
             return self.protocols.memory.write_memory(address, size, value, num_words=num_words)
         else:
-            return self.pypanda.physical_memory_write(address, value)
+            # pypanda does not support physical writes across multiple regions
+            ranges = self.avatar.memory_ranges[address:address+size]
+
+            if len(ranges) < 2:
+                return self.pypanda.physical_memory_write(address, value)
+            else:
+                # We need to merge contents of the regions
+                ranges = sorted(ranges)
+
+                # but first, verify that they are adjacent
+                last_end = ranges[0].end
+                for range in ranges[1:]:
+                    if last_end != range.data.address:
+                        raise Exception("Tried to write memory across non-consecutive mapped ranges")
+                    last_end = range.data.address + range.data.size
+
+                # write first chunk of memory; needs special indexing as write can start within range
+                chunk0 = value[:ranges[0].end - address]
+                self.pypanda.physical_memory_write(address, chunk0)
+
+                written = len(chunk0)
+                for range in ranges[1:]:
+                    # indexing over end in python will just return up to end, so this is fine
+                    chunk = value[written:range.data.size]
+                    written += len(chunk)
+                    ret = self.pypanda.physical_memory_write(range.begin, chunk)
+                return ret
 
 
 
