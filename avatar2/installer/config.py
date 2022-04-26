@@ -17,30 +17,33 @@ GDB_X86 = 'gdb (x86)'
 TARGETS = OrderedDict(
     [
     (OPENOCD, { 'git': 'https://git.code.sf.net/p/openocd/code',
-               'configure': '',
-               'make': '',
-               'git_apt_deps': 'libtool pkg-config autoconf automake texinfo',
-               'rel_path': 'src/openocd',
-               'install_cmd': ['./bootstrap','./configure','make'],
-               'apt_name': 'openocd'
-             }),
-    (QEMU, {  'git': 'https://github.com/avatartwo/avatar-qemu',
+                'branch': 'master',
+                'configure': '',
+                'make': '',
+                'git_apt_deps': 'git libtool pkg-config autoconf automake texinfo',
+                'rel_path': 'src/openocd',
+                'install_cmd': ['./bootstrap','./configure','make'],
+                'apt_name': 'openocd'
+              }),
+    (QEMU, { 'git': 'https://github.com/avatartwo/avatar-qemu',
+             'branch': 'dev/qemu-6.2',
              'configure': '--disable-sdl --target-list=arm-softmmu',
              'make': '',
-             'git_apt_deps': 'libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev',
+             'git_apt_deps': 'git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build',
              'rel_path': 'arm-softmmu/qemu-system-arm',
              'install_cmd': ['git submodule update --init dtc',
                              './configure', 'make']
-          }),
+           }),
     (PANDA, {'git': 'https://github.com/panda-re/panda',
-             'configure': '--disable-sdl --target-list=arm-softmmu',
+             'branch': 'dev',
+             'configure': '--disable-sdl --target-list=i386-softmmu,arm-softmmu',
              'make': '',
-             'git_apt_deps': '',
+             'git_apt_deps': 'git',
              'rel_path': 'arm-softmmu/qemu-system-arm',
              'install_cmd': ['git submodule update --init dtc',
                              './configure', 'make'],
              'install_script': 'panda/scripts/install_ubuntu.sh'
-           }),
+            }),
     (GDB_X86, { 'apt_name': 'gdb' }),
     (GDB_MULTI, { 'apt_name': 'gdb-multiarch'})
     ]

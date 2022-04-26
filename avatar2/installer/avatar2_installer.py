@@ -124,7 +124,8 @@ class AvatarInstallerGitMenu(AvatarInstallerMenu):
                                 begin_entry_at=25)
 
         self.git_branch = self.add(nps.TitleText, name='Remote Branch',
-                                   value='master', begin_entry_at=25)
+                                   value=TARGETS[self.target_name]['branch'],
+                                   begin_entry_at=25)
 
         self.install_dir = self.add(nps.TitleFilename,
                                     name='Local directory',
