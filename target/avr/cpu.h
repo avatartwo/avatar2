@@ -106,6 +106,7 @@ typedef enum AVRFeature {
     AVR_FEATURE_RAMPX,
     AVR_FEATURE_RAMPY,
     AVR_FEATURE_RAMPZ,
+    AVR_FEATURE_CONFIGURABLE,
 } AVRFeature;
 
 typedef struct CPUAVRState CPUAVRState;

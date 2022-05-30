@@ -20,3 +20,9 @@ specific_ss.add(when: ['CONFIG_AVATAR', 'TARGET_MIPS'], if_true: files(
 specific_ss.add(when: ['CONFIG_AVATAR', 'TARGET_I386'], if_true: files('configurable_machine.c'))
 specific_ss.add(when: ['CONFIG_AVATAR', 'TARGET_X86_64'], if_true: files('configurable_machine.c'))
 specific_ss.add(when: ['CONFIG_AVATAR', 'TARGET_PPC'], if_true: files('configurable_machine.c'))
+
+specific_ss.add(when: ['CONFIG_AVATAR', 'TARGET_AVR'], if_true: files(
+  'configurable_machine.c',
+  'avatar_posix.c',
+  'remote_memory.c',
+))

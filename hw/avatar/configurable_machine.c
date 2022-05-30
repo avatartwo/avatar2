@@ -5,6 +5,7 @@
  * Written by Dario Nisi, Marius Muench, Paul Olivier & Jonas Zaddach
  *
  * Updates for MIPS, i386, and x86_64 written by Andrew Fasano for PANDA
+ * Updates for AVR written by Antony Vennard
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,7 +23,7 @@
  *   Written by Paul Brook
  */
 
-//general imports
+/* general imports */
 #include "qemu/osdep.h"
 #include "qemu/error-report.h"
 #include "sysemu/sysemu.h"
@@ -33,8 +34,8 @@
 #include "hw/boards.h"
 #include "hw/qdev-properties.h"
 
-//plattform specific imports
-#if defined(TARGET_ARM)
+/* platform specific imports */
+#ifdef TARGET_ARM
 #include "target/arm/cpu.h"
 #include "hw/avatar/arm_helper.h"
 
@@ -58,11 +59,13 @@ typedef  MIPSCPU THISCPU;
 #include "hw/ppc/ppc.h"
 #include "target/ppc/cpu.h"
 typedef PowerPCCPU THISCPU;
+
+#elif defined(TARGET_AVR)
+#include "target/avr/cpu.h"
+typedef AVRCPU THISCPU;
 #endif
 
-
-
-//qapi imports
+/* qapi imports */
 #include "qapi/error.h"
 #include "qapi/qmp/qjson.h"
 #include "qapi/qmp/qobject.h"
@@ -71,6 +74,7 @@ typedef PowerPCCPU THISCPU;
 #include "qapi/qmp/qlist.h"
 
 
+void avatar_cm_set_entry_point(QDict *conf, THISCPU *cpuu);
 
 #define QDICT_ASSERT_KEY_TYPE(_dict, _key, _type) \
     g_assert(qdict_haskey(_dict, _key) && qobject_type(qdict_get(_dict, _key)) == _type)
@@ -276,7 +280,11 @@ static void init_memory_area(QDict *mapping, const char *kernel_filename)
 
     QDICT_ASSERT_KEY_TYPE(mapping, "name", QTYPE_QSTRING);
     QDICT_ASSERT_KEY_TYPE(mapping, "size", QTYPE_QNUM);
+#if defined(TARGET_ARM)
+    /* Include this assert on the ARM target.
+       Ensures 0xFFF are cleared. */
     g_assert((qdict_get_int(mapping, "size") & ((1 << 12) - 1)) == 0);
+#endif
 
     if(qdict_haskey(mapping, "is_rom")) {
         QDICT_ASSERT_KEY_TYPE(mapping, "is_rom", QTYPE_QBOOL);
@@ -429,8 +437,7 @@ static void init_peripheral(QDict *device)
 }
 
 
-
-static void set_entry_point(QDict *conf, THISCPU *cpuu)
+void avatar_cm_set_entry_point(QDict *conf, THISCPU *cpuu)
 {
     const char *entry_field = "entry_address";
     uint32_t entry;
@@ -446,6 +453,7 @@ static void set_entry_point(QDict *conf, THISCPU *cpuu)
     cpuu->env.regs[15] = entry & (~1);
     cpuu->env.thumb = (entry & 1) == 1 ? 1 : 0;
 
+
 #elif defined(TARGET_I386)
     cpuu->env.eip = entry;
 
@@ -455,17 +463,28 @@ static void set_entry_point(QDict *conf, THISCPU *cpuu)
 #elif defined(TARGET_PPC)
     //Not implemented yet
     printf("Not yet implemented- can't start execution at 0x%x\n", entry);
+
+#elif defined(TARGET_AVR)
+
+    if(!qdict_haskey(conf, entry_field))
+        return;
+
+    QDICT_ASSERT_KEY_TYPE(conf, entry_field, QTYPE_QNUM);
+    entry = qdict_get_int(conf, entry_field);
+
+    cpuu->env.pc_w = entry >> 1;
 #endif
-
-
 }
 
 static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 {
     const char *cpu_type;
-    THISCPU *cpuu;
-    CPUState *env;
-    Object *cpuobj;
+    THISCPU *cpuu = NULL;
+    CPUState *env = NULL;
+
+#if !defined(TARGET_AVR)
+    Object *cpuobj = NULL;
+#endif  /* !TARGET_AVR */
 
 #if defined(TARGET_ARM) || defined(TARGET_I386) || defined(TARGET_MIPS)
     ObjectClass *cpu_oc;
@@ -481,7 +500,7 @@ static THISCPU *create_cpu(MachineState * ms, QDict *conf)
 
 #elif defined(TARGET_MIPS)
     Error *err = NULL;
-#endif  /* TARGET_ARM */
+#endif  /* TARGET_ARM && ! TARGET_AARCH64 */
 
 
     cpu_type = ms->cpu_type;
@@ -619,7 +638,7 @@ static void board_init(MachineState * ms)
     }
 
     cpuu = create_cpu(ms, conf);
-    set_entry_point(conf, cpuu);
+    avatar_cm_set_entry_point(conf, cpuu);
 
     if (qdict_haskey(conf, "memory_mapping"))
     {
@@ -665,6 +684,8 @@ static void configurable_machine_class_init(ObjectClass *oc, void *data)
     //mc->default_cpu_type = "mips32r6-generic";
 #elif defined(TARGET_PPC)
     mc->default_cpu_type = POWERPC_CPU_TYPE_NAME("e500v2_v30");
+#elif defined(TARGET_AVR)
+    mc->default_cpu_type = AVR_CPU_TYPE_NAME("avr5");
 #endif
 }
 
