@@ -95,7 +95,10 @@ The example below provides an implementation of a HelloWorldPeripheral, which
 returns another part of the string 'Hello World' upon every read.
 
 ```python
+import struct
+
 from avatar2 import *
+from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 
 class HelloWorldPeripheral(AvatarPeripheral):
 
@@ -105,7 +108,7 @@ class HelloWorldPeripheral(AvatarPeripheral):
         
         # Convert the return value to an integer (py2/py3-compatible)
         # Python >3.2 could just call int.from_bytes(ret, byteorder='little')
-        s2fmt = {1: 'B', 2: 'H', 4: 'I', 8: 'Q')
+        s2fmt = {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}
         ret = struct.unpack('<' + s2fmt[size], ret)[0]
 
         return ret
@@ -121,7 +124,9 @@ class HelloWorldPeripheral(AvatarPeripheral):
         self.read_handler[0:size] = self.hw_read 
         self.write_handler[0:size] = self.nop_write
         
-[...]        
+
+avatar = Avatar()
+qemu = avatar.add_target(QemuTarget)
 
 hw = avatar.add_memory_range(0x40004c00, 0x100, name='hello_world',
                              emulate=HelloWorldPeripheral, permissions='rw-')        
