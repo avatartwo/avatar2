@@ -17,10 +17,12 @@ BASE_IMAGE='ubuntu:20.04'
 
 avatar2_runtime_dependencies=[ 'python3', 
                                'python3-setuptools',
+                               'ipython3',
                                'libcapstone3',
                                'gdb',
                                'gdbserver',
-                               'gdb-multiarch']
+                               'gdb-multiarch',
+                               'udev']
 avatar2_build_dependencies=[ 'git',
                              'cmake',
                              'pkg-config',
@@ -88,12 +90,12 @@ COPY --from=panda /usr/local /usr/local
 
 
 
-def generate(endpoint_list, qemu_targets=['arm-softmmu']):
+def generate(filename, endpoint_list, qemu_targets=['arm-softmmu']):
 
     print(f'[*] Generate avatar2 Dockerfile with the following endpoints: {endpoint_list}')
     stage = 0
 
-    with open('./Dockerfile', 'w') as f:
+    with open(filename, 'w') as f:
 
         # avatar2 base images
 
@@ -149,6 +151,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=DESCRIPTION, usage=USAGE)
 
+    parser.add_argument('-o', '--output_file', type=str, default='Dockerfile',
+            help='Name for the outputed Dockerfile')
+
     parser.add_argument('-e', '--endpoint_list', nargs='+', default=None,
             choices=['avatar-qemu', 'panda'],
             help='list of endpoints to build with avatar2')
@@ -160,5 +165,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    generate(args.endpoint_list, args.qemu_targets)
+    generate(args.output_file, args.endpoint_list, args.qemu_targets)
 
