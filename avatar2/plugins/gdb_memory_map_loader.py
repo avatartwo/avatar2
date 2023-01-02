@@ -26,7 +26,7 @@ def load_memory_mappings(avatar, target, forward=False, update=True):
         raise TypeError("The memory mapping can be loaded ony from GDBTargets")
 
     ret, resp = target.protocols.execution.get_mappings()
-    lines = resp.split("\n")[4:]
+    lines = resp.split("objfile")[-1].split("\n")
     mappings = [
         {
             "start": int(x[0], 16),
@@ -35,7 +35,7 @@ def load_memory_mappings(avatar, target, forward=False, update=True):
             "offset": int(x[3], 16),
             "obj": x[4],
         }
-        for x in [y.split() for y in lines]
+        for x in [y.split() for y in lines if y != ""]
     ]
     memory_ranges = IntervalTree()
 
