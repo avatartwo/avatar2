@@ -640,7 +640,7 @@ class GDBProtocol(object):
     def read_memory(self, address, wordsize=4, num_words=1, raw=False):
         """reads memory
 
-        :param address:   Address to write to
+        :param address:   Address to read from
         :param wordsize:  the size of a read word (1, 2, 4 or 8)
         :param num_words: the amount of read words
         :param raw:       Whether the read memory should be returned unprocessed

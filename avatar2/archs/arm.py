@@ -71,12 +71,12 @@ class ARM_CORTEX_M3(ARM):
                 shiftval = 24
 
             if args[0] == 'pc' or args[0] == 'cpsr':
-                cpsr = qemu.read_register('cpsr')
+                cpsr = qemu.protocols.registers.read_register('cpsr')
                 if cpsr & 1<< shiftval:
                     return
                 else:
                     cpsr |= 1<<shiftval
-                    qemu.write_register('cpsr', cpsr)
+                    qemu.protocols.registers.write_register('cpsr', cpsr)
 
     @staticmethod
     def init(avatar):
