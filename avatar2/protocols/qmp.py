@@ -106,6 +106,6 @@ class QMPProtocol(object):
         regs = self.get_registers(raw=True)
         regs_r = re.findall(reg.upper()+'\s?=[0-9a-f]+\s([0-9a-f]+)', regs)
         if len(regs_r) != 1:
-            raise exception("Couldn't retrieve base for %s" % reg)
+            raise Exception("Couldn't retrieve base for %s" % reg)
 
         return int(regs_r[0], 16)
