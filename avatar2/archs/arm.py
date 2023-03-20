@@ -9,14 +9,13 @@ import avatar2
 
 from avatar2.installer.config import QEMU, PANDA, OPENOCD, GDB_MULTI
 
+
 class ARM(Architecture):
 
     get_qemu_executable = Architecture.resolve(QEMU)
     get_panda_executable = Architecture.resolve(PANDA)
-    get_gdb_executable  = Architecture.resolve(GDB_MULTI)
+    get_gdb_executable = Architecture.resolve(GDB_MULTI)
     get_oocd_executable = Architecture.resolve(OPENOCD)
-
-
 
     qemu_name = 'arm'
     gdb_name = 'arm'
@@ -40,6 +39,7 @@ class ARM(Architecture):
     unicorn_arch = UC_ARCH_ARM
     unicorn_mode = UC_MODE_ARM
 
+
 class ARM_CORTEX_M3(ARM):
     cpu_model = 'cortex-m3'
     qemu_name = 'arm'
@@ -53,11 +53,11 @@ class ARM_CORTEX_M3(ARM):
     unicorn_arch = UC_ARCH_ARM
     unicorn_mode = UC_MODE_LITTLE_ENDIAN | UC_MODE_THUMB
     sr_name = 'xpsr'
-
+    special_registers = {'xpsr': {'gdb_expression': "$xpsr", 'format': "{:d}"}}
 
     @staticmethod
     def register_write_cb(avatar, *args, **kwargs):
-                
+
         if isinstance(kwargs['watched_target'],
                       avatar2.targets.qemu_target.QemuTarget):
             qemu = kwargs['watched_target']
@@ -72,10 +72,10 @@ class ARM_CORTEX_M3(ARM):
 
             if args[0] == 'pc' or args[0] == 'cpsr':
                 cpsr = qemu.protocols.registers.read_register('cpsr')
-                if cpsr & 1<< shiftval:
+                if cpsr & 1 << shiftval:
                     return
                 else:
-                    cpsr |= 1<<shiftval
+                    cpsr |= 1 << shiftval
                     qemu.protocols.registers.write_register('cpsr', cpsr)
 
     @staticmethod
@@ -84,6 +84,8 @@ class ARM_CORTEX_M3(ARM):
                             ARM_CORTEX_M3.register_write_cb)
 
         pass
+
+
 ARMV7M = ARM_CORTEX_M3
 
 
