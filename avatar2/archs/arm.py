@@ -1,5 +1,3 @@
-# from capstone import CS_ARCH_ARM, CS_MODE_LITTLE_ENDIAN, CS_MODE_BIG_ENDIAN
-
 from capstone import *
 from keystone.keystone_const import *
 from unicorn import *
@@ -19,6 +17,7 @@ class ARM(Architecture):
 
     qemu_name = 'arm'
     gdb_name = 'arm'
+    # Based on gdb profile
     registers = {'r0': 0, 'r1': 1, 'r2': 2, 'r3': 3, 'r4': 4, 'r5': 5, 'r6': 6,
                  'r7': 7, 'r8': 8, 'r9': 9, 'r10': 10, 'r11': 11, 'r12': 12, 'ip': 12,
                  'sp': 13, 'lr': 14, 'pc': 15, 'cpsr': 25,
@@ -53,6 +52,7 @@ class ARM_CORTEX_M3(ARM):
     unicorn_arch = UC_ARCH_ARM
     unicorn_mode = UC_MODE_LITTLE_ENDIAN | UC_MODE_THUMB
     sr_name = 'xpsr'
+    # The xpsr register has different register numbers across QEmu and OpenOCD, so we make sure to read/write it only by name
     special_registers = {'xpsr': {'gdb_expression': "$xpsr", 'format': "{:d}"}}
 
     @staticmethod

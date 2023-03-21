@@ -5,7 +5,7 @@ import argparse
 
 DESCRIPTION="Script to build avatar2 core and its endpoints using Docker."
 USAGE=""" generate_dockerfile.py [options]
-Exemple: 
+Example: 
     ./generate_dockerfile.py \\
             --endpoint_list avatar-qemu panda \\
             --qemu_targets arm-softmmu mips-softmmu
