@@ -633,8 +633,10 @@ class GDBProtocol(object):
             ret, resp = self._sync_request(
                 ["-data-write-memory-bytes", str(address), hex_contents],
                 GDB_PROT_DONE)
-
-        self.log.debug("Attempted to write memory. Received response: %s" % resp)
+        if 'message' in resp and resp['message'] == 'error':
+            self.log.warning(f"Attempted to write memory. Received error response: {resp}")    
+        else:
+            self.log.debug(f"Attempted to write memory. Received response: {resp}")    
         return ret
 
     def read_memory(self, address, wordsize=4, num_words=1, raw=False):

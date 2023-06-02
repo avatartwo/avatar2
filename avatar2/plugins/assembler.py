@@ -1,3 +1,4 @@
+import logging
 from types import MethodType
 
 from keystone import *
@@ -32,6 +33,7 @@ def inject_asm(self, asmstr, addr=None, arch=None, mode=None):
     arch = self._arch.keystone_arch if not arch else arch
     mode = self._arch.keystone_mode if not mode else mode
     addr = self.regs.pc if not addr else addr
+    logging.getLogger('avatar').warning(f"Injecting assembly into address 0x{addr:8x}")
 
     md = Ks(arch, mode)
     bytelist = md.asm(asmstr, addr)[0]

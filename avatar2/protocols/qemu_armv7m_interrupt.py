@@ -19,7 +19,7 @@ class RINOperation(Enum):
 class V7MRemoteInterruptNotification(Structure):
     _fields_ = [
         ('id', c_uint64),
-        ('num_irq', c_uint32),
+        ('num-irq', c_uint32),
         ('operation', c_uint32),
         ('type', c_uint32)
     ]
@@ -33,7 +33,7 @@ class V7MInterruptNotificationAck(Structure):
     ]
 
 
-class ARMV7MInterruptProtocol(Thread):
+class QEmuARMV7MInterruptProtocol(Thread):
     """
     This protocol has two purposes: 
         a) injecting interrupts into an analysis target
@@ -115,10 +115,10 @@ class ARMV7MInterruptProtocol(Thread):
             # the tx-queue for qemu is the rx-queue for avatar and vice versa
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-enable-irq',
-                {'irq_rx_queue_name': self._tx_queue_name,
-                 'irq_tx_queue_name': self._rx_queue_name,
-                 'rmem_rx_queue_name': rmem_tx_qname,
-                 'rmem_tx_queue_name': rmem_rx_qname
+                {'irq-rx-queue-name': self._tx_queue_name,
+                 'irq-tx-queue-name': self._rx_queue_name,
+                 'rmem-rx-queue-name': rmem_tx_qname,
+                 'rmem-tx-queue-name': rmem_rx_qname
                  }
             )
         else:
@@ -129,14 +129,14 @@ class ARMV7MInterruptProtocol(Thread):
             self._rx_queue = MessageQueue(self._rx_queue_name, flags=O_RDONLY,
                                           read=True, write=False)
         except Exception as e:
-            self.log.error("Unable to create rx_queue: %s" % e)
+            self.log.error("Unable to create rx_queue (name=%s): %s" % (self._rx_queue_name, e))
             return False
 
         try:
             self._tx_queue = MessageQueue(self._tx_queue_name, flags=O_WRONLY,
                                           read=False, write=True)
         except Exception as e:
-            self.log.error("Unable to create tx_queue: %s" % e)
+            self.log.error("Unable to create tx_queue: %s (name=%s)" % (self._tx_queue_name, e))
             self._rx_queue.close()
             return False
 
@@ -151,7 +151,7 @@ class ARMV7MInterruptProtocol(Thread):
                 "Disable handling of irq return for %d" % interrupt_number)
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-ignore-irq-return',
-                {'num_irq': interrupt_number}
+                {'num-irq': interrupt_number}
             )
 
     def unignore_interrupt_return(self, interrupt_number):
@@ -160,7 +160,7 @@ class ARMV7MInterruptProtocol(Thread):
                 "Re-enable handling of irq return for %d" % interrupt_number)
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-unignore-irq-return',
-                {'num_irq': interrupt_number}
+                {'num-irq': interrupt_number}
             )
 
     def inject_interrupt(self, interrupt_number, cpu_number=0):
@@ -168,7 +168,7 @@ class ARMV7MInterruptProtocol(Thread):
             self.log.info("Injecting interrupt %d" % interrupt_number)
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-inject-irq',
-                {'num_irq': interrupt_number, 'num_cpu': cpu_number}
+                {'num-irq': interrupt_number, 'num-cpu': cpu_number}
             )
 
     def set_vector_table_base(self, base, cpu_number=0):
@@ -176,7 +176,7 @@ class ARMV7MInterruptProtocol(Thread):
             self.log.info("Setting vector table base to 0x%x" % base)
             self._origin.protocols.monitor.execute_command(
                 'avatar-armv7m-set-vector-table-base',
-                {'base': base, 'num_cpu': cpu_number}
+                {'base': base, 'num-cpu': cpu_number}
             )
 
     def send_interrupt_exit_response(self, id, success):

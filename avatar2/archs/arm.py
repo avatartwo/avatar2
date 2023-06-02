@@ -45,7 +45,6 @@ class ARM_CORTEX_M3(ARM):
     gdb_name = 'arm'
 
     capstone_arch = CS_ARCH_ARM
-    keystone_arch = KS_ARCH_ARM
     capstone_mode = CS_MODE_LITTLE_ENDIAN | CS_MODE_THUMB | CS_MODE_MCLASS
     keystone_arch = KS_ARCH_ARM
     keystone_mode = KS_MODE_LITTLE_ENDIAN | KS_MODE_THUMB

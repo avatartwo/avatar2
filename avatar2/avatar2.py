@@ -463,7 +463,7 @@ class Avatar(Thread):
                 )
             success = True
         except Exception as e:
-            self.log.exception("RemoteMemoryRead failed: %s" % e)
+            self.log.exception(f"RemoteMemoryRead from {range.forwarded_to} failed: {e}")
             mem = -1
             success = False
 

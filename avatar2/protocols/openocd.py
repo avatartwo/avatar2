@@ -10,6 +10,7 @@ from struct import pack, unpack
 from time import sleep
 import re
 from os.path import abspath
+
 if sys.version_info < (3, 0):
     import Queue as queue
 else:
@@ -24,6 +25,7 @@ END_OF_MSG = u'\x1a'
 class OpenOCDProtocol(Thread):
     """
     This class implements the openocd protocol.
+    __IMPORTANT:__ This protocol requries the mem_helper.tcl script to be included in the OpenOCD config!
 
     :param openocd_script:     The openocd scripts to be executed.
     :type openocd_script:      str or list
@@ -56,8 +58,7 @@ class OpenOCDProtocol(Thread):
             self.openocd_files = openocd_script
         else:
             raise TypeError("Wrong type for OpenOCD configuration files")
-        self.log = logging.getLogger('%s.%s' % (origin.log.name, self.__class__.__name__)) if origin else \
-                                    logging.getLogger(self.__class__.__name__)
+        self.log = logging.getLogger(f'{avatar.log.name}.protocols.openocd')
         self._tcl_port = tcl_port
         self._gdb_port = gdb_port
         self._host = host
@@ -82,7 +83,7 @@ class OpenOCDProtocol(Thread):
                            in [['-f', abspath(f)] for f in self.openocd_files]
                            for e in l]
         self._cmd_line += ['--command', 'tcl_port %d' % self._tcl_port,
-                          '--command', 'gdb_port %d' % self._gdb_port]
+                           '--command', 'gdb_port %d' % self._gdb_port]
         self._cmd_line += additional_args
 
         self._openocd = None
@@ -91,10 +92,9 @@ class OpenOCDProtocol(Thread):
                 open("%s/openocd_err.txt" % output_directory, "wb") as err:
             self.log.debug("Starting OpenOCD with command line: %s" % (" ".join(self._cmd_line)))
             self._openocd = subprocess.Popen(self._cmd_line,
-                                             stdout=out, stderr=err)#, shell=True)
+                                             stdout=out, stderr=err)  # , shell=True)
         Thread.__init__(self)
         self.daemon = True
-
 
     def connect(self):
         """
@@ -102,12 +102,11 @@ class OpenOCDProtocol(Thread):
         returns: True on success, else False
         """
         sleep(1)
-        
+
         if self._openocd.poll() is not None:
             raise RuntimeError(("Openocd errored! Please check "
                                 "%s/openocd_err.txt for details" %
                                 self.output_directory))
-
 
         self.log.debug("Connecting to OpenOCD on %s:%s" % (self._host, self._tcl_port))
         try:
@@ -136,8 +135,8 @@ class OpenOCDProtocol(Thread):
         :return:
         """
         self.log.debug("Enabling tracing...")
-        resp = self.execute_command("ocd_tcl_trace on")
-        if 'is enabled' in resp:
+        resp = self.execute_command("tcl_trace all")
+        if resp == '':
             self.trace_enabled.set()
             return True
         else:
@@ -187,7 +186,7 @@ class OpenOCDProtocol(Thread):
             else:
                 self.log.warning("Weird target state %s" % state)
         elif mevent:
-            #TODO handle these
+            # TODO handle these
             event = mevent.group(1)
             self.log.debug("Target event: %s " % event)
             # TODO handle these
@@ -200,7 +199,6 @@ class OpenOCDProtocol(Thread):
 
         else:
             self.log.warning("Unhandled event message %s" % str)
-
 
     def reset(self):
         """
@@ -221,7 +219,7 @@ class OpenOCDProtocol(Thread):
         Shuts down OpenOCD
         returns: True on success, else False
         """
-        #self.execute_command('ocd_shutdown')
+        # self.execute_command('ocd_shutdown')
         self._close.set()
         if self.telnet:
             self.telnet.close()
@@ -250,7 +248,7 @@ class OpenOCDProtocol(Thread):
             while not self.avatar._close.is_set() and not self._close.is_set():
                 if not self.in_queue.empty():
                     cmd = self.in_queue.get()
-                    self.log.debug("Executing command %s" % cmd)
+                    self.log.debug("Executing command '%s'" % cmd)
                     self.telnet.write((cmd + END_OF_MSG).encode('ascii'))
                 try:
                     line = self.read_response()
@@ -259,7 +257,7 @@ class OpenOCDProtocol(Thread):
                     self.shutdown()
                     break
                 if line is not None:
-                    #print line
+                    # print line
                     line = line.rstrip(END_OF_MSG)
                     # This is async target notification data.  Don't return it normally
                     if line.startswith("type"):
@@ -275,18 +273,18 @@ class OpenOCDProtocol(Thread):
                             # We didn't ask for it.  Just debug it
                             self.log.debug(line)
                         else:
-                            self.log.debug("response --> " +  line)
+                            self.log.debug(f"response --> '{line}'")
                             self.out_queue.put(line)
                             cmd = None
-                sleep(.001) # Have a heart. Give other threads a chance
+                sleep(.001)  # Have a heart. Give other threads a chance
         except Exception as e:
             self.log.exception("OpenOCD Background thread died with an exception")
         self.log.debug("OpenOCD Background thread exiting")
 
     def read_response(self):
         self.buf += self.telnet.read_eager().decode('ascii')
-        #if buf is not '':
-            #print(self.buf)
+        # if buf is not '':
+        # print(self.buf)
         if END_OF_MSG in self.buf:
             resp, self.buf = self.buf.split(END_OF_MSG, 1)
             return resp
@@ -307,13 +305,13 @@ class OpenOCDProtocol(Thread):
         :param raw:       Specifies whether to write in raw or word mode
         :returns:         True on success else False
         """
-        #print "nucleo.write_memory(%s, %s, %s, %s, %s)" % (repr(address), repr(wordsize), repr(val), repr(num_words), repr(raw))
+        # print "nucleo.write_memory(%s, %s, %s, %s, %s)" % (repr(address), repr(wordsize), repr(val), repr(num_words), repr(raw))
         if isinstance(val, str) and len(val) != num_words:
             self.log.debug("Setting num_words = %d" % (len(val) / wordsize))
             num_words = len(val) / wordsize
         for i in range(0, num_words, wordsize):
             if raw:
-                write_val = '0x' + encode(val[i:i+wordsize], 'hex_codec').decode('ascii')
+                write_val = '0x' + encode(val[i:i + wordsize], 'hex_codec').decode('ascii')
             elif isinstance(val, int) or isinstance(val, long):
                 write_val = hex(val).rstrip("L")
             else:
@@ -329,11 +327,11 @@ class OpenOCDProtocol(Thread):
 
         return True
 
-    def read_memory(self, address, wordsize=4, num_words=1, raw=False):
+    def read_memory(self, address, size=4, num_words=1, raw=False):
         """reads memory
 
         :param address:   Address to write to
-        :param wordsize:  the size of a read word (1, 2, 4 or 8)
+        :param size:  the size of a read word (1, 2, 4 or 8)
         :param num_words: the amount of read words
         :param raw:       Whether the read memory should be returned unprocessed
         :return:          The read memory
@@ -341,17 +339,17 @@ class OpenOCDProtocol(Thread):
         num2fmt = {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}
         raw_mem = b''
         words = []
-        for i in range(0, num_words, wordsize):
+        for i in range(0, num_words * size, size):
             read_addr = hex(address + i).rstrip('L')
-            if wordsize == 1:
+            if size == 1:
                 resp = self.execute_command('mrb %s' % read_addr)
-            elif wordsize == 2:
+            elif size == 2:
                 resp = self.execute_command("mrh %s" % read_addr)
             else:
                 resp = self.execute_command('mrw %s' % read_addr)
             if resp:
-                val = int(resp)
-                raw_mem += binascii.unhexlify(hex(val)[2:].zfill(wordsize * 2))
+                val = int(resp, 16)
+                raw_mem += binascii.unhexlify(hex(val)[2:].zfill(size * 2))
             else:
                 self.log.error("Could not read from address %s" % read_addr)
                 return None
@@ -362,7 +360,7 @@ class OpenOCDProtocol(Thread):
             return raw_mem
         else:
             # Todo: Endianness support
-            fmt = '<%d%s' % (num_words, num2fmt[wordsize])
+            fmt = '<%d%s' % (num_words, num2fmt[size])
             mem = list(unpack(fmt, raw_mem))
             if num_words == 1:
                 return mem[0]
@@ -451,7 +449,7 @@ class OpenOCDProtocol(Thread):
             cmd.append("%#08x" % line)
         else:
             cmd.append(str(line))
-        cmd.append("2") # TODO: This isn't platform-independent, but i have no idea what it does
+        cmd.append("2")  # TODO: This isn't platform-independent, but i have no idea what it does
         if hardware:
             cmd.append("hw")
         try:
@@ -469,7 +467,7 @@ class OpenOCDProtocol(Thread):
             cmd.append("%#08x" % variable)
         else:
             cmd.append(str(variable))
-        cmd.append("2") # TODO FIXME
+        cmd.append("2")  # TODO FIXME
         if read and write:
             cmd.append("a")
         elif read:
@@ -497,4 +495,3 @@ class OpenOCDProtocol(Thread):
             return True
         except:
             self.log.exception("Error removing breakpoint")
-

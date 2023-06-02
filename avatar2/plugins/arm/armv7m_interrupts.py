@@ -1,10 +1,12 @@
+import logging
 from types import MethodType
 from threading import Thread, Event, Condition
 
 from avatar2 import TargetStates
 from avatar2.archs import ARMV7M
+from avatar2.protocols.armv7_interrupt import ARMV7InterruptProtocol
 from avatar2.protocols.coresight import CoreSightProtocol
-from avatar2.protocols.armv7m_interrupt import ARMV7MInterruptProtocol
+from avatar2.protocols.qemu_armv7m_interrupt import QEmuARMV7MInterruptProtocol
 from avatar2.targets import OpenOCDTarget, QemuTarget
 from avatar2.watchmen import AFTER
 
@@ -18,25 +20,27 @@ from avatar2.watchmen import watch
 
 def add_protocols(self, **kwargs):
     target = kwargs['watched_target']
+    logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupts protocol to {target}")
     if isinstance(target, OpenOCDTarget):
-        target.protocols.interrupts = CoreSightProtocol(target.avatar,
-                                                        target)
+        target.protocols.interrupts = CoreSightProtocol(target.avatar, target)
+        # target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target)
+
         # We want to remove the decorators around the read_memory function of
         # this target, to allow reading while it is running (thanks oocd)
-        target.read_memory = MethodType( lambda t, *args, **kwargs:
+        target.read_memory = MethodType(lambda t, *args, **kwargs:
                                         t.protocols.memory.read_memory(
                                             *args, **kwargs), target
-                                       )
-        # Also, let's use openocd as protocol for register and memory
-        target.protocols.memory = target.protocols.monitor
-        target.protocols.register = target.protocols.monitor
+                                        )
 
-        
     if isinstance(target, QemuTarget):
-        target.protocols.interrupts = ARMV7MInterruptProtocol(
+        target.protocols.interrupts = QEmuARMV7MInterruptProtocol(
             target, self.v7m_irq_rx_queue_name, self.v7m_irq_tx_queue_name
         )
-
+    if getattr(target.avatar, 'irq_pair', None) is None:
+        target.avatar.irq_pair = [target, ]
+    else:
+        target.avatar.irq_pair.append(target)
+    assert len(target.avatar.irq_pair) <= 2, "Interrupts only work with two targets"
 
 def forward_interrupt(self, message):  # , **kwargs):
     global stawp
@@ -46,10 +50,11 @@ def forward_interrupt(self, message):  # , **kwargs):
 
     if isinstance(target, OpenOCDTarget):
         if message.address == message.origin.protocols.interrupts._monitor_stub_isr - 1:
-            xpsr = target.read_register('xPSR')
+            xpsr = target.read_register('xpsr')[0]
             irq_num = xpsr & 0xff
             self.log.info("Injecting IRQ 0x%x" % irq_num)
-            self._irq_dst.protocols.interrupts.inject_interrupt(irq_num)
+            destination = target.avatar.irq_pair[0] if target.avatar.irq_pair[0] != target else target.avatar.irq_pair[1]
+            destination.protocols.interrupts.inject_interrupt(irq_num)
 
 
 def gontinue_execution(self, message, **kwargs):
@@ -90,11 +95,21 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
             RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic}
     )
 
+    # TODO
+    # Also, let's use openocd as protocol for register and memory
+    if isinstance(from_target, OpenOCDTarget):
+        from_target.protocols.memory = from_target.protocols.monitor
+        from_target.protocols.register = from_target.protocols.monitor
+    elif isinstance(to_target, OpenOCDTarget):
+        to_target.protocols.memory = to_target.protocols.monitor
+        to_target.protocols.register = to_target.protocols.monitor
+
     if from_target:
         from_target.protocols.interrupts.enable_interrupts()
         isr_addr = from_target.protocols.interrupts._monitor_stub_isr - 1
-        self.log.info("ISR breakpoint at %#08x" % isr_addr)
-        from_target.set_breakpoint(isr_addr, hardware=True)
+        self.log.info("ISR is at %#08x" % isr_addr)
+        # NOTE: This won't work on many targets, eg cortex m0 can not have HW breakpoints in RAM
+        # from_target.set_breakpoint(isr_addr, hardware=True)
     if to_target:
         to_target.protocols.interrupts.enable_interrupts()
 
@@ -105,8 +120,7 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
     self._handle_breakpoint_handler = MethodType(forward_interrupt, self)
     self.fast_queue_listener.message_handlers.update({
         BreakpointHitMessage: self._handle_breakpoint_handler
-    }
-    )
+    })
 
     # def _fast_handle_update_state_message(self, message):
     # print message
@@ -121,7 +135,6 @@ def _handle_remote_interrupt_enter_message(self, message):
     if self._irq_src is None or self._irq_semi_forwarding is True:
         return
 
-    
     status = self._irq_src.get_status()
     if status['state'] == TargetStates.STOPPED:
         self.log.info("Target stopped, restarting " + repr(message.origin))
@@ -129,7 +142,6 @@ def _handle_remote_interrupt_enter_message(self, message):
             self._irq_src.cont(blocking=False)
         except:
             self.log.exception(" ")
-
 
 
 @watch('RemoteInterruptExit')
