@@ -4,6 +4,7 @@ from os.path import isfile, exists
 
 from avatar2.protocols.gdb import GDBProtocol
 from avatar2.protocols.qmp import QMPProtocol
+
 try:
     from avatar2.protocols.remote_memory import RemoteMemoryProtocol
 except ImportError:
@@ -18,23 +19,23 @@ class QemuTarget(Target):
     """"""
 
     def __init__(
-        self,
-        avatar,
-        executable=None,
-        cpu_model=None,
-        firmware=None,
-        gdb_executable=None,
-        gdb_port=3333,
-        gdb_unix_socket_path=None,
-        additional_args=None,
-        gdb_additional_args=None,
-        gdb_verbose=False,
-        qmp_port=3334,
-        entry_address=0x00,
-        log_items=None,
-        log_file=None,
-        system_clock_scale=None,
-        **kwargs
+            self,
+            avatar,
+            executable=None,
+            cpu_model=None,
+            firmware=None,
+            gdb_executable=None,
+            gdb_port=3333,
+            gdb_unix_socket_path=None,
+            additional_args=None,
+            gdb_additional_args=None,
+            gdb_verbose=False,
+            qmp_port=3334,
+            entry_address=0x00,
+            log_items=None,
+            log_file=None,
+            system_clock_scale=None,
+            **kwargs
     ):
         super(QemuTarget, self).__init__(avatar, **kwargs)
 
@@ -79,6 +80,7 @@ class QemuTarget(Target):
             self.avatar.output_directory,
             self.name,
         )
+        self.log.warning(f"QEmuTarget using executable '{self.executable}'")
 
     def assemble_cmd_line(self):
         if isfile(self.executable + self._arch.qemu_name):
@@ -101,14 +103,14 @@ class QemuTarget(Target):
         qmp = ["-qmp", "tcp:127.0.0.1:%d,server,nowait" % self.qmp_port]
 
         cmd_line = (
-            executable_name
-            + machine
-            + kernel
-            + gdb_option
-            + stop_on_startup
-            + self.additional_args
-            + nographic
-            + qmp
+                executable_name
+                + machine
+                + kernel
+                + gdb_option
+                + stop_on_startup
+                + self.additional_args
+                + nographic
+                + qmp
         )
 
         if self.log_items is not None:
@@ -264,7 +266,7 @@ class QemuTarget(Target):
         )
 
         with open(
-            "%s/%s_out.txt" % (self.avatar.output_directory, self.name), "wb"
+                "%s/%s_out.txt" % (self.avatar.output_directory, self.name), "wb"
         ) as out, open(
             "%s/%s_err.txt" % (self.avatar.output_directory, self.name), "wb"
         ) as err:

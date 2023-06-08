@@ -19,10 +19,39 @@ class RINOperation(Enum):
 class V7MRemoteInterruptNotification(Structure):
     _fields_ = [
         ('id', c_uint64),
-        ('num-irq', c_uint32),
+        ('num_irq', c_uint32),
         ('operation', c_uint32),
         ('type', c_uint32)
     ]
+
+    def __reduce__(self):
+        # Define the mapping of desired field names to actual field names
+        field_mapping = {'num-irq': 'num_irq'}
+
+        # Create a dictionary to store the serialized state
+        state = {}
+
+        # Populate the state dictionary with the desired field names and values
+        for desired_name, actual_name in field_mapping.items():
+            state[desired_name] = getattr(self, actual_name)
+
+        # Return a tuple of callable and arguments for object reconstruction
+        return self.__class__, (state,)
+
+    @classmethod
+    def from_state(cls, state):
+        # Define the reverse mapping of desired field names to actual field names
+        field_mapping = {'num-irq': 'num_irq'}
+
+        # Create an instance of the class
+        instance = cls()
+
+        # Retrieve field values from the serialized state using the desired field names
+        # and assign them to the corresponding actual field names in the class instance
+        for desired_name, actual_name in field_mapping.items():
+            setattr(instance, actual_name, state[desired_name])
+
+        return instance
 
 
 class V7MInterruptNotificationAck(Structure):
@@ -69,9 +98,7 @@ class QEmuARMV7MInterruptProtocol(Thread):
             logging.getLogger(self.__class__.__name__)
 
     def run(self):
-        while True:
-            if self._close.is_set():
-                break
+        while not self._close.is_set():
 
             request = None
             try:
@@ -85,11 +112,14 @@ class QEmuARMV7MInterruptProtocol(Thread):
             if RINOperation(req_struct.operation) == RINOperation.ENTER:
                 msg = RemoteInterruptEnterMessage(self._origin, req_struct.id,
                                                   req_struct.num_irq)
+                self.log.warning(
+                    "Received an InterruptEnterRequest for irq %d (%x)" %
+                    (req_struct.num_irq, req_struct.type))
             elif RINOperation(req_struct.operation) == RINOperation.EXIT:
                 msg = RemoteInterruptExitMessage(self._origin, req_struct.id,
                                                  req_struct.type,
                                                  req_struct.num_irq)
-                self.log.debug(
+                self.log.warning(
                     "Received an InterruptExitRequest for irq %d (%x)" %
                     (req_struct.num_irq, req_struct.type))
 

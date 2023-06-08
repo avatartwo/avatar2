@@ -596,11 +596,11 @@ class GDBProtocol(object):
             resp)
         return ret
 
-    def write_memory(self, address, wordsize, val, num_words=1, raw=False):
+    def write_memory(self, address, size, val, num_words=1, raw=False):
         """Writes memory
 
         :param address:   Address to write to
-        :param wordsize:  the size of the write (1, 2, 4 or 8)
+        :param size:  the size of the write (1, 2, 4 or 8)
         :param val:       the written value
         :type val:        int if num_words == 1 and raw == False
                           list if num_words > 1 and raw == False
@@ -623,7 +623,7 @@ class GDBProtocol(object):
                     GDB_PROT_DONE)
 
         else:
-            fmt = '<%d%s' % (num_words, num2fmt[wordsize])
+            fmt = '<%d%s' % (num_words, num2fmt[size])
             if num_words == 1:
                 contents = pack(fmt, val)
             else:
@@ -634,16 +634,16 @@ class GDBProtocol(object):
                 ["-data-write-memory-bytes", str(address), hex_contents],
                 GDB_PROT_DONE)
         if 'message' in resp and resp['message'] == 'error':
-            self.log.warning(f"Attempted to write memory. Received error response: {resp}")    
+            self.log.warning(f"Attempted to write memory. Received error response: {resp}")
         else:
-            self.log.debug(f"Attempted to write memory. Received response: {resp}")    
+            self.log.debug(f"Attempted to write memory. Received response [{ret}]: {resp}")
         return ret
 
-    def read_memory(self, address, wordsize=4, num_words=1, raw=False):
+    def read_memory(self, address, size=4, num_words=1, raw=False):
         """reads memory
 
         :param address:   Address to read from
-        :param wordsize:  the size of a read word (1, 2, 4 or 8)
+        :param size:  the size of a read word (1, 2, 4 or 8)
         :param num_words: the amount of read words
         :param raw:       Whether the read memory should be returned unprocessed
         :return:          The read memory
@@ -653,9 +653,9 @@ class GDBProtocol(object):
 
         max_read_size = 0x100
         raw_mem = b''
-        for i in range(0, wordsize * num_words, max_read_size):
-            to_read = max_read_size if wordsize * num_words > i + max_read_size - 1 else \
-                wordsize * num_words % max_read_size
+        for i in range(0, size * num_words, max_read_size):
+            to_read = max_read_size if size * num_words > i + max_read_size - 1 else \
+                size * num_words % max_read_size
             res, resp = self._sync_request(["-data-read-memory-bytes", str(address + i),
                                             str(to_read)],
                                            GDB_PROT_DONE)
@@ -673,7 +673,7 @@ class GDBProtocol(object):
             return raw_mem
         else:
             # Todo: Endianness support
-            fmt = '<%d%s' % (num_words, num2fmt[wordsize])
+            fmt = '<%d%s' % (num_words, num2fmt[size])
             mem = list(unpack(fmt, raw_mem))
 
             if num_words == 1:

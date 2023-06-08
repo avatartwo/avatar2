@@ -57,7 +57,7 @@ class CoreSightProtocol(Thread):
         self._avatar_queue = avatar.queue
         self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
-        self.trace_queue = None
+        self.trace_queue : queue.Queue | None = None
         self.trace_buffer = BitStream()
         self._close = Event()
         self._closed = Event()
@@ -78,7 +78,7 @@ class CoreSightProtocol(Thread):
 
     def inject_interrupt(self, interrupt_number, cpu_number=0):
         # Set an interrupt using the STIR
-        self._origin.write_memory(SCB_STIR, 4, interrupt_number)
+        self._origin.write_memory(SCB_STIR, size=4, value=interrupt_number)
 
     def enable_interrupt(self, interrupt_number):
         """
@@ -337,25 +337,28 @@ class CoreSightProtocol(Thread):
                     time.sleep(0.1)
                     continue
 
-                if self.trace_buffer.len > 0:
-                    self.log.debug(f"Trace_buffer has {self.trace_buffer.len} bits")
-                    if self.trace_buffer.len >= 8:
-                        self.log.debug(f"Trace_buffer: {self.trace_buffer.peek(8)}")
-
                 # OpenOCD gives us target_trace events packed with many, many packets.
                 # Get them out, then do them packet-at-a-time
                 if not self.has_bits_to_read(self.trace_buffer, DWT_PKTSIZE_BITS):
                     # get some more data
-                    if self.trace_queue.empty():
-                        # make sure we can see the shutdown flag
+                    # if self.trace_queue.empty():
+                    #     # make sure we can see the shutdown flag
+                    #     continue
+                    try:
+                        new_data = self.trace_queue.get(block=True, timeout=0.5)
+                    except queue.Empty:
                         continue
-                    new_data = self.trace_queue.get()
                     m = trace_re.match(new_data)
                     if m:
                         self.trace_buffer.append("0x" + m.group(1))
                     else:
                         raise ValueError(
                             "Got a really weird trace packet " + new_data)
+
+                if self.trace_buffer.len > 0:
+                    self.log.debug(f"Trace_buffer has {self.trace_buffer.len} bits")
+                    if self.trace_buffer.len >= 8:
+                        self.log.debug(f"Trace_buffer: {self.trace_buffer.peek(8)}")
                 if not self.has_bits_to_read(self.trace_buffer, DWT_PKTSIZE_BITS):
                     continue
                 try:
