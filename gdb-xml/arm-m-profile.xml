@@ -23,5 +23,5 @@
   <reg name="sp" bitsize="32" type="data_ptr"/>
   <reg name="lr" bitsize="32"/>
   <reg name="pc" bitsize="32" type="code_ptr"/>
-  <reg name="xPSR" bitsize="32" regnum="25"/>
+  <reg name="xpsr" bitsize="32" regnum="25"/>
 </feature>
