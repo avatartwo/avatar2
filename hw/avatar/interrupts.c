@@ -93,6 +93,13 @@ void qmp_avatar_armv7m_enable_irq(const char *irq_rx_queue_name,
 
     armv7m_exception_handling_enabled = true;
     qemu_log_mask(LOG_AVATAR, "armv7m interrupt injection enabled\n");
+
+    // Avatar2 Addition to enable interrupt injection, TODO(albrecht-flo): WIP refactor
+    ARMCPU *armcpu = ARM_CPU(qemu_get_cpu(0));
+    CPUARMState *env = &armcpu->env;
+    armv7m_nvic_enable_all_irqs(env->nvic);
+
+    qemu_log_mask(LOG_AVATAR, "armv7m interrupt injection enabled\n");
     qemu_log_flush();
 }
 

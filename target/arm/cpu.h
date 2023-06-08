@@ -2335,6 +2335,10 @@ static inline bool armv7m_nvic_can_take_pending_exception(void *opaque)
     return true;
 }
 #endif
+
+// Avatar2 Addition to enable interrupt injection, TODO(albrecht-flo): WIP refactor
+bool armv7m_nvic_enable_all_irqs(void *opaque);
+
 /**
  * armv7m_nvic_set_pending: mark the specified exception as pending
  * @opaque: the NVIC

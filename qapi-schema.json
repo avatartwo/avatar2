@@ -6382,8 +6382,8 @@
 ##
 { 'command': 'avatar-armv7m-enable-irq',
   'data': {
-      'irq_rx_queue_name': 'str', 'irq_tx_queue_name': 'str',
-      'rmem_rx_queue_name': 'str', 'rmem_tx_queue_name': 'str'
+      'irq-rx-queue-name': 'str', 'irq-tx-queue-name': 'str',
+      'rmem-rx-queue-name': 'str', 'rmem-tx-queue-name': 'str'
   }
 }
 
@@ -6404,7 +6404,7 @@
 # avatar-qemu only
 ##
 { 'command': 'avatar-armv7m-inject-irq',
-  'data': {'num_cpu': 'int', 'num_irq': 'int' }
+  'data': {'num-cpu': 'int', 'num-irq': 'int' }
 }
 
 ##
@@ -6415,7 +6415,7 @@
 # avatar-qemu only
 ##
 { 'command': 'avatar-armv7m-ignore-irq-return',
-  'data': {'num_irq': 'int' }
+  'data': {'num-irq': 'int' }
 }
 
 
@@ -6427,7 +6427,7 @@
 # avatar-qemu only
 ##
 { 'command': 'avatar-armv7m-unignore-irq-return',
-  'data': {'num_irq': 'int' }
+  'data': {'num-irq': 'int' }
 }
 
 
@@ -6439,7 +6439,7 @@
 # avatar-qemu only
 ##
 { 'command': 'avatar-armv7m-set-vector-table-base',
-  'data': {'num_cpu': 'int', 'base': 'int' }
+  'data': {'num-cpu': 'int', 'base': 'int' }
 }
 
 
