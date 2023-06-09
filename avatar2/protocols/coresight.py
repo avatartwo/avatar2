@@ -57,7 +57,7 @@ class CoreSightProtocol(Thread):
         self._avatar_queue = avatar.queue
         self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
-        self.trace_queue : queue.Queue | None = None
+        self.trace_queue: queue.Queue | None = None
         self.trace_buffer = BitStream()
         self._close = Event()
         self._closed = Event()
@@ -179,13 +179,14 @@ class CoreSightProtocol(Thread):
                 "mww $ITM_TCR 0x0000000d")  # TraceBusID 1, enable dwt/itm/sync
             openocd.execute_command(
                 "mww $ITM_TER 0xffffffff")  # Enable all stimulus ports
+
+            self.log.warning("Injecting interrupt stub")
+            self.inject_monitor_stub(num_isr=48)
+
             # Run our little daemon thingy
             self.log.debug("Starting interrupt handling thread")
             self.daemon = True
             self.start()
-
-            self.log.warning("Injecting interrupt stub")
-            self.inject_monitor_stub(num_isr=48)
         except:
             self.log.exception("Error starting CoreSight")
 

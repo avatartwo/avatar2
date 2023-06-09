@@ -44,17 +44,18 @@ def add_protocols(self, **kwargs):
 
 def forward_interrupt(self, message):  # , **kwargs):
     global stawp
-    target = message.origin
-    target.update_state(message.state)
+    origin = message.origin
+    self.log.warning(f"forward_interrupt hit with origin {origin}")
+    origin.update_state(message.state)
     self.queue.put(message)
-
-    if isinstance(target, OpenOCDTarget):
-        if message.address == message.origin.protocols.interrupts._monitor_stub_isr - 1:
-            xpsr = target.read_register('xpsr')[0]
-            irq_num = xpsr & 0xff
-            self.log.info("Injecting IRQ 0x%x" % irq_num)
-            destination = target.avatar.irq_pair[0] if target.avatar.irq_pair[0] != target else target.avatar.irq_pair[1]
-            destination.protocols.interrupts.inject_interrupt(irq_num)
+    # 
+    # if isinstance(target, OpenOCDTarget):
+    #     if message.address == message.origin.protocols.interrupts._monitor_stub_isr - 1:
+    #         xpsr = target.read_register('xpsr')[0]
+    #         irq_num = xpsr & 0xff
+    #         self.log.info("Injecting IRQ 0x%x" % irq_num)
+    #         destination = target.avatar.irq_pair[0] if target.avatar.irq_pair[0] != target else target.avatar.irq_pair[1]
+    #         destination.protocols.interrupts.inject_interrupt(irq_num)
 
 
 def gontinue_execution(self, message, **kwargs):
@@ -130,18 +131,20 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
 
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
+    self.log.warning(f"_handle_remote_interrupt_enter_message {self._irq_src}  -> {self._irq_dst} (message.origin={message.origin})")
+
     self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,
                                                                      True)
     if self._irq_src is None or self._irq_semi_forwarding is True:
         return
 
-    status = self._irq_src.get_status()
-    if status['state'] == TargetStates.STOPPED:
-        self.log.info("Target stopped, restarting " + repr(message.origin))
-        try:
-            self._irq_src.cont(blocking=False)
-        except:
-            self.log.exception(" ")
+    # status = self._irq_src.get_status()
+    # if status['state'] == TargetStates.STOPPED:
+    #     self.log.info("Target stopped, restarting " + repr(message.origin))
+    #     try:
+    #         self._irq_src.cont(blocking=False)
+    #     except:
+    #         self.log.exception(" ")
 
 
 @watch('RemoteInterruptExit')
@@ -154,10 +157,12 @@ def _handle_remote_interrupt_exit_message(self, message):
     :param message:
     :return:
     """
-    if self._irq_src is not None and self._irq_semi_forwarding is False:
-        # We are forwarding, make sure to forward the return
-        self._irq_src.protocols.interrupts.inject_exc_return(
-            message.transition_type)
+    self.log.warning(f"_handle_remote_interrupt_exit_message {self._irq_src}  -> {self._irq_dst} (message.origin={message.origin})")
+
+    # if self._irq_src is not None and self._irq_semi_forwarding is False:
+    #     # We are forwarding, make sure to forward the return
+    #     self._irq_src.protocols.interrupts.inject_exc_return(
+    #         message.transition_type)
 
     # Always ack the exit message
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,

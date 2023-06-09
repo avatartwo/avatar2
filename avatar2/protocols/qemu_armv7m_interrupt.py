@@ -215,7 +215,7 @@ class QEmuARMV7MInterruptProtocol(Thread):
         
         try:
             self._tx_queue.send(response)
-            self.log.debug("Send RemoteInterruptExitResponse with id %d" % id)
+            self.log.info("Send RemoteInterruptExitResponse with id %d" % id)
             return True
         except Exception as e:
             self.log.error("Unable to send response: %s" % e)
@@ -226,7 +226,7 @@ class QEmuARMV7MInterruptProtocol(Thread):
                                                RINOperation.ENTER.value)
         try:
             self._tx_queue.send(response)
-            self.log.debug("Send RemoteInterruptEnterResponse with id %d" % id)
+            self.log.info("Send RemoteInterruptEnterResponse with id %d" % id)
             return True
         except Exception as e:
             self.log.error("Unable to send response: %s" % e)
