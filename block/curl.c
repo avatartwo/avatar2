@@ -498,8 +498,8 @@ static int curl_init_state(BDRVCURLState *s, CURLState *state)
          * Restricting protocols is only supported from 7.19.4 upwards.
          */
 #if LIBCURL_VERSION_NUM >= 0x071304
-        curl_easy_setopt(state->curl, CURLOPT_PROTOCOLS, PROTOCOLS);
-        curl_easy_setopt(state->curl, CURLOPT_REDIR_PROTOCOLS, PROTOCOLS);
+        curl_easy_setopt(state->curl, CURLOPT_PROTOCOLS_STR, PROTOCOLS);
+        curl_easy_setopt(state->curl, CURLOPT_REDIR_PROTOCOLS_STR, PROTOCOLS);
 #endif
 
 #ifdef DEBUG_VERBOSE
@@ -768,7 +768,7 @@ static int curl_open(BlockDriverState *bs, QDict *options, int flags,
     curl_easy_setopt(state->curl, CURLOPT_HEADERDATA, s);
     if (curl_easy_perform(state->curl))
         goto out;
-    if (curl_easy_getinfo(state->curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &d)) {
+    if (curl_easy_getinfo(state->curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &d)) {
         goto out;
     }
     /* Prior CURL 7.19.4 return value of 0 could mean that the file size is not
