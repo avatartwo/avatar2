@@ -87,13 +87,18 @@ class CoreSightProtocol(Thread):
         :return:
         """
         assert (0 < interrupt_number < 256)
-        iser_num = interrupt_number >> 5
-        iser_addr = NVIC_ISER0 + (iser_num * 4)
-        # iser_off = interrupt_number % 32
-        # iser_val = self._origin.read_memory(iser_addr, 4)
-        iser_val = ((1 << interrupt_number) & 0x1F)
-        # iser_val |= 0x1 << iser_off
+        iser_num = interrupt_number // 32  # 32 interrupts per ISER register
+        iser_addr = NVIC_ISER0 + (iser_num * 4)  # Calculate ISER_X address
+        iser_val = 1 << (interrupt_number % 32)  # Set the corresponding bit for the interrupt to 1
         self._origin.write_memory(iser_addr, 4, iser_val)
+
+    def get_enabled_interrupts(self, iser_num: int = 0):
+        enabled_interrupts = self._origin.read_memory(NVIC_ISER0 + iser_num * 4, size=4)
+        return enabled_interrupts
+
+    def set_enabled_interrupts(self, enabled_interrupts_bitfield: int, iser_num: int = 0):
+        self.log.warning(f"Setting enabled interrupts to 0x{enabled_interrupts_bitfield:x}")
+        self._origin.write_memory(NVIC_ISER0 + iser_num * 4, size=4, value=enabled_interrupts_bitfield)
 
     def get_vtor(self):
         return self._origin.read_memory(SCB_VTOR, 4)

@@ -42,6 +42,7 @@ def add_protocols(self, **kwargs):
         target.avatar.irq_pair.append(target)
     assert len(target.avatar.irq_pair) <= 2, "Interrupts only work with two targets"
 
+
 def forward_interrupt(self, message):  # , **kwargs):
     global stawp
     origin = message.origin
@@ -129,9 +130,21 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
     # self.avatar.queue.put(message)
 
 
+def transfer_interrupt_state(self, to_target, from_target):
+    self._hardware_target = to_target if isinstance(to_target, OpenOCDTarget) else from_target
+    self._virtual_target = from_target if isinstance(to_target, OpenOCDTarget) else to_target
+    if self._hardware_target and self._virtual_target:
+        # Transfer the interrupt state
+        enabled_interrupts = self._hardware_target.protocols.interrupts.get_enabled_interrupts()
+        self._virtual_target.protocols.interrupts.set_enabled_interrupts(enabled_interrupts)
+    else:
+        self.warning("Can't transfer interrupt state, no hardware or virtual target")
+
+
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
-    self.log.warning(f"_handle_remote_interrupt_enter_message {self._irq_src}  -> {self._irq_dst} (message.origin={message.origin})")
+    self.log.warning(
+        f"_handle_remote_interrupt_enter_message {self._irq_src}  -> {self._irq_dst} (message.origin={message.origin})")
 
     self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,
                                                                      True)
@@ -157,7 +170,8 @@ def _handle_remote_interrupt_exit_message(self, message):
     :param message:
     :return:
     """
-    self.log.warning(f"_handle_remote_interrupt_exit_message {self._irq_src}  -> {self._irq_dst} (message.origin={message.origin})")
+    self.log.warning(
+        f"_handle_remote_interrupt_exit_message {self._irq_src}  -> {self._irq_dst} (message.origin={message.origin})")
 
     # if self._irq_src is not None and self._irq_semi_forwarding is False:
     #     # We are forwarding, make sure to forward the return
@@ -196,6 +210,6 @@ def load_plugin(avatar):
     avatar.v7m_irq_rx_queue_name = '/avatar_v7m_irq_rx_queue'
     avatar.v7m_irq_tx_queue_name = '/avatar_v7m_irq_tx_queue'
     avatar.enable_interrupts = MethodType(enable_interrupt_forwarding, avatar)
+    avatar.transfer_interrupt_state = MethodType(transfer_interrupt_state, avatar)
 
-    avatar.watchmen.add_watchman('TargetInit', when=AFTER,
-                                 callback=add_protocols)
+    avatar.watchmen.add_watchman('TargetInit', when=AFTER, callback=add_protocols)

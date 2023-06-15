@@ -10,6 +10,9 @@ from avatar2.message import RemoteInterruptEnterMessage
 from avatar2.message import RemoteInterruptExitMessage
 from avatar2.targets import QemuTarget
 
+# NVIC stuff
+NVIC_ISER0 = 0xe000e100
+
 
 class RINOperation(Enum):
     ENTER = 0
@@ -212,7 +215,7 @@ class QEmuARMV7MInterruptProtocol(Thread):
     def send_interrupt_exit_response(self, id, success):
         response = V7MInterruptNotificationAck(id, success,
                                                RINOperation.EXIT.value)
-        
+
         try:
             self._tx_queue.send(response)
             self.log.info("Send RemoteInterruptExitResponse with id %d" % id)
@@ -231,6 +234,14 @@ class QEmuARMV7MInterruptProtocol(Thread):
         except Exception as e:
             self.log.error("Unable to send response: %s" % e)
             return False
+
+    def get_enabled_interrupts(self, iser_num: int = 0):
+        enabled_interrupts = self._origin.read_memory(NVIC_ISER0 + iser_num * 4, size=4)
+        return enabled_interrupts
+
+    def set_enabled_interrupts(self, enabled_interrupts_bitfield: int, iser_num: int = 0):
+        self.log.warning(f"Setting enabled interrupts to 0x{enabled_interrupts_bitfield:x}")
+        self._origin.write_memory(NVIC_ISER0 + iser_num * 4, size=4, value=enabled_interrupts_bitfield)
 
     def __del__(self):
         self.shutdown()
