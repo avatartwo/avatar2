@@ -2745,13 +2745,10 @@ static void armv7m_nvic_register_types(void)
 
 type_init(armv7m_nvic_register_types)
 
-bool armv7m_nvic_enable_all_irqs(void* opaque) {
+void armv7m_nvic_enable_irq(void* opaque, uint32_t irq) {
     NVICState *s = (NVICState *)opaque;
+    assert(irq < s->num_irq);
 
-    for (int i = 1; i < s->num_irq; ++i) {
-        VecInfo *vec = &s->vectors[i];
-        vec->enabled = 1;
-    }
-
-    return true;
+    VecInfo *vec = &s->vectors[irq];
+    vec->enabled = 1;
 }
