@@ -64,4 +64,9 @@ class RemoteInterruptExitMessage(AvatarMessage):
         self.interrupt_num = interrupt_num
 
 
+class InterruptEnterMessage(AvatarMessage):
+    def __init__(self, origin, interrupt_num):
+        super(self.__class__, self).__init__(origin)
+        self.interrupt_num = interrupt_num
+
 from .targets.target import TargetStates

@@ -312,7 +312,7 @@ class OpenOCDProtocol(Thread):
         for i in range(0, num_words, wordsize):
             if raw:
                 write_val = '0x' + encode(val[i:i + wordsize], 'hex_codec').decode('ascii')
-            elif isinstance(val, int) or isinstance(val, long):
+            elif isinstance(val, int):
                 write_val = hex(val).rstrip("L")
             else:
                 # A list of ints
@@ -372,7 +372,7 @@ class OpenOCDProtocol(Thread):
     def read_register(self, reg):
 
         try:
-            resp = self.execute_command("ocd_reg %s" % reg)
+            resp = self.execute_command("reg %s" % reg)
             val = int(resp.split(":")[1].strip(), 16)
             return val
         except:
@@ -383,7 +383,7 @@ class OpenOCDProtocol(Thread):
         """Set one register on the target
         :returns: True on success"""
         try:
-            self.execute_command("ocd_reg %s %s" % (reg, hex(value)))
+            self.execute_command("reg %s %s" % (reg, hex(value)))
             return True
         except:
             self.log.exception(("Error writing register %s" % reg))
