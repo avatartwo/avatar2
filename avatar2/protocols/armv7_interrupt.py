@@ -116,8 +116,9 @@ class ARMV7InterruptProtocol(Thread):
             self.get_ivt_addr() + (interrupt_num * 4), 4)
 
     def set_isr(self, interrupt_num, addr):
-        return self._origin.write_memory(
-            self.get_ivt_addr() + (interrupt_num * 4), 4, addr)
+        base = self.get_ivt_addr()
+        ivt_addr = base + (interrupt_num * 4)
+        return self._origin.write_memory(ivt_addr, 4, addr)
 
     def shutdown(self):
         if self.is_alive() is True:
@@ -205,7 +206,7 @@ class ARMV7InterruptProtocol(Thread):
         xpsr &= 0xff
         return xpsr
 
-    def inject_monitor_stub(self, addr=0x20001234, vtor=0x20002000, num_isr=254):
+    def inject_monitor_stub(self, addr=0x20001234, vtor=0x20002000, num_isr=48):
         """
         Injects a safe monitoring stub.
         This has the following effects:
@@ -221,39 +222,38 @@ class ARMV7InterruptProtocol(Thread):
             f"Injecting monitor stub into {self._origin.name}. (IVT: 0x{self.get_ivt_addr():08x}, 0x{self.get_vtor():08x}, 0x{vtor:08x})")
 
         self._monitor_stub_base = addr
-        self.log.warning(f"_monitor_stub_base     = 0x{self._monitor_stub_base:08x}")
+        self.log.info(f"_monitor_stub_base     = 0x{self._monitor_stub_base:08x}")
         self._monitor_stub_loop = addr + 0x0c
-        self.log.warning(f"_monitor_stub_loop     = 0x{self._monitor_stub_loop:08x}")
+        self.log.info(f"_monitor_stub_loop     = 0x{self._monitor_stub_loop:08x}")
         self._monitor_stub_isr = addr + 0x1a
-        self.log.warning(f"_monitor_stub_isr      = 0x{self._monitor_stub_isr:08x}")
+        self.log.info(f"_monitor_stub_isr      = 0x{self._monitor_stub_isr:08x}")
         self._monitor_stub_writeme = addr + 8
-        self.log.warning(f"_monitor_stub_writeme  = 0x{self._monitor_stub_writeme:08x}")
+        self.log.info(f"_monitor_stub_writeme  = 0x{self._monitor_stub_writeme:08x}")
         self._monitor_stub_state = addr + 4
-        self.log.warning(f"_monitor_stub_outstat  = 0x{self._monitor_stub_state:08x}")
+        self.log.info(f"_monitor_stub_outstat  = 0x{self._monitor_stub_state:08x}")
 
         # Pivot VTOR, if needed
         # On CM0, you can't, so don't.
         self.original_vtor = self.get_vtor()
         assert self.original_vtor != vtor, "VTOR is already set to the desired value."
 
-        if getattr(self._origin, 'ivt_address', None) is None:
-            # if self.get_vtor() == 0:
-            self.set_vtor(vtor)
-            self.log.warning(f"Validate new VTOR address 0x{self.get_vtor():8x}")
+        self.set_vtor(vtor)
+        self.log.info(f"Validate new VTOR address 0x{self.get_vtor():8x}")
 
         # Sometimes, we need to gain access to the IVT (make it writable). Do that here.
         if getattr(self._origin, 'ivt_unlock', None) is not None:
             unlock_addr, unlock_val = self._origin.ivt_unlock
             self._origin.write_memory(unlock_addr, 4, unlock_val)
 
-        self.log.warning(f"Inserting the stub ...")
+        self.log.info(f"Inserting the stub ...")
         # Inject the stub
         self._origin.inject_asm(self.MONITOR_STUB, self._monitor_stub_base)
 
-        self.log.warning(f"Setting up IVT...")
+        self.log.info(f"Setting up IVT...")
         # Set the IVT to our stub but DON'T wipe out the 0'th position.
-        for x in range(1, num_isr):
-            self.set_isr(x, self._monitor_stub_isr + 1)  # +1 for thumb mode
+        self._origin.write_memory(vtor, value=self._origin.read_memory(self.original_vtor, size=4), size=4)
+        for interrupt_num in range(1, num_isr):
+            self.set_isr(interrupt_num, self._monitor_stub_isr + 1)  # +1 for thumb mode
 
         if self._origin.state != TargetStates.STOPPED:
             self.log.warning(
