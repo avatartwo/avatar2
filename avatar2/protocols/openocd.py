@@ -292,7 +292,7 @@ class OpenOCDProtocol(Thread):
 
     ### The Memory Protocol starts here
 
-    def write_memory(self, address, wordsize, val, num_words=1, raw=False):
+    def write_memory(self, address, size, value, num_words=1, raw=False):
         """Writes memory
 
         :param address:   Address to write to
@@ -306,21 +306,21 @@ class OpenOCDProtocol(Thread):
         :returns:         True on success else False
         """
         # print "nucleo.write_memory(%s, %s, %s, %s, %s)" % (repr(address), repr(wordsize), repr(val), repr(num_words), repr(raw))
-        if isinstance(val, str) and len(val) != num_words:
-            self.log.debug("Setting num_words = %d" % (len(val) / wordsize))
-            num_words = len(val) / wordsize
-        for i in range(0, num_words, wordsize):
+        if isinstance(value, str) and len(value) != num_words:
+            self.log.debug("Setting num_words = %d" % (len(value) / size))
+            num_words = len(value) / size
+        for i in range(0, num_words, size):
             if raw:
-                write_val = '0x' + encode(val[i:i + wordsize], 'hex_codec').decode('ascii')
-            elif isinstance(val, int):
-                write_val = hex(val).rstrip("L")
+                write_val = '0x' + encode(value[i:i + size], 'hex_codec').decode('ascii')
+            elif isinstance(value, int):
+                write_val = hex(value).rstrip("L")
             else:
                 # A list of ints
-                write_val = hex(val[i]).rstrip("L")
+                write_val = hex(value[i]).rstrip("L")
             write_addr = hex(address + i).rstrip("L")
-            if wordsize == 1:
+            if size == 1:
                 self.execute_command('mwb %s %s' % (write_addr, write_val))
-            elif wordsize == 2:
+            elif size == 2:
                 self.execute_command('mwh %s %s' % (write_addr, write_val))
             else:
                 self.execute_command('mww %s %s' % (write_addr, write_val))

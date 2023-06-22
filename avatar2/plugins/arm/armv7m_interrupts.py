@@ -139,12 +139,12 @@ def transfer_interrupt_state(self, to_target, from_target):
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
     self.log.warning(
-        f"_handle_remote_interrupt_enter_message {self._irq_src}  -> {self._irq_dst} (message.origin={message.origin})")
+        f"_handle_remote_interrupt_enter_message origin={message.origin})")
 
     self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,
                                                                      True)
-    if self._irq_src is None or self._irq_semi_forwarding is True:
-        return
+    # if self._irq_src is None or self._irq_semi_forwarding is True:
+    #     return
 
     # status = self._irq_src.get_status()
     # if status['state'] == TargetStates.STOPPED:

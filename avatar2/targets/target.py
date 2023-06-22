@@ -156,8 +156,8 @@ class TargetProtocolStore(object):
 
     def shutdown(self):
         """Shutsdown all the associated protocols"""
-        for p in self.protocols:
-            #print("Unloading %s" % str(p))
+        l = list(self.protocols)
+        for p in reversed(l):
             setattr(self, p, None)
 
     def __setattr__(self, name, value):

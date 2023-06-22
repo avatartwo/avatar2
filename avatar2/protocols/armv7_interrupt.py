@@ -272,10 +272,7 @@ class ARMV7InterruptProtocol(Thread):
 
     def get_stub_state(self) -> HWInterruptState:
         state = self._origin.read_memory(self._monitor_stub_state, size=4)
-        if HWInterruptState.has_value(state):
-            return HWInterruptState(state)
-        else:
-            return HWInterruptState.HW_INTERRUPT_STATE_UNDEF
+        return HWInterruptState(state)
 
     def dispatch_exception_packet(self):
         # To read the xPSR register containing the ISR number we need to halt the target.
@@ -289,7 +286,7 @@ class ARMV7InterruptProtocol(Thread):
         self._avatar_fast_queue.put(msg)
 
     def run(self):
-        TICK_DELAY = 0.00001
+        TICK_DELAY = 0.0001
         self.log.warning("Starting ARMV7InterruptProtocol thread")
         last_hw_state = HWInterruptState.HW_INTERRUPT_STATE_UNDEF
         try:
