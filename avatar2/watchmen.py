@@ -30,7 +30,9 @@ class WatchedTypes(object):
         'TargetWait',
         'TargetSetFile',
         'TargetDownload',
-        'TargetInjectInterrupt'
+        'TargetInjectInterrupt',
+        'TargetInterruptEnter',
+        'TargetInterruptExit',
     ]
 
     def __init__(self):

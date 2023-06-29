@@ -26,7 +26,7 @@ def assemble(self, asmstr, addr=None,
     bytes_raw = bytes(bytelist)
     return bytes_raw
 
-def inject_asm(self, asmstr, addr=None, arch=None, mode=None):
+def inject_asm(self, asmstr, addr=None, arch=None, mode=None, patch={}):
     """
     Assemble the string, and inject it into the target)
     """
@@ -38,6 +38,8 @@ def inject_asm(self, asmstr, addr=None, arch=None, mode=None):
     md = Ks(arch, mode)
     bytelist = md.asm(asmstr, addr)[0]
     bytes_raw = bytes(bytelist)
+    for key in patch.keys():
+        bytes_raw = bytes_raw[:key] + patch[key] + bytes_raw[key + len(patch[key]):]
     return self.write_memory(addr, 1, bytes_raw, len(bytes_raw), raw=True)
 
 def target_added_callback(avatar, *args, **kwargs):

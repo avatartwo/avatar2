@@ -1,9 +1,7 @@
 import logging
 import pprint
 from types import MethodType
-from threading import Thread, Event, Condition
 
-from avatar2 import TargetStates
 from avatar2.archs import ARMV7M
 from avatar2.protocols.armv7_interrupt import ARMV7InterruptProtocol
 from avatar2.protocols.coresight import CoreSightProtocol
@@ -14,7 +12,6 @@ from avatar2.watchmen import AFTER
 from avatar2.message import RemoteInterruptEnterMessage, InterruptEnterMessage
 from avatar2.message import RemoteInterruptExitMessage
 from avatar2.message import RemoteMemoryWriteMessage
-from avatar2.message import BreakpointHitMessage
 
 from avatar2.watchmen import watch
 

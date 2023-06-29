@@ -1,5 +1,3 @@
-
-
 class AvatarMessage(object):
     def __init__(self, origin):
         self.origin = origin
@@ -23,6 +21,7 @@ class BreakpointHitMessage(UpdateStateMessage):
         self.breakpoint_number = breakpoint_number
         self.address = address
 
+
 class SyscallCatchedMessage(BreakpointHitMessage):
     def __init__(self, origin, breakpoint_number, address, type='entry'):
         super(self.__class__, self).__init__(origin, breakpoint_number, address)
@@ -40,6 +39,7 @@ class RemoteMemoryReadMessage(AvatarMessage):
         self.num_words = 1
         self.raw = False
 
+
 class RemoteMemoryWriteMessage(AvatarMessage):
     def __init__(self, origin, id, pc, address, value, size, dst=None):
         super(self.__class__, self).__init__(origin)
@@ -50,11 +50,13 @@ class RemoteMemoryWriteMessage(AvatarMessage):
         self.size = size
         self.dst = dst
 
+
 class RemoteInterruptEnterMessage(AvatarMessage):
     def __init__(self, origin, id, interrupt_num):
         super(self.__class__, self).__init__(origin)
         self.id = id
         self.interrupt_num = interrupt_num
+
 
 class RemoteInterruptExitMessage(AvatarMessage):
     def __init__(self, origin, id, transition_type, interrupt_num):
@@ -68,5 +70,12 @@ class InterruptEnterMessage(AvatarMessage):
     def __init__(self, origin, interrupt_num):
         super(self.__class__, self).__init__(origin)
         self.interrupt_num = interrupt_num
+
+
+class InterruptExitMessage(AvatarMessage):
+    def __init__(self, origin, interrupt_num):
+        super(self.__class__, self).__init__(origin)
+        self.interrupt_num = interrupt_num
+
 
 from .targets.target import TargetStates
