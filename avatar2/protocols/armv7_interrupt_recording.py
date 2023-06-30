@@ -120,8 +120,10 @@ class ARMV7InterruptRecordingProtocol(Thread):
                     "ldr  r2, =irq_buffer_0\n" +
                     "ldr  r3, =vt_buffer_0\n" +
                     "movs r4, #0\n" +  # Signal Avatar that the stub initialized
-                    "str  r4, [r0]\n" +
-                    "str  r4, [r2]\n" +
+                    "strb  r4, [r0]\n" +
+                    "movs r7, #255\n" +  # Ensure end of buffer flag is set
+                    "strb  r7, [r2]\n" +
+                    "movs r4, #0\n" +
                     "movs r0, #127\n" +  # For anding to implement wrap around
                     "movs r1, #128\n" +  # For oring to flip 8th bit
 
@@ -131,28 +133,34 @@ class ARMV7InterruptRecordingProtocol(Thread):
                     "stub: \n" +
                     # "mrs  r5, IPSR\n" +  # Get the interrupt number
                     "nop\nnop\n" +  # Placeholder to be replaced with `mrs r5, IPSR` due to keystone error
-                    "strb  r5, [r3, r4]\n" +  # Save the interrupt number
+                    "strb  r5, [r2, r4]\n" +  # Save the interrupt number
                     "adds r4, r4, #1\n" +  # Increment the buffer pointer
                     "ands r4, r4, r0\n" +  # Wrap around the buffer
+                    # Ensure end of buffer flag is set
+                    "movs r7, #255\n" +
+                    "strb r7, [r2, r4]\n" +
+
                     # Setup jump to interrupt handler
                     "mov r6, r5\n" +
                     "lsls r6, #2\n" +  # Calculate interrupt offset
                     "adds r6, r6, r3\n" +
                     "ldr  r6, [r6]\n" +  # Load the interrupt handler address
+
                     # Call the interrupt handler
                     "mov r7, lr\n" +
                     "push {r0, r1, r2, r3, r4, r5, r7}\n"
                     "blx r6\n" +  # Jump to interrupt handler
                     "pop {r0, r1, r2, r3, r4, r5, r7}\n"
                     "mov lr, r7\n" +
+
                     # Store the interrupt return
                     "orrs r5, r5, r1\n" +  # Flip 8th bit
-                    "strb  r5, [r3, r4]\n" +  # Save the interrupt number with exit flag (highest bit)
+                    "strb  r5, [r2, r4]\n" +  # Save the interrupt number with exit flag (highest bit)
                     "adds r4, r4, #1\n" +  # Increment the buffer pointer
                     "ands r4, r4, r0\n" +  # Wrap around the buffer
-                    # Ensure buffer ends with 0
-                    "movs r5, #0\n" +
-                    "strb  r5, [r3, r4]\n" +
+                    # Ensure end of buffer flag is set
+                    "movs r7, #255\n" +
+                    "strb  r7, [r2, r4]\n" +
 
                     "bx lr\n"  # Return from the interrupt, set by the interrupt calling convention
                     )
@@ -192,7 +200,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
         self.log.info(f"_monitor_stub_vt_buffer     = 0x{self._monitor_stub_vt_buffer:08x}")
         self._monitor_stub_start = addr + num_isr * 4 + 256 * 2 + 4
         self.log.info(f"_monitor_stub_start         = 0x{self._monitor_stub_start:08x}")
-        self._monitor_stub_isr = self._monitor_stub_start + 20
+        self._monitor_stub_isr = self._monitor_stub_start + 24
         self.log.info(f"_monitor_stub_isr           = 0x{self._monitor_stub_isr:08x}")
 
         # Pivot VTOR, if needed
@@ -246,20 +254,29 @@ class ARMV7InterruptRecordingProtocol(Thread):
         TICK_DELAY = 0.0001
         self.log.warning("Starting ARMV7InterruptRecordingProtocol thread")
         buffer_pos = 0
+        init = False
         try:
             while not (self.avatar._close.is_set() or self._close.is_set()):
                 if self._monitor_stub_base is None:
                     sleep(TICK_DELAY)
                     continue
-
-                curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
-                while curr_isr != 0:
-                    if curr_isr > 0x80:
-                        self.log.warning(f"ISR-Exit {curr_isr & 0x7f} triggered")
-                    else:
-                        self.log.warning(f"ISR-Enter {curr_isr} triggered")
-                    buffer_pos = (buffer_pos + 1) & 0xff
+                if not init:
                     curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
+                    if curr_isr == 255:
+                        init = True
+                        self.log.warning("Starting ARMV7InterruptRecordingProtocol initialization complete")
+                    else:
+                        sleep(TICK_DELAY)
+                        continue
+
+                # curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
+                # while curr_isr != 255:
+                #     if curr_isr > 0x80:
+                #         self.log.warning(f"ISR-Exit {curr_isr & 0x7f} triggered")
+                #     else:
+                #         self.log.warning(f"ISR-Enter {curr_isr} triggered")
+                #     buffer_pos = (buffer_pos + 1) & 0xff
+                #     curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
 
                 sleep(TICK_DELAY)
         except:
