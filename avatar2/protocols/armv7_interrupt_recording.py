@@ -27,7 +27,8 @@ class ARMV7InterruptRecordingProtocol(Thread):
         self._monitor_stub_vt_buffer = None
         self._monitor_stub_trace_buffer = None
         self._monitor_stub_start = None
-        self.log = logging.getLogger(f'{avatar.log.name}.protocols.armv7-interrupt-recording')
+        self.msg_counter = 0
+        self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
         Thread.__init__(self, daemon=True)
         self.log.info(f"ARMV7InterruptRecordingProtocol initialized")
 
@@ -225,11 +226,12 @@ class ARMV7InterruptRecordingProtocol(Thread):
                 curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
                 while curr_isr != 0xff:
                     if curr_isr > 0x80:
-                        self.log.warning(f"ISR-Exit {curr_isr & 0x7f} triggered")
-                        self.dispatch_message(TargetInterruptExitMessage(self._origin, curr_isr & 0x7f))
+                        self.dispatch_message(
+                            TargetInterruptExitMessage(self._origin, self.msg_counter, interrupt_num=curr_isr & 0x7f))
                     else:
-                        self.log.warning(f"ISR-Enter {curr_isr} triggered")
-                        self.dispatch_message(TargetInterruptEnterMessage(self._origin, curr_isr))
+                        self.dispatch_message(
+                            TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=curr_isr))
+                    self.msg_counter += 1
                     buffer_pos = (buffer_pos + 1) & 0xff
                     curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
 

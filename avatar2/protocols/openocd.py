@@ -58,7 +58,7 @@ class OpenOCDProtocol(Thread):
             self.openocd_files = openocd_script
         else:
             raise TypeError("Wrong type for OpenOCD configuration files")
-        self.log = logging.getLogger(f'{avatar.log.name}.protocols.openocd')
+        self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
         self._tcl_port = tcl_port
         self._gdb_port = gdb_port
         self._host = host

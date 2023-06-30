@@ -69,7 +69,7 @@ class CoreSightProtocol(Thread):
         self._monitor_stub_isr = None
         self._monitor_stub_loop = None
         self._monitor_stub_writeme = None
-        self.log = logging.getLogger(f'{avatar.log.name}.protocols.coresight')
+        self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
         Thread.__init__(self, daemon=True)
         self.log.info(f"CoreSightProtocol starting")
 

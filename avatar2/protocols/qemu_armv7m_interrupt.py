@@ -95,10 +95,7 @@ class QEmuARMV7MInterruptProtocol(Thread):
         self._closed = Event()
         self._close.clear()
         self._closed.clear()
-        self.log = logging.getLogger('%s.%s' %
-                                     (origin.log.name, self.__class__.__name__)
-                                     ) if origin else \
-            logging.getLogger(self.__class__.__name__)
+        self.log = logging.getLogger(f'{origin.log.name}.protocols.{self.__class__.__name__}')
 
     def run(self):
         while not self._close.is_set():

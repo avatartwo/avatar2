@@ -5,7 +5,7 @@ from keystone import *
 
 
 def assemble(self, asmstr, addr=None,
-                arch=None, mode=None):
+             arch=None, mode=None):
     """
     Main purpose of the assembler plugin, it's used to assemble
     instructions
@@ -26,9 +26,19 @@ def assemble(self, asmstr, addr=None,
     bytes_raw = bytes(bytelist)
     return bytes_raw
 
-def inject_asm(self, asmstr, addr=None, arch=None, mode=None, patch={}):
+
+def inject_asm(self, asmstr, addr=None, arch=None, mode=None, patch=None):
     """
-    Assemble the string, and inject it into the target)
+    Assemble the string, and inject it into the targets' memory.
+
+    :param asmstr: The assembly string to be assembled
+    :param addr:   Optional address at which the assembly should be injected, defaults to `pc`
+    :param arch:   Optional keystone-architecture to be used, defaults to architecture of target
+    :param mode:   Optional keystone-mode to be used, defaults to mode of target
+    :param patch:  Optional dictionary of address->bytes patches to be replaced in the assembled code
+                    (eg. `patch={0x20001000: b'\xef\xf3\x05\x85'}`)
+
+    :returns:      True if the injection was successful, False otherwise
     """
     arch = self._arch.keystone_arch if not arch else arch
     mode = self._arch.keystone_mode if not mode else mode
@@ -38,9 +48,11 @@ def inject_asm(self, asmstr, addr=None, arch=None, mode=None, patch={}):
     md = Ks(arch, mode)
     bytelist = md.asm(asmstr, addr)[0]
     bytes_raw = bytes(bytelist)
-    for key in patch.keys():
-        bytes_raw = bytes_raw[:key] + patch[key] + bytes_raw[key + len(patch[key]):]
+    if patch is not None:
+        for key in patch.keys():
+            bytes_raw = bytes_raw[:key] + patch[key] + bytes_raw[key + len(patch[key]):]
     return self.write_memory(addr, 1, bytes_raw, len(bytes_raw), raw=True)
+
 
 def target_added_callback(avatar, *args, **kwargs):
     target = kwargs['watched_return']
