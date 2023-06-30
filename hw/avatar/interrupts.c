@@ -120,8 +120,6 @@ void qmp_avatar_armv7m_inject_irq(int64_t num_cpu,int64_t num_irq, Error **errp)
     qemu_log_mask(LOG_AVATAR, "Injecting exception 0x%lx\n", num_irq);
     ARMCPU *armcpu = ARM_CPU(qemu_get_cpu(num_cpu));
     CPUARMState *env = &armcpu->env;
-    // Ensure the interrupt is enabled
-    armv7m_nvic_enable_irq(env->nvic, num_irq);
     /*  MM: for now, we can only inject non-secure irqs */
     armv7m_nvic_set_pending(env->nvic, num_irq, false);
 }
