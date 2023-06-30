@@ -66,13 +66,13 @@ class RemoteInterruptExitMessage(AvatarMessage):
         self.interrupt_num = interrupt_num
 
 
-class InterruptEnterMessage(AvatarMessage):
+class TargetInterruptEnterMessage(AvatarMessage):
     def __init__(self, origin, interrupt_num):
         super(self.__class__, self).__init__(origin)
         self.interrupt_num = interrupt_num
 
 
-class InterruptExitMessage(AvatarMessage):
+class TargetInterruptExitMessage(AvatarMessage):
     def __init__(self, origin, interrupt_num):
         super(self.__class__, self).__init__(origin)
         self.interrupt_num = interrupt_num

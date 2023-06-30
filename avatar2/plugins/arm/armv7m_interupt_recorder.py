@@ -7,7 +7,7 @@ from avatar2.protocols.armv7_interrupt_recording import ARMV7InterruptRecordingP
 from avatar2.targets import OpenOCDTarget
 from avatar2.watchmen import AFTER
 
-from avatar2.message import InterruptEnterMessage, InterruptExitMessage
+from avatar2.message import TargetInterruptEnterMessage, TargetInterruptExitMessage
 
 from avatar2.watchmen import watch
 
@@ -27,13 +27,13 @@ def add_protocols(self: avatar2.Avatar, **kwargs):
                                     )
 
 
-@watch('InterruptEnter')
-def _handle_interrupt_enter(self: avatar2.Avatar, message: InterruptEnterMessage):
+@watch('TargetInterruptEnter')
+def _handle_interrupt_enter(self: avatar2.Avatar, message: TargetInterruptEnterMessage):
     pass
 
 
-@watch('InterruptExit')
-def _handle_interrupt_exit(self: avatar2.Avatar, message: InterruptEnterMessage):
+@watch('TargetInterruptExit')
+def _handle_interrupt_exit(self: avatar2.Avatar, message: TargetInterruptExitMessage):
     pass
 
 
@@ -53,12 +53,12 @@ def enable_interrupt_recording(self, from_target):
     self._handle_interrupt_exit = MethodType(_handle_interrupt_exit, self)
 
     self.message_handlers.update({
-        InterruptEnterMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
-        InterruptExitMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
+        TargetInterruptEnterMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
+        TargetInterruptExitMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
     })
     self.fast_queue_listener.message_handlers.update({
-        InterruptEnterMessage: self._handle_interrupt_enter,
-        InterruptExitMessage: self._handle_interrupt_exit,
+        TargetInterruptEnterMessage: self._handle_interrupt_enter,
+        TargetInterruptExitMessage: self._handle_interrupt_exit,
     })
 
 

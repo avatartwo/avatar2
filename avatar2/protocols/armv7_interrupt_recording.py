@@ -1,55 +1,16 @@
-import sys
 from enum import Enum
-from threading import Thread, Event, Condition
+from threading import Thread, Event
 import logging
-import re
 from time import sleep
 
-from bitstring import BitStream, ReadError
-
-from avatar2 import watch
-from avatar2.archs.arm import ARM
 from avatar2.targets import TargetStates
-from avatar2.message import AvatarMessage, UpdateStateMessage, \
-    BreakpointHitMessage, RemoteInterruptEnterMessage, InterruptEnterMessage
+from avatar2.message import TargetInterruptEnterMessage, TargetInterruptExitMessage
 from avatar2.protocols.openocd import OpenOCDProtocol
 
 # ARM System Control Block
-SCB_CPUID = 0xe000ed00  # What is it
-SCB_STIR = 0xe000ef00  # Send interrupts here
 SCB_VTOR = 0xe000ed08  # Vector Table offset register
-
 # NVIC stuff
 NVIC_ISER0 = 0xe000e100
-
-# ARMV7InterruptProtocol Constant Addresses
-RCC_APB2ENR = 0x40021018
-AFIO_MAPR = 0x40010004
-DBGMCU_CR = 0xe0042004
-COREDEBUG_DEMCR = 0xe000edfc
-TPI_ACPR = 0xe0040010
-TPI_SPPR = 0xe00400f0
-TPI_FFCR = 0xe0040304
-DWT_CTRL = 0xe0001000
-ITM_LAR = 0xe0000fb0
-ITM_TCR = 0xe0000e80
-ITM_TER = 0xe0000e00
-ETM_LAR = 0xe0041fb0
-ETM_CR = 0xe0041000
-ETM_TRACEIDR = 0xe0041200
-ETM_TECR1 = 0xe0041024
-ETM_FFRR = 0xe0041028
-ETM_FFLR = 0xe004102c
-
-
-class HWInterruptState(Enum):
-    HW_INTERRUPT_STATE_UNDEF = 0x000000ff
-    HW_INTERRUPT_STATE_IDLE = 0
-    HW_INTERRUPT_STATE_INT = 1
-
-    @classmethod
-    def has_value(cls, value):
-        return value in cls._value2member_map_
 
 
 class ARMV7InterruptRecordingProtocol(Thread):
@@ -239,16 +200,8 @@ class ARMV7InterruptRecordingProtocol(Thread):
             self._origin.regs.pc = self._monitor_stub_start
             self.log.warning(f"Setting PC to 0x{self._origin.regs.pc:8x}")
 
-    def dispatch_exception_packet(self):
-        # To read the xPSR register containing the ISR number we need to halt the target.
-        self._origin.stop()
-        int_num = self.get_current_isr_num()
-        self._origin.cont()
-
-        self.log.warning(f"Dispatching exception for interrupt number {int_num}")
-
-        msg = InterruptEnterMessage(self._origin, int_num)
-        self._avatar_fast_queue.put(msg)
+    def dispatch_message(self, message):
+        self._avatar_fast_queue.put(message)
 
     def run(self):
         TICK_DELAY = 0.0001
@@ -269,14 +222,16 @@ class ARMV7InterruptRecordingProtocol(Thread):
                         sleep(TICK_DELAY)
                         continue
 
-                # curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
-                # while curr_isr != 255:
-                #     if curr_isr > 0x80:
-                #         self.log.warning(f"ISR-Exit {curr_isr & 0x7f} triggered")
-                #     else:
-                #         self.log.warning(f"ISR-Enter {curr_isr} triggered")
-                #     buffer_pos = (buffer_pos + 1) & 0xff
-                #     curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
+                curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
+                while curr_isr != 0xff:
+                    if curr_isr > 0x80:
+                        self.log.warning(f"ISR-Exit {curr_isr & 0x7f} triggered")
+                        self.dispatch_message(TargetInterruptExitMessage(self._origin, curr_isr & 0x7f))
+                    else:
+                        self.log.warning(f"ISR-Enter {curr_isr} triggered")
+                        self.dispatch_message(TargetInterruptEnterMessage(self._origin, curr_isr))
+                    buffer_pos = (buffer_pos + 1) & 0xff
+                    curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
 
                 sleep(TICK_DELAY)
         except:
