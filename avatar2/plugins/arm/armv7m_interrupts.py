@@ -195,7 +195,7 @@ def _handle_remote_memory_write_message_nvic(self, message: RemoteMemoryWriteMes
 
 
 def load_plugin(avatar):
-    if avatar.arch != ARMV7M:
+    if avatar.arch not in ARMV7M:
         avatar.log.error("Tried to load armv7-m interrupt plugin " +
                          "with mismatching architecture")
 

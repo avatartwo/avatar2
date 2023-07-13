@@ -63,7 +63,7 @@ def enable_interrupt_recording(self, from_target):
 
 
 def load_plugin(avatar: avatar2.Avatar):
-    if avatar.arch != ARMV7M:
+    if avatar.arch not in ARMV7M:
         avatar.log.error("Tried to load armv7-m interrupt-recorder plugin " +
                          "with mismatching architecture")
 
