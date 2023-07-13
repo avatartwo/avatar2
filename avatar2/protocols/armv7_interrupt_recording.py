@@ -26,7 +26,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
         self._monitor_stub_isr = None
         self._monitor_stub_vt_buffer = None
         self._monitor_stub_trace_buffer = None
-        self._monitor_stub_start = None
+        self._monitor_stub_mtb = None
         self.msg_counter = 0
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
         Thread.__init__(self, daemon=True)
@@ -75,55 +75,62 @@ class ARMV7InterruptRecordingProtocol(Thread):
 
     # TODO what this stub does
     MONITOR_STUB = ("" +
-                    "outstat: .word 0xdeafbeef\n" +
+                    # Data
+                    # vt_buffer_X: .word 0x00000000 # Buffer holding the original vector table
+                    # irq_buffer_X: .hword 0x0000 # MTB ring buffer of interrupt events
+                    "irq_buffer_ptr: .word 0xdeafbeef\n" +
 
-                    "init:  \n" +  # Load the addresses for later access
-                    "ldr  r0, =outstat\n" +
-                    "ldr  r2, =irq_buffer_0\n" +
-                    "ldr  r3, =vt_buffer_0\n" +
-                    "movs r4, #0\n" +  # Signal Avatar that the stub initialized
-                    "strb  r4, [r0]\n" +
-                    "movs r7, #255\n" +  # Ensure end of buffer flag is set
-                    "strb  r7, [r2]\n" +
-                    "movs r4, #0\n" +
-                    "movs r0, #127\n" +  # For anding to implement wrap around
-                    "movs r1, #128\n" +  # For oring to flip 8th bit
-
-                    "loop: b loop\n" +  # Wait for something to happen
-                    "nop\n" +
-
-                    "stub: \n" +
-                    # "mrs  r5, IPSR\n" +  # Get the interrupt number
+                    # "stub: \n" +
+                    "push {r0, r1, r2, r3, r4, r5, r6, r7}\n" +
+                    # # "mrs  r0, IPSR\n" +  # Get the interrupt number
                     "nop\nnop\n" +  # Placeholder to be replaced with `mrs r5, IPSR` due to keystone error
-                    "strb  r5, [r2, r4]\n" +  # Save the interrupt number
-                    "adds r4, r4, #1\n" +  # Increment the buffer pointer
-                    "ands r4, r4, r0\n" +  # Wrap around the buffer
+                    "ldr r1, =irq_buffer_ptr\n" +
+                    "ldr r2, =irq_buffer_0\n" +
+                    "ldr r3, [r1]\n" +  # Load the buffer pointer
+                    "mov r4, r3\n" +
+                    "add r4, r4, r2\n" +
+
                     # Ensure end of buffer flag is set
-                    "movs r7, #255\n" +
-                    "strb r7, [r2, r4]\n" +
+                    "adds r3, r3, #1\n" +  # Increment the buffer pointer
+                    "movs r5, #255\n" +  # For anding to implement wrap around
+                    "ands r3, r3, r5\n" +  # Wrap around the buffer
+                    "strb r5, [r2, r3]\n" +
+
+                    # Save the interrupt number
+                    "strb r0, [r4]\n" +
 
                     # Setup jump to interrupt handler
-                    "mov r6, r5\n" +
+                    "ldr r2, =vt_buffer_0\n" +
+                    "mov r6, r0\n" +
                     "lsls r6, #2\n" +  # Calculate interrupt offset
-                    "adds r6, r6, r3\n" +
+                    "adds r6, r6, r2\n" +
                     "ldr  r6, [r6]\n" +  # Load the interrupt handler address
 
                     # Call the interrupt handler
                     "mov r7, lr\n" +
-                    "push {r0, r1, r2, r3, r4, r5, r7}\n"
+                    "push {r0, r1, r2, r3, r4, r5, r6, r7}\n"
                     "blx r6\n" +  # Jump to interrupt handler
-                    "pop {r0, r1, r2, r3, r4, r5, r7}\n"
+                    "pop {r0, r1, r2, r3, r4, r5, r6, r7}\n"
                     "mov lr, r7\n" +
 
                     # Store the interrupt return
-                    "orrs r5, r5, r1\n" +  # Flip 8th bit
-                    "strb  r5, [r2, r4]\n" +  # Save the interrupt number with exit flag (highest bit)
-                    "adds r4, r4, #1\n" +  # Increment the buffer pointer
-                    "ands r4, r4, r0\n" +  # Wrap around the buffer
-                    # Ensure end of buffer flag is set
-                    "movs r7, #255\n" +
-                    "strb  r7, [r2, r4]\n" +
+                    "ldr r2, =irq_buffer_0\n" +
+                    "mov r4, r3\n" +
+                    "add r4, r4, r2\n" +
 
+                    # Ensure end of buffer flag is set
+                    "adds r3, r3, #1\n" +  # Increment the buffer pointer
+                    "movs r5, #255\n" +  # For anding to implement wrap around
+                    "ands r3, r3, r5\n" +  # Wrap around the buffer
+                    "strb r3, [r1]\n" + # Save the buffer pointer
+                    "strb  r5, [r2, r3]\n" +
+
+                    "movs r5, #128\n" +  # For oring to signal interrupt exit
+                    "orrs r5, r5, r0\n" +  # Flip 8th bit
+                    "strb  r5, [r4]\n" +  # Save the interrupt number with exit flag (highest bit)
+
+                    # Restore registers and return
+                    "pop {r0, r1, r2, r3, r4, r5, r6, r7}\n" +
                     "bx lr\n"  # Return from the interrupt, set by the interrupt calling convention
                     )
 
@@ -131,7 +138,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
         vt_declaration = [f"vt_buffer_{i}: .word 0x00000000" for i in range(vt_size)]
         vt_declaration = "\n".join(vt_declaration)
         buffer_declaration = [f"irq_buffer_{i}: .hword 0x0000" for i in range(irq_buffer_size)]
-        buffer_declaration = "".join(buffer_declaration)
+        buffer_declaration = "\n".join(buffer_declaration)
         return vt_declaration + buffer_declaration + self.MONITOR_STUB
 
     def set_isr(self, interrupt_num, addr):
@@ -139,7 +146,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
         ivt_addr = base + (interrupt_num * 4)
         return self._origin.write_memory(ivt_addr, 4, addr)
 
-    def inject_monitor_stub(self, addr=0x20001234, vtor=0x20002000, num_isr=48):
+    def inject_monitor_stub(self, addr=0x20010000, vtor=0x20011000, num_isr=48):
         """
         Injects a safe monitoring stub.
         This has the following effects:
@@ -160,9 +167,9 @@ class ARMV7InterruptRecordingProtocol(Thread):
         self.log.info(f"_monitor_stub_trace_buffer  = 0x{self._monitor_stub_trace_buffer:08x}")
         self._monitor_stub_vt_buffer = addr
         self.log.info(f"_monitor_stub_vt_buffer     = 0x{self._monitor_stub_vt_buffer:08x}")
-        self._monitor_stub_start = addr + num_isr * 4 + 256 * 2 + 4
-        self.log.info(f"_monitor_stub_start         = 0x{self._monitor_stub_start:08x}")
-        self._monitor_stub_isr = self._monitor_stub_start + 24
+        self._monitor_stub_mtb = addr + num_isr * 4
+        self.log.info(f"_monitor_stub_mtb           = 0x{self._monitor_stub_mtb:08x}")
+        self._monitor_stub_isr = addr + num_isr * 4 + 256 * 2 + 4
         self.log.info(f"_monitor_stub_isr           = 0x{self._monitor_stub_isr:08x}")
 
         # Pivot VTOR, if needed
@@ -180,8 +187,10 @@ class ARMV7InterruptRecordingProtocol(Thread):
 
         self.log.info(f"Inserting the stub ...")
         # Inject the stub
-        stub_offset = self._monitor_stub_isr - self._monitor_stub_base
-        self._origin.inject_asm(self._get_stub(), self._monitor_stub_base, patch={stub_offset: b'\xef\xf3\x05\x85'})
+        stub_offset = self._monitor_stub_isr - self._monitor_stub_base + 2
+        self._origin.inject_asm(self._get_stub(), self._monitor_stub_base, patch={stub_offset: b'\xef\xf3\x05\x80'})
+        self._origin.write_memory(self._monitor_stub_isr - 4, size=4, value=0x00) # set irq_buffer_ptr to 0
+        self._origin.write_memory(self._monitor_stub_mtb, size=1, value=0xff) # Ensure end of buffer flag
 
         self.log.info(f"Setting up IVT buffer...")
         # Copy the vector table to our buffer
@@ -193,13 +202,6 @@ class ARMV7InterruptRecordingProtocol(Thread):
         self._origin.write_memory(vtor, value=self._origin.read_memory(self._original_vtor, size=4), size=4)
         for interrupt_num in range(1, num_isr):
             self.set_isr(interrupt_num, self._monitor_stub_isr + 1)  # +1 for thumb mode
-
-        if self._origin.state != TargetStates.STOPPED:
-            self.log.warning(
-                "Not setting PC to the monitor stub; Target not stopped")
-        else:
-            self._origin.regs.pc = self._monitor_stub_start
-            self.log.warning(f"Setting PC to 0x{self._origin.regs.pc:8x}")
 
     def dispatch_message(self, message):
         self._avatar_fast_queue.put(message)
