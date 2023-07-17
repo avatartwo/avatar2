@@ -97,7 +97,7 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
     # Also, let's use openocd as protocol for register and memory
     if self._hardware_target:
         self._hardware_target.protocols.memory = self._hardware_target.protocols.monitor
-        self._hardware_target.protocols.registers = self._hardware_target.protocols.monitor
+        # self._hardware_target.protocols.registers = self._hardware_target.protocols.monitor
 
         self._hardware_target.protocols.interrupts.enable_interrupts()
         isr_addr = self._hardware_target.protocols.interrupts._monitor_stub_isr - 1

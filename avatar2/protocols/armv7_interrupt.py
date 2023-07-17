@@ -62,9 +62,11 @@ class ARMV7InterruptProtocol(Thread):
         self._closed = Event()
         self._monitor_stub_base = None
         self._monitor_stub_isr = None
-        self._monitor_stub_loop = None
+        self._monitor_stub_init = None
         self._monitor_stub_writeme = None
         self._monitor_stub_state = None
+        self.original_vt = None
+        self.msg_counter = 0
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.armv7-interrupt')
         Thread.__init__(self, daemon=True)
         self.log.info(f"ARMV7InterruptProtocol initialized")
@@ -152,7 +154,7 @@ class ARMV7InterruptProtocol(Thread):
     This lets us inject exc_return values into the running program
     """
     MONITOR_STUB = ("" +
-                    "dcscr:   .word 0xe000edf0\n" +
+                    "dcscr:   .word 0xDEADBEEF\n" +
                     "outstat: .word 0x000000ff\n" +
                     "writeme: .word 0x00000000\n" +
 
@@ -203,6 +205,8 @@ class ARMV7InterruptProtocol(Thread):
         """
         # The bottom 8 bits of xPSR
         xpsr = self._origin.read_register("xpsr")
+        if isinstance(xpsr, list):
+            xpsr = xpsr[0]
         xpsr &= 0xff
         return xpsr
 
@@ -223,8 +227,8 @@ class ARMV7InterruptProtocol(Thread):
 
         self._monitor_stub_base = addr
         self.log.info(f"_monitor_stub_base     = 0x{self._monitor_stub_base:08x}")
-        self._monitor_stub_loop = addr + 0x0c
-        self.log.info(f"_monitor_stub_loop     = 0x{self._monitor_stub_loop:08x}")
+        self._monitor_stub_init = addr + 4*3
+        self.log.info(f"_monitor_stub_init     = 0x{self._monitor_stub_init:08x}")
         self._monitor_stub_isr = addr + 0x1a
         self.log.info(f"_monitor_stub_isr      = 0x{self._monitor_stub_isr:08x}")
         self._monitor_stub_writeme = addr + 8
@@ -250,17 +254,19 @@ class ARMV7InterruptProtocol(Thread):
         self._origin.inject_asm(self.MONITOR_STUB, self._monitor_stub_base)
 
         self.log.info(f"Setting up IVT...")
+        self.original_vt = self._origin.read_memory(self.original_vtor, size=4, num_words=num_isr)
+
         # Set the IVT to our stub but DON'T wipe out the 0'th position.
-        self._origin.write_memory(vtor, value=self._origin.read_memory(self.original_vtor, size=4), size=4)
+        self._origin.write_memory(vtor, value=self.original_vt, size=4)
         for interrupt_num in range(1, num_isr):
             self.set_isr(interrupt_num, self._monitor_stub_isr + 1)  # +1 for thumb mode
 
         if self._origin.state != TargetStates.STOPPED:
-            self.log.warning(
+            self.log.critical(
                 "Not setting PC to the monitor stub; Target not stopped")
         else:
-            self._origin.regs.pc = self._monitor_stub_loop
-            self.log.warning(f"Setting PC to 0x{self._origin.regs.pc:8x}")
+            self._origin.regs.pc = self._monitor_stub_init
+            self.log.warning(f"Updated PC to 0x{self._origin.regs.pc:8x}")
 
     def inject_exc_return(self):
         if not self._monitor_stub_base:
@@ -282,7 +288,8 @@ class ARMV7InterruptProtocol(Thread):
 
         self.log.warning(f"Dispatching exception for interrupt number {int_num}")
 
-        TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=int_num, isr_addr=0x00)
+        msg = TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=int_num, isr_addr=self.original_vt[int_num])
+        self.msg_counter += 1
         self._avatar_fast_queue.put(msg)
 
     def run(self):
