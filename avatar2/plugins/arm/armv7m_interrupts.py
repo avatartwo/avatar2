@@ -9,7 +9,7 @@ from avatar2.protocols.qemu_armv7m_interrupt import QEmuARMV7MInterruptProtocol
 from avatar2.targets import OpenOCDTarget, QemuTarget
 from avatar2.watchmen import AFTER
 
-from avatar2.message import RemoteInterruptEnterMessage, InterruptEnterMessage
+from avatar2.message import RemoteInterruptEnterMessage, TargetInterruptEnterMessage
 from avatar2.message import RemoteInterruptExitMessage
 from avatar2.message import RemoteMemoryWriteMessage
 
@@ -41,7 +41,7 @@ def add_protocols(self, **kwargs):
     assert len(target.avatar.irq_pair) <= 2, "Interrupts only work with two targets"
 
 
-def forward_interrupt(self, message: InterruptEnterMessage):
+def forward_interrupt(self, message: TargetInterruptEnterMessage):
     origin = message.origin
     self.log.warning(
         f"forward_interrupt hit with origin '{type(origin).__name__}' and message '{pprint.pformat(message.__dict__)}'")
@@ -88,7 +88,7 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
     self.message_handlers.update({
             RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
             RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message,
-            InterruptEnterMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
+            TargetInterruptEnterMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
         })
     self.message_handlers.update({
         RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic}
@@ -112,7 +112,7 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
     # So we listen on state-updates and figure out the rest on our own
     self._interrupt_enter_handler = MethodType(forward_interrupt, self)
     self.fast_queue_listener.message_handlers.update({
-        InterruptEnterMessage: self._interrupt_enter_handler
+        TargetInterruptEnterMessage: self._interrupt_enter_handler
     })
 
 

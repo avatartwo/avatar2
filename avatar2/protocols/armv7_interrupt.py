@@ -11,7 +11,7 @@ from avatar2 import watch
 from avatar2.archs.arm import ARM
 from avatar2.targets import TargetStates
 from avatar2.message import AvatarMessage, UpdateStateMessage, \
-    BreakpointHitMessage, RemoteInterruptEnterMessage, InterruptEnterMessage
+    BreakpointHitMessage, RemoteInterruptEnterMessage, TargetInterruptEnterMessage
 from avatar2.protocols.openocd import OpenOCDProtocol
 
 # ARM System Control Block
@@ -206,7 +206,7 @@ class ARMV7InterruptProtocol(Thread):
         xpsr &= 0xff
         return xpsr
 
-    def inject_monitor_stub(self, addr=0x20001234, vtor=0x20002000, num_isr=48):
+    def inject_monitor_stub(self, addr=0x20010000, vtor=0x20011000, num_isr=48):
         """
         Injects a safe monitoring stub.
         This has the following effects:
@@ -282,7 +282,7 @@ class ARMV7InterruptProtocol(Thread):
 
         self.log.warning(f"Dispatching exception for interrupt number {int_num}")
 
-        msg = InterruptEnterMessage(self._origin, int_num)
+        msg = TargetInterruptEnterMessage(self._origin, int_num)
         self._avatar_fast_queue.put(msg)
 
     def run(self):
