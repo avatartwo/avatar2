@@ -282,7 +282,7 @@ class ARMV7InterruptProtocol(Thread):
 
         self.log.warning(f"Dispatching exception for interrupt number {int_num}")
 
-        msg = TargetInterruptEnterMessage(self._origin, int_num)
+        TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=int_num, isr_addr=0x00)
         self._avatar_fast_queue.put(msg)
 
     def run(self):

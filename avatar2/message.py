@@ -67,17 +67,19 @@ class RemoteInterruptExitMessage(AvatarMessage):
 
 
 class TargetInterruptEnterMessage(AvatarMessage):
-    def __init__(self, origin, id, interrupt_num):
+    def __init__(self, origin, id, interrupt_num, isr_addr):
         super(self.__class__, self).__init__(origin)
         self.id = id
         self.interrupt_num = interrupt_num
+        self.isr_addr = isr_addr
 
 
 class TargetInterruptExitMessage(AvatarMessage):
-    def __init__(self, origin, id, interrupt_num):
+    def __init__(self, origin, id, interrupt_num, isr_addr):
         super(self.__class__, self).__init__(origin)
         self.id = id
         self.interrupt_num = interrupt_num
+        self.isr_addr = isr_addr
 
 
 from .targets.target import TargetStates

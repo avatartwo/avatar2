@@ -28,6 +28,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
         self._monitor_stub_trace_buffer = None
         self._monitor_stub_mtb = None
         self.msg_counter = 0
+        self.original_vt = None
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
         Thread.__init__(self, daemon=True)
         self.log.info(f"ARMV7InterruptRecordingProtocol initialized")
@@ -122,7 +123,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
                     "adds r3, r3, #1\n" +  # Increment the buffer pointer
                     "movs r5, #255\n" +  # For anding to implement wrap around
                     "ands r3, r3, r5\n" +  # Wrap around the buffer
-                    "strb r3, [r1]\n" + # Save the buffer pointer
+                    "strb r3, [r1]\n" +  # Save the buffer pointer
                     "strb  r5, [r2, r3]\n" +
 
                     "movs r5, #128\n" +  # For oring to signal interrupt exit
@@ -189,13 +190,13 @@ class ARMV7InterruptRecordingProtocol(Thread):
         # Inject the stub
         stub_offset = self._monitor_stub_isr - self._monitor_stub_base + 2
         self._origin.inject_asm(self._get_stub(), self._monitor_stub_base, patch={stub_offset: b'\xef\xf3\x05\x80'})
-        self._origin.write_memory(self._monitor_stub_isr - 4, size=4, value=0x00) # set irq_buffer_ptr to 0
-        self._origin.write_memory(self._monitor_stub_mtb, size=1, value=0xff) # Ensure end of buffer flag
+        self._origin.write_memory(self._monitor_stub_isr - 4, size=4, value=0x00)  # set irq_buffer_ptr to 0
+        self._origin.write_memory(self._monitor_stub_mtb, size=1, value=0xff)  # Ensure end of buffer flag
 
         self.log.info(f"Setting up IVT buffer...")
         # Copy the vector table to our buffer
-        original_vt = self._origin.read_memory(self._original_vtor, size=4, num_words=num_isr)
-        self._origin.write_memory(self._monitor_stub_vt_buffer, value=original_vt, size=4, num_words=num_isr)
+        self.original_vt = self._origin.read_memory(self._original_vtor, size=4, num_words=num_isr)
+        self._origin.write_memory(self._monitor_stub_vt_buffer, value=self.original_vt, size=4, num_words=num_isr)
 
         self.log.info(f"Setting up IVT...")
         # Set the IVT to our stub but DON'T wipe out the 0'th position.
@@ -228,11 +229,16 @@ class ARMV7InterruptRecordingProtocol(Thread):
                 curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
                 while curr_isr != 0xff:
                     if curr_isr > 0x80:
+                        curr_isr = curr_isr & 0x7f
+                        addr = self.original_vt[curr_isr]
                         self.dispatch_message(
-                            TargetInterruptExitMessage(self._origin, self.msg_counter, interrupt_num=curr_isr & 0x7f))
+                            TargetInterruptExitMessage(self._origin, self.msg_counter, interrupt_num=curr_isr,
+                                                       isr_addr=addr))
                     else:
+                        addr = self.original_vt[curr_isr]
                         self.dispatch_message(
-                            TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=curr_isr))
+                            TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=curr_isr,
+                                                        isr_addr=addr))
                     self.msg_counter += 1
                     buffer_pos = (buffer_pos + 1) & 0xff
                     curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
