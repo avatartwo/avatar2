@@ -515,7 +515,6 @@ class Avatar(Thread):
                 "Avatar received %s. Queue-Status: %d/%d"
                 % (message, self.queue.qsize(), self.fast_queue.qsize())
             )
-
             handler = self.message_handlers.get(message.__class__, None)
             if handler is None:
                 raise Exception("No handler for Avatar-message %s registered" % message)
@@ -581,6 +580,7 @@ class AvatarFastQueueProcessor(Thread):
                 raise Exception("No handler for fast message %s registered" % message)
 
             else:
+                logging.getLogger('avatar').critical(f"Calling handler for {message} ")
                 handler(message)
 
     def stop(self):

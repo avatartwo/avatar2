@@ -11,7 +11,7 @@ from avatar2 import watch
 from avatar2.archs.arm import ARM
 from avatar2.targets import TargetStates
 from avatar2.message import AvatarMessage, UpdateStateMessage, \
-    BreakpointHitMessage, RemoteInterruptEnterMessage, TargetInterruptEnterMessage
+    BreakpointHitMessage, RemoteInterruptEnterMessage, TargetInterruptEnterMessage, TargetInterruptExitMessage
 from avatar2.protocols.openocd import OpenOCDProtocol
 
 # ARM System Control Block
@@ -68,6 +68,7 @@ class ARMV7InterruptProtocol(Thread):
         self._original_vtor = None
         self.original_vt = None
         self.msg_counter = 0
+        self._current_isr_num = 0
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.armv7-interrupt')
         Thread.__init__(self, daemon=True)
         self.log.info(f"ARMV7InterruptProtocol initialized")
@@ -256,6 +257,11 @@ class ARMV7InterruptProtocol(Thread):
             self.log.error(
                 "You need to inject the monitor stub before you can inject exc_returns")
             return False
+        int_num = self._current_isr_num
+        self.log.info(f"Returning from interrupt {int_num}.")
+        msg = TargetInterruptExitMessage(self._origin, self.msg_counter, interrupt_num=int_num,
+                                          isr_addr=self.original_vt[int_num])
+        self._avatar_fast_queue.put(msg)
         # We can just BX LR for now.
         return self._origin.write_memory(address=self._monitor_stub_writeme, size=4, value=1)
 
@@ -267,6 +273,7 @@ class ARMV7InterruptProtocol(Thread):
         # To read the xPSR register containing the ISR number we need to halt the target.
         self._origin.stop()
         int_num = self.get_current_isr_num()
+        self._current_isr_num = int_num
         self._origin.cont()
 
         self.log.warning(f"Dispatching exception for interrupt number {int_num}")

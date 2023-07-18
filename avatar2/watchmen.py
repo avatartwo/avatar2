@@ -1,3 +1,4 @@
+import logging
 from threading import Thread
 from functools import wraps
 
@@ -180,6 +181,7 @@ class Watchmen(object):
     def trigger(self, watch_type, when, *args, **kwargs):
         ret = None
         for watchman in self._watched_events[watch_type]:
+            logging.getLogger('avatar').critical(f"watchmen triggered for event {watch_type} ")
             if watchman.when == when:
                 if watchman.overwrite_return:
                     ret = watchman.react(self._avatar, *args, **kwargs)

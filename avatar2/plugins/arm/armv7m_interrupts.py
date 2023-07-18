@@ -9,7 +9,7 @@ from avatar2.protocols.qemu_armv7m_interrupt import QEmuARMV7MInterruptProtocol
 from avatar2.targets import OpenOCDTarget, QemuTarget
 from avatar2.watchmen import AFTER
 
-from avatar2.message import RemoteInterruptEnterMessage, TargetInterruptEnterMessage
+from avatar2.message import RemoteInterruptEnterMessage, TargetInterruptEnterMessage, TargetInterruptExitMessage
 from avatar2.message import RemoteInterruptExitMessage
 from avatar2.message import RemoteMemoryWriteMessage
 
@@ -41,6 +41,7 @@ def add_protocols(self, **kwargs):
     assert len(target.avatar.irq_pair) <= 2, "Interrupts only work with two targets"
 
 
+@watch("TargetInterruptEnter")
 def forward_interrupt(self, message: TargetInterruptEnterMessage):
     origin = message.origin
     self.log.warning(
@@ -75,7 +76,6 @@ def enable_interrupt_forwarding(self, from_target, to_target=None):
     self._hardware_target = from_target if isinstance(from_target, OpenOCDTarget) else to_target
     self._virtual_target = to_target if not isinstance(to_target, OpenOCDTarget) else from_target
 
-
     # Also, let's use openocd as protocol for register and memory
     if self._hardware_target:
         self._hardware_target.protocols.memory = self._hardware_target.protocols.monitor
@@ -106,8 +106,10 @@ def enable_interrupt_forwarding(self, from_target, to_target=None):
     # OpenOCDProtocol does not emit breakpointhitmessages currently,
     # So we listen on state-updates and figure out the rest on our own
     self._interrupt_enter_handler = MethodType(forward_interrupt, self)
+    self._interrupt_exit_handler = MethodType(_device_forward_interrupt_exit, self)
     self.fast_queue_listener.message_handlers.update({
         TargetInterruptEnterMessage: self._interrupt_enter_handler,
+        TargetInterruptExitMessage: self._interrupt_exit_handler,
     })
 
 
@@ -147,6 +149,11 @@ def _handle_remote_interrupt_enter_message(self, message):
     #         self.log.exception(" ")
 
 
+@watch("TargetInterruptExit")
+def _device_forward_interrupt_exit(self, message):
+    pass
+
+
 @watch('RemoteInterruptExit')
 def _handle_remote_interrupt_exit_message(self, message: RemoteInterruptExitMessage):
     """
@@ -157,8 +164,7 @@ def _handle_remote_interrupt_exit_message(self, message: RemoteInterruptExitMess
     :param message:
     :return:
     """
-    self.log.warning(
-        f"_handle_remote_interrupt_exit_message {self._irq_src}  -> {self._irq_dst} (message.origin={message.origin})")
+    self.log.warning(f"_handle_remote_interrupt_exit_message {message})")
 
     origin = message.origin
     if origin is self._virtual_target:
