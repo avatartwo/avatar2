@@ -62,9 +62,10 @@ class ARMV7InterruptProtocol(Thread):
         self._closed = Event()
         self._monitor_stub_base = None
         self._monitor_stub_isr = None
-        self._monitor_stub_init = None
+        self._monitor_stub_loop = None
         self._monitor_stub_writeme = None
         self._monitor_stub_state = None
+        self._original_vtor = None
         self.original_vt = None
         self.msg_counter = 0
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.armv7-interrupt')
@@ -155,25 +156,21 @@ class ARMV7InterruptProtocol(Thread):
     """
     MONITOR_STUB = ("" +
                     "dcscr:   .word 0xDEADBEEF\n" +
-                    "outstat: .word 0x000000ff\n" +
+                    "outstat: .word 0x00000000\n" +
                     "writeme: .word 0x00000000\n" +
 
                     "init:\n" +  # Load the addresses for later access
-                    "ldr  r1, =dcscr\n" +
-                    "ldr  r2, =outstat\n" +
-                    "ldr  r3, =writeme\n" +
-                    # NOTE: We need to use `movs` otherwise keystone will use `mov.w` which will crash a cortex m0+
-                    "movs r4, #0\n" +  # Signal Avatar that the stub initialized
-                    "str  r4, [r2]\n"
-
                     "loop: b loop\n" +  # Wait for something to happen
                     "nop\n"
 
                     "stub:\n" +
+                    "ldr  r2, =outstat\n" +
+                    # NOTE: We need to use `movs` otherwise keystone will use `mov.w` which will crash a cortex m0+
                     "movs r4, #1\n" +  # Signal Avatar that there has been an interrupt
                     "str  r4, [r2]\n"
 
                     "intloop:\n" +  # Hang in a loop until `writeme` is not 0
+                    "ldr r3, =writeme\n" +
                     "ldr r4, [r3]\n" +
                     "cmp r4, #0\n" +
                     "beq intloop\n"
@@ -183,32 +180,6 @@ class ARMV7InterruptProtocol(Thread):
                     "str  r4, [r2]\n" +  # Reset `outstat`
                     "bx   lr\n"  # Return from the interrupt, set by the interrupt calling convention
                     )
-
-    def get_user_pc(self):
-        """
-        Return the "user PC", that is, the PC at the time an interrupt occurred.
-        Returns None if we're not in an interrupt right now.
-
-        :return:
-        """
-        if self.get_current_isr_num() > 0:
-            sp = self._origin.get_register('sp')
-            val = self._origin.read_memory(sp + 24)  # 24 is the offset of PC on the stack
-            return val
-        return None
-
-    def get_current_isr_num(self):
-        """
-        If we're in an interrupt, return the current ISR number that we're in.
-
-        :return:
-        """
-        # The bottom 8 bits of xPSR
-        xpsr = self._origin.read_register("xpsr")
-        if isinstance(xpsr, list):
-            xpsr = xpsr[0]
-        xpsr &= 0xff
-        return xpsr
 
     def inject_monitor_stub(self, addr=0x20010000, vtor=0x20011000, num_isr=48):
         """
@@ -225,21 +196,21 @@ class ARMV7InterruptProtocol(Thread):
         self.log.warning(
             f"Injecting monitor stub into {self._origin.name}. (IVT: 0x{self.get_ivt_addr():08x}, 0x{self.get_vtor():08x}, 0x{vtor:08x})")
 
-        self._monitor_stub_base = addr
+        self._monitor_stub_base = addr  # + num_isr * 4 + 256 * 2
         self.log.info(f"_monitor_stub_base     = 0x{self._monitor_stub_base:08x}")
-        self._monitor_stub_init = addr + 4*3
-        self.log.info(f"_monitor_stub_init     = 0x{self._monitor_stub_init:08x}")
-        self._monitor_stub_isr = addr + 0x1a
+        self._monitor_stub_loop = self._monitor_stub_base + 4 * 3
+        self.log.info(f"_monitor_stub_init     = 0x{self._monitor_stub_loop:08x}")
+        self._monitor_stub_isr = self._monitor_stub_loop + 4
         self.log.info(f"_monitor_stub_isr      = 0x{self._monitor_stub_isr:08x}")
-        self._monitor_stub_writeme = addr + 8
-        self.log.info(f"_monitor_stub_writeme  = 0x{self._monitor_stub_writeme:08x}")
-        self._monitor_stub_state = addr + 4
+        self._monitor_stub_state = self._monitor_stub_base + 4
         self.log.info(f"_monitor_stub_outstat  = 0x{self._monitor_stub_state:08x}")
+        self._monitor_stub_writeme = self._monitor_stub_base + 8
+        self.log.info(f"_monitor_stub_writeme  = 0x{self._monitor_stub_writeme:08x}")
 
         # Pivot VTOR, if needed
         # On CM0, you can't, so don't.
-        self.original_vtor = self.get_vtor()
-        assert self.original_vtor != vtor, "VTOR is already set to the desired value."
+        self._original_vtor = self.get_vtor()
+        assert self._original_vtor != vtor, "VTOR is already set to the desired value."
 
         self.set_vtor(vtor)
         self.log.info(f"Validate new VTOR address 0x{self.get_vtor():8x}")
@@ -254,10 +225,9 @@ class ARMV7InterruptProtocol(Thread):
         self._origin.inject_asm(self.MONITOR_STUB, self._monitor_stub_base)
 
         self.log.info(f"Setting up IVT...")
-        self.original_vt = self._origin.read_memory(self.original_vtor, size=4, num_words=num_isr)
-
+        self.original_vt = self._origin.read_memory(self._original_vtor, size=4, num_words=num_isr)
         # Set the IVT to our stub but DON'T wipe out the 0'th position.
-        self._origin.write_memory(vtor, value=self.original_vt, size=4)
+        self._origin.write_memory(vtor, value=self._origin.read_memory(self._original_vtor, size=4), size=4)
         for interrupt_num in range(1, num_isr):
             self.set_isr(interrupt_num, self._monitor_stub_isr + 1)  # +1 for thumb mode
 
@@ -265,8 +235,21 @@ class ARMV7InterruptProtocol(Thread):
             self.log.critical(
                 "Not setting PC to the monitor stub; Target not stopped")
         else:
-            self._origin.regs.pc = self._monitor_stub_init
+            self._origin.write_register('pc', self._monitor_stub_isr)
             self.log.warning(f"Updated PC to 0x{self._origin.regs.pc:8x}")
+
+    def get_current_isr_num(self):
+        """
+        If we're in an interrupt, return the current ISR number that we're in.
+
+        :return:
+        """
+        # The bottom 8 bits of xPSR
+        xpsr = self._origin.read_register("xpsr")
+        if isinstance(xpsr, list):
+            xpsr = xpsr[0]
+        xpsr &= 0xff
+        return xpsr
 
     def inject_exc_return(self):
         if not self._monitor_stub_base:
@@ -288,7 +271,8 @@ class ARMV7InterruptProtocol(Thread):
 
         self.log.warning(f"Dispatching exception for interrupt number {int_num}")
 
-        msg = TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=int_num, isr_addr=self.original_vt[int_num])
+        msg = TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=int_num,
+                                          isr_addr=self.original_vt[int_num])
         self.msg_counter += 1
         self._avatar_fast_queue.put(msg)
 

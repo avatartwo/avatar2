@@ -14,7 +14,9 @@ from avatar2.watchmen import watch
 
 def add_protocols(self: avatar2.Avatar, **kwargs):
     target = kwargs['watched_target']
-    assert isinstance(target, OpenOCDTarget), "Interrupt-Recorder only works with OpenOCDTarget"
+    if not isinstance(target, OpenOCDTarget):
+        logging.getLogger('avatar').warning(f"Interrupt-Recorder only works with OpenOCDTarget but got {target}")
+        return
     logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupt-Recorder protocol to {target}")
 
     target.protocols.interrupts = ARMV7InterruptRecordingProtocol(target.avatar, target)

@@ -61,8 +61,7 @@ def gontinue_execution(self, message, **kwargs):
         target.cont()
 
 
-def enable_interrupt_forwarding(self, from_target, to_target=None,
-                                disabled_irqs=None, semi_forwarding=False):
+def enable_interrupt_forwarding(self, from_target, to_target=None):
     """
     Semi forwarding is a special mode developed for pretender.
     It allows that irqs are taken from from_target and external calls to
@@ -75,29 +74,12 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
     self._irq_dst = to_target
     self._hardware_target = from_target if isinstance(from_target, OpenOCDTarget) else to_target
     self._virtual_target = to_target if not isinstance(to_target, OpenOCDTarget) else from_target
-    self._irq_semi_forwarding = semi_forwarding
-    self._irq_ignore = [] if disabled_irqs is None else disabled_irqs
 
-    self._handle_remote_interrupt_enter_message = MethodType(
-        _handle_remote_interrupt_enter_message, self)
-    self._handle_remote_interrupt_exit_message = MethodType(
-        _handle_remote_interrupt_exit_message, self)
-    self._handle_remote_memory_write_message_nvic = MethodType(
-        _handle_remote_memory_write_message_nvic, self)
-
-    self.message_handlers.update({
-            RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
-            RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message,
-            TargetInterruptEnterMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
-        })
-    self.message_handlers.update({
-        RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic}
-    )
 
     # Also, let's use openocd as protocol for register and memory
     if self._hardware_target:
         self._hardware_target.protocols.memory = self._hardware_target.protocols.monitor
-        # self._hardware_target.protocols.registers = self._hardware_target.protocols.monitor
+        self._hardware_target.protocols.registers = self._hardware_target.protocols.monitor
 
         self._hardware_target.protocols.interrupts.enable_interrupts()
         isr_addr = self._hardware_target.protocols.interrupts._monitor_stub_isr - 1
@@ -108,11 +90,24 @@ def enable_interrupt_forwarding(self, from_target, to_target=None,
     if self._virtual_target:
         self._virtual_target.protocols.interrupts.enable_interrupts()
 
+    self._handle_remote_interrupt_enter_message = MethodType(_handle_remote_interrupt_enter_message, self)
+    self._handle_remote_interrupt_exit_message = MethodType(_handle_remote_interrupt_exit_message, self)
+    self._handle_remote_memory_write_message_nvic = MethodType(_handle_remote_memory_write_message_nvic, self)
+
+    self.message_handlers.update({
+        RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
+        RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message,
+        TargetInterruptEnterMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
+    })
+    self.message_handlers.update({
+        RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic}
+    )
+
     # OpenOCDProtocol does not emit breakpointhitmessages currently,
     # So we listen on state-updates and figure out the rest on our own
     self._interrupt_enter_handler = MethodType(forward_interrupt, self)
     self.fast_queue_listener.message_handlers.update({
-        TargetInterruptEnterMessage: self._interrupt_enter_handler
+        TargetInterruptEnterMessage: self._interrupt_enter_handler,
     })
 
 

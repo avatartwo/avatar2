@@ -74,6 +74,10 @@ class ARMV7InterruptRecordingProtocol(Thread):
         except:
             self.log.exception("Error starting ARMV7InterruptRecordingProtocol")
 
+    def get_enabled_interrupts(self, iser_num: int = 0):
+        enabled_interrupts = self._origin.read_memory(NVIC_ISER0 + iser_num * 4, size=4)
+        return enabled_interrupts
+
     # TODO what this stub does
     MONITOR_STUB = ("" +
                     # Data
