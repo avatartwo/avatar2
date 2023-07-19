@@ -213,41 +213,36 @@ class ARMV7InterruptRecordingProtocol(Thread):
 
     def run(self):
         TICK_DELAY = 0.0001
-        self.log.warning("Starting ARMV7InterruptRecordingProtocol thread")
+        self.log.info("Starting ARMV7InterruptRecordingProtocol thread")
+
+        # Wait for init
+        while self._monitor_stub_base is None:
+            sleep(TICK_DELAY)
+
         buffer_pos = 0
-        init = False
         try:
             while not (self.avatar._close.is_set() or self._close.is_set()):
-                if self._monitor_stub_base is None:
+                curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
+                if curr_isr == 0xff:
                     sleep(TICK_DELAY)
                     continue
-                if not init:
-                    curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
-                    if curr_isr == 255:
-                        init = True
-                        self.log.warning("Starting ARMV7InterruptRecordingProtocol initialization complete")
-                    else:
-                        sleep(TICK_DELAY)
-                        continue
 
-                curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
-                while curr_isr != 0xff:
-                    if curr_isr > 0x80:
-                        curr_isr = curr_isr & 0x7f
-                        addr = self.original_vt[curr_isr]
-                        self.dispatch_message(
-                            TargetInterruptExitMessage(self._origin, self.msg_counter, interrupt_num=curr_isr,
-                                                       isr_addr=addr))
-                    else:
-                        addr = self.original_vt[curr_isr]
-                        self.dispatch_message(
-                            TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=curr_isr,
-                                                        isr_addr=addr))
-                    self.msg_counter += 1
-                    buffer_pos = (buffer_pos + 1) & 0xff
-                    curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
+                self.msg_counter += 1
+                buffer_pos = (buffer_pos + 1) & 0xff
 
-                sleep(TICK_DELAY)
+                if curr_isr > 0x80:
+                    curr_isr = curr_isr & 0x7f
+                    addr = self.original_vt[curr_isr]
+                    self.dispatch_message(
+                        TargetInterruptExitMessage(self._origin, self.msg_counter, interrupt_num=curr_isr,
+                                                   isr_addr=addr))
+                else:
+                    addr = self.original_vt[curr_isr]
+                    self.dispatch_message(
+                        TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=curr_isr,
+                                                    isr_addr=addr))
+
+
         except:
             self.log.exception("Error processing trace")
             self._closed.set()

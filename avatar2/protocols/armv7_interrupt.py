@@ -53,22 +53,27 @@ class HWInterruptState(Enum):
 
 
 class ARMV7InterruptProtocol(Thread):
-    def __init__(self, avatar, origin):
+    def __init__(self, avatar, origin, config):
         self.avatar = avatar
         self._avatar_queue = avatar.queue
         self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
         self._close = Event()
         self._closed = Event()
+        self._monitor_stub_addr = None
         self._monitor_stub_base = None
         self._monitor_stub_isr = None
         self._monitor_stub_loop = None
         self._monitor_stub_writeme = None
-        self._monitor_stub_state = None
         self._original_vtor = None
         self.original_vt = None
         self.msg_counter = 0
         self._current_isr_num = 0
+
+        # This can be either a boolean or a list of allowed interleaving interrupts.
+        # Eg. [(1, 2, 3)] irq 1 before exit 2 before exit 3
+        self.irq_interleaving = False if 'irq_interleaving' not in config else config['irq_interleaving']
+
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.armv7-interrupt')
         Thread.__init__(self, daemon=True)
         self.log.info(f"ARMV7InterruptProtocol initialized")
@@ -138,8 +143,6 @@ class ARMV7InterruptProtocol(Thread):
             if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
                 raise Exception(
                     "ARMV7InterruptProtocol requires OpenOCDProtocol to be present.")
-            # self.log.debug("Resetting target")
-            # self._origin.protocols.monitor.reset()
 
             self.inject_monitor_stub()
 
@@ -156,19 +159,30 @@ class ARMV7InterruptProtocol(Thread):
     This lets us inject exc_return values into the running program
     """
     MONITOR_STUB = ("" +
-                    "dcscr:   .word 0xDEADBEEF\n" +
-                    "outstat: .word 0x00000000\n" +
-                    "writeme: .word 0x00000000\n" +
+                    "irq_buffer_ptr:    .word 0x00000000\n" +
+                    "writeme:           .word 0x00000000\n" +
 
                     "init:\n" +  # Load the addresses for later access
                     "loop: b loop\n" +  # Wait for something to happen
                     "nop\n"
 
                     "stub:\n" +
-                    "ldr  r2, =outstat\n" +
+                    # # "mrs  r0, IPSR\n" +  # Get the interrupt number
+                    "nop\nnop\n" +  # Placeholder to be replaced with `mrs r5, IPSR` due to keystone error
+                    "ldr  r1, =irq_buffer_ptr\n" +
+                    "ldr  r2, =mtb_0\n" +
+                    "ldr r3, [r1]\n" +  # Load the buffer pointer
+                    "mov r4, r3\n" +
+                    "add r4, r4, r2\n" +  # Calculate the address of the buffer pointer
+
+                    # Ensure end of buffer flag is set
+                    "adds r3, r3, #1\n" +  # Increment the buffer pointer
                     # NOTE: We need to use `movs` otherwise keystone will use `mov.w` which will crash a cortex m0+
-                    "movs r4, #1\n" +  # Signal Avatar that there has been an interrupt
-                    "str  r4, [r2]\n"
+                    "movs r5, #255\n" +  # For anding to implement wrap around
+                    "ands r3, r3, r5\n" +  # Wrap around the buffer
+                    "strb r3, [r1]\n" +  # Store updated buffer pointer
+                    "strb r5, [r2, r3]\n" +  # Set the end of buffer flag
+                    "strb r0, [r4]\n" +  # Save the interrupt number
 
                     "intloop:\n" +  # Hang in a loop until `writeme` is not 0
                     "ldr r3, =writeme\n" +
@@ -178,9 +192,15 @@ class ARMV7InterruptProtocol(Thread):
 
                     "movs r4, #0\n" +
                     "str  r4, [r3]\n" +  # Reset `writeme`
-                    "str  r4, [r2]\n" +  # Reset `outstat`
+
                     "bx   lr\n"  # Return from the interrupt, set by the interrupt calling convention
                     )
+
+    def _get_stub(self, mtb_size=256):
+        mtb_declaration = [f"mtb_{i}: .hword 0x0000" for i in range(mtb_size)]
+        mtb_declaration[0] = "mtb_0: .hword 0x00ff"
+        mtb_declaration = "\n".join(mtb_declaration)
+        return mtb_declaration + self.MONITOR_STUB
 
     def inject_monitor_stub(self, addr=0x20010000, vtor=0x20011000, num_isr=48):
         """
@@ -196,16 +216,17 @@ class ARMV7InterruptProtocol(Thread):
         """
         self.log.warning(
             f"Injecting monitor stub into {self._origin.name}. (IVT: 0x{self.get_ivt_addr():08x}, 0x{self.get_vtor():08x}, 0x{vtor:08x})")
+        MTB_SIZE = 256
 
-        self._monitor_stub_base = addr  # + num_isr * 4 + 256 * 2
+        self._monitor_stub_addr = addr
+        self.log.info(f"_monitor_stub_addr     = 0x{self._monitor_stub_addr:08x}")
+        self._monitor_stub_base = self._monitor_stub_addr + MTB_SIZE * 2
         self.log.info(f"_monitor_stub_base     = 0x{self._monitor_stub_base:08x}")
-        self._monitor_stub_loop = self._monitor_stub_base + 4 * 3
+        self._monitor_stub_loop = self._monitor_stub_base + 4 * 2
         self.log.info(f"_monitor_stub_init     = 0x{self._monitor_stub_loop:08x}")
         self._monitor_stub_isr = self._monitor_stub_loop + 4
         self.log.info(f"_monitor_stub_isr      = 0x{self._monitor_stub_isr:08x}")
-        self._monitor_stub_state = self._monitor_stub_base + 4
-        self.log.info(f"_monitor_stub_outstat  = 0x{self._monitor_stub_state:08x}")
-        self._monitor_stub_writeme = self._monitor_stub_base + 8
+        self._monitor_stub_writeme = self._monitor_stub_base + 4
         self.log.info(f"_monitor_stub_writeme  = 0x{self._monitor_stub_writeme:08x}")
 
         # Pivot VTOR, if needed
@@ -223,7 +244,9 @@ class ARMV7InterruptProtocol(Thread):
 
         self.log.info(f"Inserting the stub ...")
         # Inject the stub
-        self._origin.inject_asm(self.MONITOR_STUB, self._monitor_stub_base)
+        isr_offset = self._monitor_stub_isr - self._monitor_stub_addr
+        self._origin.inject_asm(self._get_stub(MTB_SIZE), self._monitor_stub_addr,
+                                patch={isr_offset: b'\xef\xf3\x05\x80'})
 
         self.log.info(f"Setting up IVT...")
         self.original_vt = self._origin.read_memory(self._original_vtor, size=4, num_words=num_isr)
@@ -239,19 +262,6 @@ class ARMV7InterruptProtocol(Thread):
             self._origin.write_register('pc', self._monitor_stub_isr)
             self.log.warning(f"Updated PC to 0x{self._origin.regs.pc:8x}")
 
-    def get_current_isr_num(self):
-        """
-        If we're in an interrupt, return the current ISR number that we're in.
-
-        :return:
-        """
-        # The bottom 8 bits of xPSR
-        xpsr = self._origin.read_register("xpsr")
-        if isinstance(xpsr, list):
-            xpsr = xpsr[0]
-        xpsr &= 0xff
-        return xpsr
-
     def inject_exc_return(self):
         if not self._monitor_stub_base:
             self.log.error(
@@ -259,22 +269,11 @@ class ARMV7InterruptProtocol(Thread):
             return False
         int_num = self._current_isr_num
         self.log.info(f"Returning from interrupt {int_num}.")
-        msg = TargetInterruptExitMessage(self._origin, self.msg_counter, interrupt_num=int_num,
-                                          isr_addr=self.original_vt[int_num])
-        self._avatar_fast_queue.put(msg)
         # We can just BX LR for now.
         return self._origin.write_memory(address=self._monitor_stub_writeme, size=4, value=1)
 
-    def get_stub_state(self) -> HWInterruptState:
-        state = self._origin.read_memory(self._monitor_stub_state, size=4)
-        return HWInterruptState(state)
-
-    def dispatch_exception_packet(self):
-        # To read the xPSR register containing the ISR number we need to halt the target.
-        self._origin.stop()
-        int_num = self.get_current_isr_num()
+    def dispatch_exception_packet(self, int_num):
         self._current_isr_num = int_num
-        self._origin.cont()
 
         self.log.warning(f"Dispatching exception for interrupt number {int_num}")
 
@@ -285,22 +284,23 @@ class ARMV7InterruptProtocol(Thread):
 
     def run(self):
         TICK_DELAY = 0.0001
-        self.log.warning("Starting ARMV7InterruptProtocol thread")
-        last_hw_state = HWInterruptState.HW_INTERRUPT_STATE_UNDEF
+        self.log.info("Starting ARMV7InterruptProtocol thread")
+
+        # Wait for init
+        while self._monitor_stub_addr is None:
+            sleep(TICK_DELAY)
+
+        mtb_pos = 0
         try:
             while not (self.avatar._close.is_set() or self._close.is_set()):
-                if self._monitor_stub_state is None:
+                mtb_val = self._origin.read_memory(self._monitor_stub_addr + mtb_pos, size=1)
+                if mtb_val == 0xff:
                     sleep(TICK_DELAY)
                     continue
 
-                # self.log.debug(f"ARMV7InterruptProtocol protocol tick")
-                hw_state = self.get_stub_state()
-                if hw_state != last_hw_state:
-                    self.log.warning(f"HW state changed to {hw_state}")
-                    last_hw_state = hw_state
-                    if hw_state == HWInterruptState.HW_INTERRUPT_STATE_INT:
-                        self.dispatch_exception_packet()
-                sleep(TICK_DELAY)
+                mtb_pos = (mtb_pos + 1) & 0xff
+                self.log.info(f"IRQ event {mtb_val}")
+                self.dispatch_exception_packet(int_num=mtb_val)
         except:
             self.log.exception("Error processing trace")
             self._closed.set()
