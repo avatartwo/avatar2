@@ -183,7 +183,7 @@ class Avatar(Thread):
         self.log.info("Avatar Received SIGINT")
         self.sigint_handler()
 
-    def load_plugin(self, name, local=False):
+    def load_plugin(self, name, local=False, *args, **kwargs):
         if local is True:
             plugin = __import__(name, fromlist=["."])
         else:
@@ -191,7 +191,7 @@ class Avatar(Thread):
                 "avatar2.plugins.%s" % name, fromlist=["avatar2.plugins"]
             )
 
-        plugin.load_plugin(self)
+        plugin.load_plugin(self, *args, **kwargs)
         self.loaded_plugins += [name]
 
     @watch("AddTarget")
@@ -580,7 +580,6 @@ class AvatarFastQueueProcessor(Thread):
                 raise Exception("No handler for fast message %s registered" % message)
 
             else:
-                logging.getLogger('avatar').critical(f"Calling handler for {message} ")
                 handler(message)
 
     def stop(self):
