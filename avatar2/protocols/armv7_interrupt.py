@@ -223,7 +223,7 @@ class ARMV7InterruptProtocol(Thread):
         self._monitor_stub_base = self._monitor_stub_addr + MTB_SIZE * 2
         self.log.info(f"_monitor_stub_base     = 0x{self._monitor_stub_base:08x}")
         self._monitor_stub_loop = self._monitor_stub_base + 4 * 2
-        self.log.info(f"_monitor_stub_init     = 0x{self._monitor_stub_loop:08x}")
+        self.log.info(f"_monitor_stub_loop     = 0x{self._monitor_stub_loop:08x}")
         self._monitor_stub_isr = self._monitor_stub_loop + 4
         self.log.info(f"_monitor_stub_isr      = 0x{self._monitor_stub_isr:08x}")
         self._monitor_stub_writeme = self._monitor_stub_base + 4
@@ -259,7 +259,7 @@ class ARMV7InterruptProtocol(Thread):
             self.log.critical(
                 "Not setting PC to the monitor stub; Target not stopped")
         else:
-            self._origin.write_register('pc', self._monitor_stub_isr)
+            self._origin.write_register('pc', self._monitor_stub_loop)
             self.log.warning(f"Updated PC to 0x{self._origin.regs.pc:8x}")
 
     def inject_exc_return(self):
