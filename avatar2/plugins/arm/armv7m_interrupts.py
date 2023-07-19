@@ -114,22 +114,25 @@ def transfer_interrupt_state(self, to_target, from_target):
 @watch("TargetInterruptEnter")
 def forward_interrupt(self, message: TargetInterruptEnterMessage):
     origin = message.origin
+    assert origin is self._hardware_target, "Origin is not the hardware target"
     self.log.warning(
         f"forward_interrupt hit with origin '{type(origin).__name__}' and message '{pprint.pformat(message.__dict__)}'")
     self.queue.put(message)
+    if self._plugins_armv7m_interrupts_injected_irq is not None:
+        self.log.critical("Interrupt interleaving not yet supported, skipping")
+        return
 
-    if isinstance(origin, OpenOCDTarget):
-        assert origin is self._hardware_target, "OpenOCD origin is not the hardware target"
-        irq_num = message.interrupt_num
-        self.log.info("Injecting IRQ 0x%x" % irq_num)
-        destination = self._virtual_target
-        destination.protocols.interrupts.inject_interrupt(irq_num)
-        self._plugins_armv7m_interrupts_injected_irq = irq_num
+    irq_num = message.interrupt_num
+    self.log.info("Injecting IRQ 0x%x" % irq_num)
+    destination = self._virtual_target
+    destination.protocols.interrupts.inject_interrupt(irq_num)
+    self._plugins_armv7m_interrupts_injected_irq = irq_num
 
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
     self.log.warning(
         f"_handle_remote_interrupt_enter_message origin={message.origin})")
+    self._plugins_armv7m_interrupts_injected_irq = message.interrupt_num
 
     self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,
                                                                      True)
