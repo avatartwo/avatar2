@@ -116,10 +116,10 @@ def forward_interrupt(self, message: TargetInterruptEnterMessage):
     origin = message.origin
     assert origin is self._hardware_target, "Origin is not the hardware target"
     self.log.warning(
-        f"forward_interrupt hit with origin '{type(origin).__name__}' and message '{pprint.pformat(message.__dict__)}'")
+        f"forward_interrupt hit with origin '{type(origin).__name__}' and message '{message.__dict__}'")
     self.queue.put(message)
     if self._plugins_armv7m_interrupts_injected_irq is not None:
-        self.log.critical("Interrupt interleaving not yet supported, skipping")
+        self.log.critical(f"Interrupt interleaving not yet supported, skipping interrupt {message.interrupt_num}")
         return
 
     irq_num = message.interrupt_num
