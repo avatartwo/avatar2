@@ -1,8 +1,9 @@
 import logging
 import pprint
+from time import sleep
 from types import MethodType
 
-from avatar2 import Avatar
+from avatar2 import Avatar, TargetStates
 from avatar2.archs import ARMV7M
 from avatar2.protocols.armv7_interrupt import ARMV7InterruptProtocol
 from avatar2.protocols.coresight import CoreSightProtocol
@@ -22,8 +23,7 @@ def add_protocols(self: Avatar, **kwargs):
     logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupts protocol to {target}")
     if isinstance(target, OpenOCDTarget):
         # target.protocols.interrupts = CoreSightProtocol(target.avatar, target)
-        target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target,
-                                                             self._plugins_armv7m_interrupts_config['protocol'])
+        target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target)
 
         # We want to remove the decorators around the read_memory function of
         # this target, to allow reading while it is running (thanks oocd)
@@ -41,7 +41,6 @@ def add_protocols(self: Avatar, **kwargs):
     else:
         target.avatar.irq_pair.append(target)
     assert len(target.avatar.irq_pair) <= 2, "Interrupts only work with two targets"
-
 
 
 def enable_interrupt_forwarding(self, from_target, to_target=None):
@@ -110,23 +109,29 @@ def transfer_interrupt_state(self, to_target, from_target):
     vm_irq_p.set_enabled_interrupts(enabled_interrupts)
 
 
-
 @watch("TargetInterruptEnter")
 def forward_interrupt(self, message: TargetInterruptEnterMessage):
     origin = message.origin
     assert origin is self._hardware_target, "Origin is not the hardware target"
     self.log.warning(
         f"forward_interrupt hit with origin '{type(origin).__name__}' and message '{message.__dict__}'")
-    self.queue.put(message)
-    if self._plugins_armv7m_interrupts_injected_irq is not None:
-        self.log.critical(f"Interrupt interleaving not yet supported, skipping interrupt {message.interrupt_num}")
+    if self._virtual_target.state != TargetStates.RUNNING:
+        self.log.critical(f"Interrupt destination not running, pushing irq={message.interrupt_num} onto queue")
+        self._hardware_target.protocols.interrupts.queue_irq(message.interrupt_num, message.isr_addr)
         return
+    if self._plugins_armv7m_interrupts_injected_irq is not None:
+        self.log.critical(f"Interrupt interleaving not supported, pushing irq={message.interrupt_num} onto queue")
+        self._hardware_target.protocols.interrupts.queue_irq(message.interrupt_num, message.isr_addr)
+        return
+
+    # self.queue.put(message)
 
     irq_num = message.interrupt_num
     self.log.info("Injecting IRQ 0x%x" % irq_num)
     destination = self._virtual_target
     destination.protocols.interrupts.inject_interrupt(irq_num)
     self._plugins_armv7m_interrupts_injected_irq = irq_num
+
 
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
@@ -148,7 +153,6 @@ def _handle_remote_interrupt_enter_message(self, message):
     #         self.log.exception(" ")
 
 
-
 @watch('RemoteInterruptExit')
 def _handle_remote_interrupt_exit_message(self, message: RemoteInterruptExitMessage):
     """
@@ -163,7 +167,7 @@ def _handle_remote_interrupt_exit_message(self, message: RemoteInterruptExitMess
 
     origin = message.origin
     if origin is self._virtual_target and self._plugins_armv7m_interrupts_injected_irq is not None:
-        self._hardware_target.protocols.interrupts.inject_exc_return()
+        # self._hardware_target.protocols.interrupts.inject_exc_return()
         self._plugins_armv7m_interrupts_injected_irq = None
 
     # Always ack the exit message
@@ -191,7 +195,7 @@ def _handle_remote_memory_write_message_nvic(self, message: RemoteMemoryWriteMes
     return message.id, message.value, success
 
 
-def load_plugin(avatar, config):
+def load_plugin(avatar):
     if avatar.arch not in ARMV7M:
         avatar.log.error("Tried to load armv7-m interrupt plugin " +
                          "with mismatching architecture")
@@ -200,7 +204,6 @@ def load_plugin(avatar, config):
     avatar.v7m_irq_tx_queue_name = '/avatar_v7m_irq_tx_queue'
     avatar.enable_interrupt_forwarding = MethodType(enable_interrupt_forwarding, avatar)
     avatar.transfer_interrupt_state = MethodType(transfer_interrupt_state, avatar)
-    avatar._plugins_armv7m_interrupts_config = config
     avatar._plugins_armv7m_interrupts_injected_irq = None
 
     avatar.watchmen.add_watchman('TargetInit', when=AFTER, callback=add_protocols)

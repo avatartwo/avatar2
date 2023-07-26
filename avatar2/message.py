@@ -82,4 +82,20 @@ class TargetInterruptExitMessage(AvatarMessage):
         self.isr_addr = isr_addr
 
 
+class HALEnterMessage(AvatarMessage):
+    def __init__(self, origin, function_addr: int, args: [int], return_address: int):
+        super(self.__class__, self).__init__(origin)
+        self.function_addr = function_addr
+        self.args = args
+        self.return_address = return_address
+
+
+class HALExitMessage(AvatarMessage):
+    def __init__(self, origin, function_addr: int, return_val: int, return_address: int):
+        super(self.__class__, self).__init__(origin)
+        self.function_addr = function_addr
+        self.return_val = return_val
+        self.return_address = return_address
+
+
 from .targets.target import TargetStates

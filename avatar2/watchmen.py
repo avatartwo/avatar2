@@ -34,6 +34,8 @@ class WatchedTypes(object):
         'TargetInjectInterrupt',
         'TargetInterruptEnter',
         'TargetInterruptExit',
+        'HALEnter',
+        'HALExit'
     ]
 
     def __init__(self):
@@ -76,6 +78,11 @@ def watch(watched_type):
             elif isinstance(self, Target):
                 avatar = self.avatar
                 cb_kwargs['watched_target'] = self
+            elif getattr(self, 'avatar', None) is not None:
+                avatar = self.avatar
+                cb_kwargs['watched_target'] = self
+            else:
+                logging.getLogger('avatar').warning(f"Watchmen decorator called on unsupported object {self}")
 
             avatar.watchmen.t(watched_type, BEFORE, *args, **cb_kwargs)
             ret = func(self, *args, **kwargs)

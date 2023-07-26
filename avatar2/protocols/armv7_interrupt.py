@@ -1,3 +1,4 @@
+import queue
 import sys
 from enum import Enum
 from threading import Thread, Event, Condition
@@ -53,13 +54,14 @@ class HWInterruptState(Enum):
 
 
 class ARMV7InterruptProtocol(Thread):
-    def __init__(self, avatar, origin, config):
+    def __init__(self, avatar, origin):
         self.avatar = avatar
         self._avatar_queue = avatar.queue
         self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
         self._close = Event()
         self._closed = Event()
+
         self._monitor_stub_addr = None
         self._monitor_stub_base = None
         self._monitor_stub_isr = None
@@ -67,14 +69,14 @@ class ARMV7InterruptProtocol(Thread):
         self._monitor_stub_writeme = None
         self._original_vtor = None
         self.original_vt = None
+
         self.msg_counter = 0
         self._current_isr_num = 0
 
-        # This can be either a boolean or a list of allowed interleaving interrupts.
-        # Eg. [(1, 2, 3)] irq 1 before exit 2 before exit 3
-        self.irq_interleaving = False if 'irq_interleaving' not in config else config['irq_interleaving']
+        self._internal_irq_queue = queue.Queue()
+        self._paused = Event()
 
-        self.log = logging.getLogger(f'{avatar.log.name}.protocols.armv7-interrupt')
+        self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
         Thread.__init__(self, daemon=True)
         self.log.info(f"ARMV7InterruptProtocol initialized")
 
@@ -272,6 +274,15 @@ class ARMV7InterruptProtocol(Thread):
         # We can just BX LR for now.
         return self._origin.write_memory(address=self._monitor_stub_writeme, size=4, value=1)
 
+    def queue_irq(self, interrupt_num, isr_addr):
+        self._internal_irq_queue.put((interrupt_num, isr_addr))
+
+    def pause(self):
+        self._paused.set()
+
+    def resume(self):
+        self._paused.clear()
+
     def dispatch_exception_packet(self, int_num):
         self._current_isr_num = int_num
 
@@ -293,6 +304,16 @@ class ARMV7InterruptProtocol(Thread):
         mtb_pos = 0
         try:
             while not (self.avatar._close.is_set() or self._close.is_set()):
+                try:
+                    if not self._paused.is_set() and self._internal_irq_queue.qsize() != 0:
+                        irq_num, _ = self._internal_irq_queue.get_nowait()
+                        self.dispatch_exception_packet(int_num=irq_num)
+                        self._internal_irq_queue.task_done()
+                        sleep(TICK_DELAY)
+                        continue
+                except queue.Empty:
+                    pass
+
                 mtb_val = self._origin.read_memory(self._monitor_stub_addr + mtb_pos, size=1)
                 if mtb_val == 0xff:
                     sleep(TICK_DELAY)
@@ -300,7 +321,11 @@ class ARMV7InterruptProtocol(Thread):
 
                 mtb_pos = (mtb_pos + 1) & 0xff
                 self.log.info(f"IRQ event {mtb_val}")
-                self.dispatch_exception_packet(int_num=mtb_val)
+                if self._paused.is_set():
+                    self.queue_irq(mtb_val, self.original_vt[mtb_val])
+                else:
+                    self.dispatch_exception_packet(int_num=mtb_val)
+                self.inject_exc_return()
         except:
             self.log.exception("Error processing trace")
             self._closed.set()
