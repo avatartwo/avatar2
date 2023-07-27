@@ -1,3 +1,6 @@
+from .plugins.arm import FuncArg
+
+
 class AvatarMessage(object):
     def __init__(self, origin):
         self.origin = origin
@@ -83,7 +86,7 @@ class TargetInterruptExitMessage(AvatarMessage):
 
 
 class HALEnterMessage(AvatarMessage):
-    def __init__(self, origin, function_addr: int, args: [int], return_address: int):
+    def __init__(self, origin, function_addr: int, args: [FuncArg], return_address: int):
         super(self.__class__, self).__init__(origin)
         self.function_addr = function_addr
         self.args = args

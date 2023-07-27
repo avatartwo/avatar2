@@ -1,14 +1,8 @@
-from enum import Enum
-from threading import Thread, Event
 import logging
-from time import sleep
-from types import MethodType
 
-from avatar2.targets import TargetStates
-from avatar2.message import TargetInterruptEnterMessage, TargetInterruptExitMessage, BreakpointHitMessage, \
-    HALEnterMessage, HALExitMessage
-from avatar2.protocols.openocd import OpenOCDProtocol
-from avatar2.watchmen import AFTER, BEFORE
+from avatar2.message import BreakpointHitMessage, HALEnterMessage, HALExitMessage
+from avatar2.plugins.arm import FuncArg
+from avatar2.watchmen import AFTER
 
 
 class QemuARMV7HALCallerProtocol():
@@ -16,7 +10,7 @@ class QemuARMV7HALCallerProtocol():
         self.avatar = avatar
         self._avatar_fast_queue = avatar.fast_queue
         self.target = origin
-        self.functions: [(int, [int])] = []
+        self.functions: [(int, [FuncArg])] = []
 
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
         self.log.info(f"QemuARMV7HALCallerProtocol initialized")
@@ -30,7 +24,7 @@ class QemuARMV7HALCallerProtocol():
     def connect(self):
         pass
 
-    def enable(self, functions: [(int, [int])]):
+    def enable(self, functions: [(int, [FuncArg])]):
         try:
             self.log.info(f"Enabling QEmu HAL catching")
             self.functions = functions

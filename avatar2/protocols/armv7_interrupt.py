@@ -323,9 +323,9 @@ class ARMV7InterruptProtocol(Thread):
                 self.log.info(f"IRQ event {mtb_val}")
                 if self._paused.is_set():
                     self.queue_irq(mtb_val, self.original_vt[mtb_val])
+                    self.inject_exc_return()  # TODO: This has a lot of side effects
                 else:
                     self.dispatch_exception_packet(int_num=mtb_val)
-                self.inject_exc_return()
         except:
             self.log.exception("Error processing trace")
             self._closed.set()

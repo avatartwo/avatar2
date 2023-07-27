@@ -112,7 +112,7 @@ class ARMV7HALCallerProtocol(Thread):
                     "bx r12\n"  # Return from the interrupt, set by the interrupt calling convention
                     )
 
-    def inject_monitor_stub(self, addr=0x20012000):
+    def inject_monitor_stub(self, addr=0x20011400):
         """
         Injects a safe monitoring stub.
         This has the following effects:
@@ -169,7 +169,7 @@ class ARMV7HALCallerProtocol(Thread):
         self.target.write_memory(self._stub_return_ptr, size=4, value=old_pc)
         self.target.write_memory(self._stub_arg_init_offset, size=4, value=arg_setup_offset)
         for i, arg in enumerate(args):
-            self.target.write_memory(self._stub_args + i * 4, size=4, value=arg)
+            self.target.write_memory(self._stub_args + i * 4, size=4, value=arg.value)
 
         self.target.regs.pc = self._stub_entry
         self.target.cont()

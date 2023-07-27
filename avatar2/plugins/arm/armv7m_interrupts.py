@@ -167,7 +167,7 @@ def _handle_remote_interrupt_exit_message(self, message: RemoteInterruptExitMess
 
     origin = message.origin
     if origin is self._virtual_target and self._plugins_armv7m_interrupts_injected_irq is not None:
-        # self._hardware_target.protocols.interrupts.inject_exc_return()
+        self._hardware_target.protocols.interrupts.inject_exc_return()
         self._plugins_armv7m_interrupts_injected_irq = None
 
     # Always ack the exit message

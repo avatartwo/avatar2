@@ -21,10 +21,16 @@ class HALCaller:
         self.hardware_target = None
         self.virtual_target = None
         self.functions = config['functions']
+        self.log = logging.getLogger(f'{avatar.log.name}.plugins.{self.__class__.__name__}')
 
     @watch('HALEnter')
     def hal_enter(self, message: HALEnterMessage):
         self.hardware_target.protocols.interrupts.pause()
+        for arg in message.args:
+            if arg.needs_transfer:
+                self.log.info(f"Transferring argument of size {arg.size} at address 0x{arg.value:x}")
+                arg_data = self.virtual_target.read_memory(arg.value, size=1, num_words=arg.size)
+                self.hardware_target.write_memory(arg.value, size=1, value=arg_data, num_words=arg.size)
         self.hardware_target.protocols.hal.hal_call(message.function_addr, message.args, message.return_address)
 
     @watch('HALExit')
