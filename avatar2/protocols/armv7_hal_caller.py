@@ -24,13 +24,11 @@ class ARMV7HALCallerProtocol(Thread):
 
         self._stub_base = None
         self._stub_func_ptr = None
-        self._stub_return_ptr = None
-        self._stub_arg_init_offset = None
-        self._stub_args = None
         self._stub_entry = None
         self._stub_end = None
 
         self.current_hal_call = None
+        self.return_after_hal = None
 
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
         Thread.__init__(self, daemon=True)
@@ -64,48 +62,14 @@ class ARMV7HALCallerProtocol(Thread):
     MONITOR_STUB = ("" +
                     # Data
                     "func_addr:         .word 0x00000000\n" +
-                    "return_addr:       .word 0x00000000\n" +
-                    "arg_init_offset:   .word 0x00000000\n" +
-                    # Arguments
-                    "arg_0: .word 0x00000000\n" +  # 0
-                    "arg_1: .word 0x00000000\n" +  # 4
-                    "arg_2: .word 0x00000000\n" +  # 8
-                    "arg_3: .word 0x00000000\n" +  # 12
-                    "arg_4: .word 0x00000000\n" +  # 16
-                    "arg_5: .word 0x00000000\n" +  # 20
-                    "arg_6: .word 0x00000000\n" +  # 24
-                    "arg_7: .word 0x00000000\n" +  # 28
 
-                    "push {r0, r1, r2, r3, r4}\n" +
-                    "ldr r0, =arg_init_offset\n" +
-                    "ldr r4, =func_addr\n" +
-                    "mov r3, pc\n" +
-                    "ldr r1, [r3, #44]\n" +
-                    "ldr r0, [r0]\n" +
-                    "add pc, pc, r0\n" +  # Jump to correct argument setup for the number of arguments
-                    # Argument setup for registers and stack, up to 8 arguments
-                    "ldr r0, [r1, #28]\n" +
-                    "push {r0}\n" +
-                    "ldr r0, [r1, #24]\n" +
-                    "push {r0}\n" +
-                    "ldr r0, [r1, #20]\n" +
-                    "push {r0}\n" +
-                    "ldr r0, [r1, #16]\n" +
-                    "push {r0}\n" +
-                    "ldr r3, [r1, #12]\n" +
-                    "ldr r2, [r1, #8]\n" +
-                    "ldr r1, [r1, #4]\n" +
-                    "ldr r0, =arg_0\n" +
-                    "ldr r0, [r0, #0]\n" +
                     # Load and call the actual function
-                    "ldr r4, [r4, #0]\n" +
-                    "blx r4\n" +  # r0 hold return value now
+                    "ldr r4, =func_addr\n" +
+                    "ldr r4, [r4]\n" +
+                    "blx r4\n" +  # r0 holds return value now
+                    "bkpt\n" +
+                    "nop\n"
                     # Return to previous point of execution, leaves r12 modified
-                    "ldr r1, =return_addr\n" +
-                    "ldr r1, [r1]\n" +
-                    "mov r12, r1\n" +
-                    "pop {r0, r1, r2, r3, r4}\n" +
-                    "bx r12\n"  # Return from the interrupt, set by the interrupt calling convention
                     )
 
     def inject_monitor_stub(self, addr=0x20012000):
@@ -126,15 +90,9 @@ class ARMV7HALCallerProtocol(Thread):
         self.log.info(f"_stub_base              = 0x{self._stub_base:08x}")
         self._stub_func_ptr = self._stub_base
         self.log.info(f"_stub_func_ptr          = 0x{self._stub_func_ptr:08x}")
-        self._stub_return_ptr = self._stub_base + 4
-        self.log.info(f"_stub_return_ptr        = 0x{self._stub_return_ptr:08x}")
-        self._stub_arg_init_offset = self._stub_base + 8
-        self.log.info(f"_stub_arg_init_offset   = 0x{self._stub_arg_init_offset:08x}")
-        self._stub_args = self._stub_base + 12
-        self.log.info(f"_stub_args              = 0x{self._stub_args:08x}")
-        self._stub_entry = self._stub_args + 8 * 4
+        self._stub_entry = self._stub_base + 4
         self.log.info(f"_stub_entry             = 0x{self._stub_base:08x}")
-        self._stub_end = self._stub_entry + 32 * 2
+        self._stub_end = self._stub_entry + 3 * 2
         self.log.info(f"_stub_end               = 0x{self._stub_end:08x}")
 
         # Inject the stub
@@ -155,21 +113,31 @@ class ARMV7HALCallerProtocol(Thread):
                                              return_address=self.current_hal_call[1]))
         self.current_hal_call = None
 
+        self.target.regs.r0 = self.restore_regs_r0
+        self.target.regs.r1 = self.restore_regs_r1
+        self.target.regs.r2 = self.restore_regs_r2
+        self.target.regs.r3 = self.restore_regs_r3
+        self.target.regs.r4 = self.restore_regs_r4
+        self.target.regs.pc = self.return_after_hal
+        self.target.cont()
+        self.return_after_hal = None
+
     def _do_hal_call(self, func_ptr, args):
         assert self._stub_entry is not None, "Stub not injected yet"
         self.log.warning(f"_do_hal_call (func=0x{func_ptr:x}, args = {args})...")
         self.target.stop()
-        old_pc = self.target.regs.pc
-        arg_setup_offset = -2  # Compensation for increment due to add anyways
-        if len(args) > 4:
-            arg_setup_offset += (8 - len(args)) * 4
-        else:
-            arg_setup_offset += 16 + (4 - len(args)) * 2
-        self.target.write_memory(self._stub_func_ptr + 1, size=4, value=func_ptr)
-        self.target.write_memory(self._stub_return_ptr, size=4, value=old_pc)
-        self.target.write_memory(self._stub_arg_init_offset, size=4, value=arg_setup_offset)
-        for i, arg in enumerate(args):
-            self.target.write_memory(self._stub_args + i * 4, size=4, value=arg.value)
+        self.return_after_hal = self.target.regs.pc
+        self.restore_regs_r0 = self.target.regs.r0
+        self.restore_regs_r1 = self.target.regs.r1
+        self.restore_regs_r2 = self.target.regs.r2
+        self.restore_regs_r3 = self.target.regs.r3
+        self.restore_regs_r4 = self.target.regs.r4
+        self.target.write_memory(self._stub_func_ptr, size=4, value=func_ptr | 0x01)
+
+        # TODO generic
+        self.target.regs.r0 = args[0].value
+        self.target.regs.r1 = args[1].value
+        self.target.regs.r2 = args[2].value
 
         self.target.regs.pc = self._stub_entry
         self.target.cont()
