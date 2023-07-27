@@ -77,7 +77,7 @@ class ARMV7InterruptProtocol(Thread):
         self._paused = Event()
 
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
-        Thread.__init__(self, daemon=True)
+        Thread.__init__(self, daemon=True, name=f"Thread-{self.__class__.__name__}")
         self.log.info(f"ARMV7InterruptProtocol initialized")
 
     def __del__(self):
@@ -279,9 +279,12 @@ class ARMV7InterruptProtocol(Thread):
 
     def pause(self):
         self._paused.set()
+        self.log.warning("IRQ protocol paused")
 
     def resume(self):
+        self.log.warning("IRQ protocol resuming...")
         self._paused.clear()
+        self.log.warning("IRQ protocol resumed")
 
     def dispatch_exception_packet(self, int_num):
         self._current_isr_num = int_num
@@ -313,9 +316,6 @@ class ARMV7InterruptProtocol(Thread):
                         continue
                 except queue.Empty:
                     pass
-                if self._paused.is_set():
-                    sleep(TICK_DELAY)
-                    continue
 
                 mtb_val = self._origin.read_memory(self._monitor_stub_addr + mtb_pos, size=1)
                 if mtb_val == 0xff:

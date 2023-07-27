@@ -25,6 +25,7 @@ class HALCaller:
 
     @watch('HALEnter')
     def hal_enter(self, message: HALEnterMessage):
+        self.log.warning(f"hal_enter called with {message}")
         self.hardware_target.protocols.interrupts.pause()
         for arg in message.args:
             if arg.needs_transfer:
@@ -35,8 +36,10 @@ class HALCaller:
 
     @watch('HALExit')
     def hal_exit(self, message: HALExitMessage):
-        self.virtual_target.protocols.hal.handle_hal_return(message)
+        self.log.warning(f"hal_exit called with return val {message.return_val} to 0x{message.return_address:x}")
         self.hardware_target.protocols.interrupts.resume()
+        self.virtual_target.protocols.hal.handle_hal_return(message)
+
 
     def enable_hal_calling(self):
         assert isinstance(self.hardware_target, OpenOCDTarget), "HAL-Caller `hardware_target` must be OpenOCDTarget"

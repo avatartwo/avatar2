@@ -1,18 +1,16 @@
 import queue
-from enum import Enum
 from threading import Thread, Event
 import logging
-from time import sleep
-from types import MethodType
 
-from avatar2.targets import TargetStates
-from avatar2.message import TargetInterruptEnterMessage, TargetInterruptExitMessage, BreakpointHitMessage, \
-    HALExitMessage
-from avatar2.protocols.openocd import OpenOCDProtocol
+from avatar2.message import BreakpointHitMessage, HALExitMessage
 from avatar2.watchmen import AFTER
+
+CMD_HAL_CALL = 0
+CMD_CONT = 1
 
 
 class ARMV7HALCallerProtocol(Thread):
+
     def __init__(self, avatar, origin):
         self.avatar = avatar
         self._avatar_fast_queue = avatar.fast_queue
@@ -31,7 +29,7 @@ class ARMV7HALCallerProtocol(Thread):
         self.return_after_hal = None
 
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
-        Thread.__init__(self, daemon=True)
+        Thread.__init__(self, daemon=True, name=f"Thread-{self.__class__.__name__}")
         self.log.info(f"ARMV7HALCallerProtocol initialized")
 
     def __del__(self):
@@ -49,7 +47,7 @@ class ARMV7HALCallerProtocol(Thread):
             self.log.info(f"Enabling ARMv7 HAL catching")
 
             self.inject_monitor_stub()
-            self._end_of_stub_bkpt = self.target.set_breakpoint(self._stub_end - 4)
+            # self._end_of_stub_bkpt = self.target.set_breakpoint(self._stub_end)
 
             self.avatar.watchmen.add_watchman('BreakpointHit', AFTER, self._handle_breakpoint)
 
@@ -100,14 +98,14 @@ class ARMV7HALCallerProtocol(Thread):
         self.target.inject_asm(self.MONITOR_STUB, self._stub_base)
 
     def hal_call(self, func_ptr, args, return_address):
-        self.command_queue.put((func_ptr, args, return_address))
+        self.command_queue.put((CMD_HAL_CALL, func_ptr, args, return_address))
 
     def _handle_breakpoint(self, avatar, message: BreakpointHitMessage, *args,
                            **kwargs):  # avatar, self, message: BreakpointHitMessage,
         self.log.debug(f"_handle_breakpoint got additional {args}, {kwargs}")
         if message.origin != self.target:
             return
-        if message.address != self._end_of_stub_bkpt:
+        if message.address != self._stub_end:
             return
         self.dispatch_message(HALExitMessage(self.target, self.current_hal_call[0], return_val=self.target.regs.r0,
                                              return_address=self.current_hal_call[1]))
@@ -119,8 +117,8 @@ class ARMV7HALCallerProtocol(Thread):
         self.target.regs.r3 = self.restore_regs_r3
         self.target.regs.r4 = self.restore_regs_r4
         self.target.regs.pc = self.return_after_hal
-        self.target.cont()
         self.return_after_hal = None
+        self.command_queue.put((CMD_CONT,))
 
     def _do_hal_call(self, func_ptr, args):
         assert self._stub_entry is not None, "Stub not injected yet"
@@ -148,11 +146,19 @@ class ARMV7HALCallerProtocol(Thread):
         try:
             while not (self.avatar._close.is_set() or self._close.is_set()):
                 try:
-                    func_ptr, args, return_address = self.command_queue.get(timeout=1.0)
-                    assert self.current_hal_call is None, "Already in HAL call"
+                    command = self.command_queue.get(timeout=1.0)
+                    if command[0] == CMD_HAL_CALL:
+                        func_ptr = command[1]
+                        args = command[2]
+                        return_address = command[3]
+                        assert self.current_hal_call is None, "Already in HAL call"
 
-                    self.current_hal_call = (func_ptr, return_address)
-                    self._do_hal_call(func_ptr, args)
+                        self.current_hal_call = (func_ptr, return_address)
+                        self._do_hal_call(func_ptr, args)
+                    elif command[0] == CMD_CONT:
+                        self.target.cont()
+                    else:
+                        self.log.error(f"Unknown command {command[0]}")
                     self.command_queue.task_done()
                 except queue.Empty:
                     continue

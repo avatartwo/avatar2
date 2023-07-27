@@ -285,6 +285,7 @@ class GDBProtocol(object):
         self._communicator = GDBResponseListener(
             self, self._gdbmi, queue, fast_queue, origin)
         self._communicator.daemon = True
+        self._communicator.name = f"Thread-GDBResponseListener-{origin.name}"
         self._communicator.start()
         self._origin = origin
         self.log = logging.getLogger('%s.%s' %
@@ -772,11 +773,10 @@ class GDBProtocol(object):
     def cont(self):
         """Continues the execution of the target
         :returns: True on success"""
+        self.log.info(f"Continuing execution of {self._origin.name}")
         ret, resp = self._sync_request(["-exec-continue"], GDB_PROT_RUN)
 
-        self.log.debug(
-            "Attempted to continue execution on the target. Received response: %s" %
-            resp)
+        self.log.info(f"Attempted to continue execution on the target. Received response:{resp}, returning {ret}")
         return ret
 
     def stop(self):

@@ -92,6 +92,12 @@ class HALEnterMessage(AvatarMessage):
         self.args = args
         self.return_address = return_address
 
+    def __str__(self):
+        return f"{self.__class__.__name__} from {self.origin.name} to 0x{self.return_address:x}"
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class HALExitMessage(AvatarMessage):
     def __init__(self, origin, function_addr: int, return_val: int, return_address: int):
@@ -99,6 +105,12 @@ class HALExitMessage(AvatarMessage):
         self.function_addr = function_addr
         self.return_val = return_val
         self.return_address = return_address
+
+    def __str__(self):
+        return f"{self.__class__.__name__} from {self.origin.name} to 0x{self.return_address:x} with return_value 0x{self.return_val:x}"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 from .targets.target import TargetStates

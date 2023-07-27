@@ -93,7 +93,7 @@ class OpenOCDProtocol(Thread):
             self.log.debug("Starting OpenOCD with command line: %s" % (" ".join(self._cmd_line)))
             self._openocd = subprocess.Popen(self._cmd_line,
                                              stdout=out, stderr=err)  # , shell=True)
-        Thread.__init__(self)
+        Thread.__init__(self, name=f"Thread-{self.__class__.__name__}-{origin.name}")
         self.daemon = True
 
     def connect(self):
