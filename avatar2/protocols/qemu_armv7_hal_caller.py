@@ -29,7 +29,7 @@ class QemuARMV7HALCallerProtocol():
             self.log.info(f"Enabling QEmu HAL catching")
             self.functions = functions
             for func_addr, args in self.functions:
-                self.log.info(f"Setting breakpoint at {func_addr}")
+                self.log.info(f"Setting breakpoint at 0x{func_addr:x}")
                 self.target.set_breakpoint(func_addr)
 
             self.avatar.watchmen.add_watchman('BreakpointHit', AFTER, self._handle_breakpoint)

@@ -6,3 +6,12 @@ class FuncArg:
         self.value: int = value
         self.needs_transfer: bool = needs_transfer
         self.size: int = size
+
+    def __str__(self):
+        if self.needs_transfer:
+            return f"FuncArg(value=0x{self.value:x}, needs_transfer=True, size={self.size})"
+        else:
+            return f"FuncArg(value=0x{self.value:x})"
+
+    def __repr__(self):
+        return str(self)

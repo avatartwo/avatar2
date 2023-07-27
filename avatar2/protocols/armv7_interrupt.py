@@ -313,6 +313,9 @@ class ARMV7InterruptProtocol(Thread):
                         continue
                 except queue.Empty:
                     pass
+                if self._paused.is_set():
+                    sleep(TICK_DELAY)
+                    continue
 
                 mtb_val = self._origin.read_memory(self._monitor_stub_addr + mtb_pos, size=1)
                 if mtb_val == 0xff:

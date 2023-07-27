@@ -51,7 +51,7 @@ class ARMV7HALCallerProtocol(Thread):
             self.log.info(f"Enabling ARMv7 HAL catching")
 
             self.inject_monitor_stub()
-            self._end_of_stub_bkpt = self.target.set_breakpoint(self._stub_end)
+            self._end_of_stub_bkpt = self.target.set_breakpoint(self._stub_end - 4)
 
             self.avatar.watchmen.add_watchman('BreakpointHit', AFTER, self._handle_breakpoint)
 
@@ -67,52 +67,48 @@ class ARMV7HALCallerProtocol(Thread):
                     "return_addr:       .word 0x00000000\n" +
                     "arg_init_offset:   .word 0x00000000\n" +
                     # Arguments
-                    "arg_0: .word 0x00000000\n" +
-                    "arg_1: .word 0x00000000\n" +
-                    "arg_2: .word 0x00000000\n" +
-                    "arg_3: .word 0x00000000\n" +
-                    "arg_4: .word 0x00000000\n" +
-                    "arg_5: .word 0x00000000\n" +
-                    "arg_6: .word 0x00000000\n" +
-                    "arg_7: .word 0x00000000\n" +
+                    "arg_0: .word 0x00000000\n" +  # 0
+                    "arg_1: .word 0x00000000\n" +  # 4
+                    "arg_2: .word 0x00000000\n" +  # 8
+                    "arg_3: .word 0x00000000\n" +  # 12
+                    "arg_4: .word 0x00000000\n" +  # 16
+                    "arg_5: .word 0x00000000\n" +  # 20
+                    "arg_6: .word 0x00000000\n" +  # 24
+                    "arg_7: .word 0x00000000\n" +  # 28
 
-                    "push {r0, r1, r2, r3}\n" +
+                    "push {r0, r1, r2, r3, r4}\n" +
                     "ldr r0, =arg_init_offset\n" +
+                    "ldr r4, =func_addr\n" +
+                    "mov r3, pc\n" +
+                    "ldr r1, [r3, #44]\n" +
                     "ldr r0, [r0]\n" +
-                    "add pc, pc, r0\n" +
-                    "ldr r0, =arg_7\n" +
-                    "ldr r0, [r0]\n" +
+                    "add pc, pc, r0\n" +  # Jump to correct argument setup for the number of arguments
+                    # Argument setup for registers and stack, up to 8 arguments
+                    "ldr r0, [r1, #28]\n" +
                     "push {r0}\n" +
-                    "ldr r0, =arg_6\n" +
-                    "ldr r0, [r0]\n" +
+                    "ldr r0, [r1, #24]\n" +
                     "push {r0}\n" +
-                    "ldr r0, =arg_5\n" +
-                    "ldr r0, [r0]\n" +
+                    "ldr r0, [r1, #20]\n" +
                     "push {r0}\n" +
-                    "ldr r0, =arg_4\n" +
-                    "ldr r0, [r0]\n" +
+                    "ldr r0, [r1, #16]\n" +
                     "push {r0}\n" +
-                    "ldr r3, =arg_3\n" +
-                    "ldr r3, [r3]\n" +
-                    "ldr r2, =arg_2\n" +
-                    "ldr r2, [r2]\n" +
-                    "ldr r1, =arg_1\n" +
-                    "ldr r1, [r1]\n" +
+                    "ldr r3, [r1, #12]\n" +
+                    "ldr r2, [r1, #8]\n" +
+                    "ldr r1, [r1, #4]\n" +
                     "ldr r0, =arg_0\n" +
-                    "ldr r0, [r0]\n" +
-
-                    "ldr r0, =func_addr\n" +
-                    "ldr r0, [r0]\n" +
-                    "blx r0\n" +
-
-                    "ldr r0, =return_addr\n" +
-                    "ldr r0, [r0]\n" +
-                    "mov r12, r0\n" +
-                    "pop {r0, r1, r2, r3}\n" +
+                    "ldr r0, [r0, #0]\n" +
+                    # Load and call the actual function
+                    "ldr r4, [r4, #0]\n" +
+                    "blx r4\n" +  # r0 hold return value now
+                    # Return to previous point of execution, leaves r12 modified
+                    "ldr r1, =return_addr\n" +
+                    "ldr r1, [r1]\n" +
+                    "mov r12, r1\n" +
+                    "pop {r0, r1, r2, r3, r4}\n" +
                     "bx r12\n"  # Return from the interrupt, set by the interrupt calling convention
                     )
 
-    def inject_monitor_stub(self, addr=0x20011400):
+    def inject_monitor_stub(self, addr=0x20012000):
         """
         Injects a safe monitoring stub.
         This has the following effects:
@@ -161,11 +157,15 @@ class ARMV7HALCallerProtocol(Thread):
 
     def _do_hal_call(self, func_ptr, args):
         assert self._stub_entry is not None, "Stub not injected yet"
-        self.log.warning("_do_hal_call ...")
+        self.log.warning(f"_do_hal_call (func=0x{func_ptr:x}, args = {args})...")
         self.target.stop()
         old_pc = self.target.regs.pc
-        arg_setup_offset = 2 + (8 * 6) - (len(args) * 6)
-        self.target.write_memory(self._stub_func_ptr, size=4, value=func_ptr)
+        arg_setup_offset = -2  # Compensation for increment due to add anyways
+        if len(args) > 4:
+            arg_setup_offset += (8 - len(args)) * 4
+        else:
+            arg_setup_offset += 16 + (4 - len(args)) * 2
+        self.target.write_memory(self._stub_func_ptr + 1, size=4, value=func_ptr)
         self.target.write_memory(self._stub_return_ptr, size=4, value=old_pc)
         self.target.write_memory(self._stub_arg_init_offset, size=4, value=arg_setup_offset)
         for i, arg in enumerate(args):
