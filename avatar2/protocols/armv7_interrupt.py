@@ -331,8 +331,7 @@ class ARMV7InterruptProtocol(Thread):
                     self.dispatch_exception_packet(int_num=mtb_val)
         except:
             self.log.exception("Error processing trace")
-            self._closed.set()
-        self.log.debug("Interrupt thread exiting...")
+        self.log.info("Interrupt thread exiting...")
         self._closed.set()
 
     def stop(self):

@@ -3,7 +3,7 @@ import queue
 from threading import Thread, Event
 
 from avatar2.message import BreakpointHitMessage, HALEnterMessage, HALExitMessage
-from avatar2.plugins.arm import FuncArg
+from avatar2.plugins.arm.hal import HALFunction
 from avatar2.watchmen import AFTER
 
 CMD_CONT = 0
@@ -16,7 +16,7 @@ class QemuARMV7HALCallerProtocol(Thread):
         self._close = Event()
         self._closed = Event()
         self.target = origin
-        self.functions: [(int, [FuncArg])] = []
+        self.functions: [HALFunction] = []
         self.command_queue = queue.Queue()
 
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
@@ -33,13 +33,13 @@ class QemuARMV7HALCallerProtocol(Thread):
     def connect(self):
         pass
 
-    def enable(self, functions: [(int, [FuncArg])]):
+    def enable(self, functions: [HALFunction]):
         try:
             self.log.info(f"Enabling QEmu HAL catching")
             self.functions = functions
-            for func_addr, args in self.functions:
-                self.log.info(f"Setting breakpoint at 0x{func_addr:x}")
-                self.target.set_breakpoint(func_addr)
+            for func in self.functions:
+                self.log.info(f"Setting breakpoint at 0x{func.address:x}")
+                self.target.set_breakpoint(func.address)
 
             self.avatar.watchmen.add_watchman('BreakpointHit', AFTER, self._handle_breakpoint)
 
