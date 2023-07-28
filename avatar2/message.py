@@ -1,4 +1,4 @@
-from .plugins.arm import FuncArg
+from .plugins.arm.hal import HALFunction
 
 
 class AvatarMessage(object):
@@ -86,10 +86,9 @@ class TargetInterruptExitMessage(AvatarMessage):
 
 
 class HALEnterMessage(AvatarMessage):
-    def __init__(self, origin, function_addr: int, args: [FuncArg], return_address: int):
+    def __init__(self, origin, function: HALFunction, return_address: int):
         super(self.__class__, self).__init__(origin)
-        self.function_addr = function_addr
-        self.args = args
+        self.function = function
         self.return_address = return_address
 
     def __str__(self):
@@ -100,9 +99,9 @@ class HALEnterMessage(AvatarMessage):
 
 
 class HALExitMessage(AvatarMessage):
-    def __init__(self, origin, function_addr: int, return_val: int, return_address: int):
+    def __init__(self, origin, function: HALFunction, return_val: int, return_address: int):
         super(self.__class__, self).__init__(origin)
-        self.function_addr = function_addr
+        self.function = function
         self.return_val = return_val
         self.return_address = return_address
 

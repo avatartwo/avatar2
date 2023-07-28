@@ -284,7 +284,6 @@ class ARMV7InterruptProtocol(Thread):
     def resume(self):
         self.log.warning("IRQ protocol resuming...")
         self._paused.clear()
-        self.log.warning("IRQ protocol resumed")
 
     def dispatch_exception_packet(self, int_num):
         self._current_isr_num = int_num

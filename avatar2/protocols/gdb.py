@@ -633,7 +633,7 @@ class GDBProtocol(object):
                 ["-data-write-memory-bytes", str(address), hex_contents],
                 GDB_PROT_DONE)
         if 'message' in resp and resp['message'] == 'error':
-            self.log.warning(f"Attempted to write memory. Received error response: {resp}")
+            self.log.error(f"Attempted to write memory. Received error response: {resp}")
         else:
             self.log.debug(f"Attempted to write memory. Received response [{ret}]: {resp}")
         return ret
@@ -662,7 +662,7 @@ class GDBProtocol(object):
             self.log.debug("Attempted to read memory. Received response: %s" % resp)
 
             if not res:
-                raise Exception("Failed to read memory!")
+                raise Exception(f"Failed to read memory!  Response: {resp}")
 
             # the indirection over the bytearray is needed for legacy python support
             read_mem = bytearray.fromhex(resp['payload']['memory'][0]['contents'])

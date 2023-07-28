@@ -2,7 +2,9 @@ import queue
 from threading import Thread, Event
 import logging
 
+from avatar2 import TargetStates
 from avatar2.message import BreakpointHitMessage, HALExitMessage
+from avatar2.plugins.arm.hal import HALFunction
 from avatar2.watchmen import AFTER
 
 CMD_HAL_CALL = 0
@@ -42,14 +44,15 @@ class ARMV7HALCallerProtocol(Thread):
     def connect(self):
         pass
 
-    def enable(self):
+    def enable(self, functions: [HALFunction]):
+        self.functions = functions
         try:
             self.log.info(f"Enabling ARMv7 HAL catching")
 
             self.inject_monitor_stub()
             # self._end_of_stub_bkpt = self.target.set_breakpoint(self._stub_end)
 
-            self.avatar.watchmen.add_watchman('BreakpointHit', AFTER, self._handle_breakpoint)
+            self.avatar.watchmen.add_watchman('BreakpointHit', AFTER, self._do_hal_return)
 
             self.log.info(f"Starting ARMv7 HAL catching thread")
             self.start()
@@ -97,17 +100,19 @@ class ARMV7HALCallerProtocol(Thread):
         self.log.info(f"Injecting the stub ...")
         self.target.inject_asm(self.MONITOR_STUB, self._stub_base)
 
-    def hal_call(self, func_ptr, args, return_address):
-        self.command_queue.put((CMD_HAL_CALL, func_ptr, args, return_address))
+    def hal_call(self, function: HALFunction, return_address: int):
+        self.command_queue.put((CMD_HAL_CALL, function, return_address))
 
-    def _handle_breakpoint(self, avatar, message: BreakpointHitMessage, *args,
-                           **kwargs):  # avatar, self, message: BreakpointHitMessage,
-        self.log.debug(f"_handle_breakpoint got additional {args}, {kwargs}")
+    def _do_hal_return(self, avatar, message: BreakpointHitMessage, *args,
+                       **kwargs):  # avatar, self, message: BreakpointHitMessage,
+        self.log.debug(f"_do_hal_return got additional {args}, {kwargs}")
         if message.origin != self.target:
             return
         if message.address != self._stub_end:
             return
-        self.dispatch_message(HALExitMessage(self.target, self.current_hal_call[0], return_val=self.target.regs.r0,
+        current_func: HALFunction = self.current_hal_call[0]
+
+        self.dispatch_message(HALExitMessage(self.target, current_func, return_val=self.target.regs.r0,
                                              return_address=self.current_hal_call[1]))
         self.current_hal_call = None
 
@@ -116,29 +121,45 @@ class ARMV7HALCallerProtocol(Thread):
         self.target.regs.r2 = self.restore_regs_r2
         self.target.regs.r3 = self.restore_regs_r3
         self.target.regs.r4 = self.restore_regs_r4
+        self.target.regs.sp = self.restore_regs_sp
+        self.target.regs.lr = self.restore_regs_lr
         self.target.regs.pc = self.return_after_hal
         self.return_after_hal = None
-        self.command_queue.put((CMD_CONT,))
 
-    def _do_hal_call(self, func_ptr, args):
+    def _do_hal_call(self, function: HALFunction):
         assert self._stub_entry is not None, "Stub not injected yet"
-        self.log.warning(f"_do_hal_call (func=0x{func_ptr:x}, args = {args})...")
-        self.target.stop()
+        self.log.warning(f"_do_hal_call (func=0x{function.address:x}, args = {function.args})...")
+        if self.target.state == TargetStates.RUNNING:
+            self.target.stop()
         self.return_after_hal = self.target.regs.pc
+        self.restore_regs_lr = self.target.regs.lr
+        self.restore_regs_sp = self.target.regs.sp
         self.restore_regs_r0 = self.target.regs.r0
         self.restore_regs_r1 = self.target.regs.r1
         self.restore_regs_r2 = self.target.regs.r2
         self.restore_regs_r3 = self.target.regs.r3
         self.restore_regs_r4 = self.target.regs.r4
-        self.target.write_memory(self._stub_func_ptr, size=4, value=func_ptr | 0x01)
+        self.target.write_memory(self._stub_func_ptr, size=4, value=function.address | 0x01)
 
         # TODO generic
-        self.target.regs.r0 = args[0].value
-        self.target.regs.r1 = args[1].value
-        self.target.regs.r2 = args[2].value
+        if len(function.args) >= 1:
+            self.target.regs.r0 = function.args[0].value
+        if len(function.args) >= 2:
+            self.target.regs.r1 = function.args[1].value
+        if len(function.args) >= 3:
+            self.target.regs.r2 = function.args[2].value
+        if len(function.args) >= 4:
+            self.target.regs.r3 = function.args[3].value
+        if len(function.args) >= 5:
+            for i in range(4, len(function.args)):
+                self.target.write_memory(self.target.regs.sp - 4 * (i - 4), size=4, value=function.args[i].value)
+            self.target.regs.sp = self.target.regs.sp - 4 * (len(function.args) - 4)
 
         self.target.regs.pc = self._stub_entry
         self.target.cont()
+
+    def continue_after_hal(self, message: HALExitMessage):
+        self.command_queue.put((CMD_CONT,))
 
     def run(self):
         self.log.info("Starting ARMV7HALCallerProtocol thread")
@@ -148,13 +169,12 @@ class ARMV7HALCallerProtocol(Thread):
                 try:
                     command = self.command_queue.get(timeout=1.0)
                     if command[0] == CMD_HAL_CALL:
-                        func_ptr = command[1]
-                        args = command[2]
-                        return_address = command[3]
+                        function = command[1]
+                        return_address = command[2]
                         assert self.current_hal_call is None, "Already in HAL call"
 
-                        self.current_hal_call = (func_ptr, return_address)
-                        self._do_hal_call(func_ptr, args)
+                        self.current_hal_call = (function, return_address)
+                        self._do_hal_call(function)
                     elif command[0] == CMD_CONT:
                         self.target.cont()
                     else:

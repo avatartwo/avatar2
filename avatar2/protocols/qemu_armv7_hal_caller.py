@@ -51,18 +51,20 @@ class QemuARMV7HALCallerProtocol(Thread):
     def _handle_breakpoint(self, avatar, message: BreakpointHitMessage, *args, **kwargs):
         if message.origin != self.target:
             return
-        for func_addr, args in self.functions:
-            if message.address == func_addr:
-                self.log.info(f"Dispatching HALEnterMessage for function at 0x{func_addr:x}")
+        for function in self.functions:
+            if message.address == function.address:
+                self.log.info(f"Dispatching HALEnterMessage for function at 0x{function.address:x}")
                 return_address = self.target.regs.lr
-                self.dispatch_message(HALEnterMessage(self.target, function_addr=func_addr, args=args,
-                                                      return_address=return_address))
+                self.dispatch_message(HALEnterMessage(self.target, function, return_address=return_address))
                 return
 
     def handle_hal_return(self, message: HALExitMessage):
         self.log.info(
             f"Continuing QEmu, injecting return value {message.return_val} and continuing at 0x{message.return_address:x}")
-        self.target.regs.r0 = message.return_val
+        if message.function.return_args is None or message.function.return_args[0] is not None:
+            self.target.regs.r0 = message.return_val
+        else:
+            self.log.warning(f"Return value of function is void, skipping return value injection")
         self.target.regs.pc = message.return_address
         self.command_queue.put((CMD_CONT,))
 

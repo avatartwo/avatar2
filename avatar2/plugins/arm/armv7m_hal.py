@@ -26,26 +26,35 @@ class HALCaller:
     @watch('HALEnter')
     def hal_enter(self, message: HALEnterMessage):
         self.log.warning(f"hal_enter called with {message}")
-        self.hardware_target.protocols.interrupts.pause()
-        for arg in message.args:
+        for arg in message.function.args:
             if arg.needs_transfer:
                 self.log.info(f"Transferring argument of size {arg.size} at address 0x{arg.value:x}")
                 arg_data = self.virtual_target.read_memory(arg.value, size=1, num_words=arg.size)
                 self.hardware_target.write_memory(arg.value, size=1, value=arg_data, num_words=arg.size)
-        self.hardware_target.protocols.hal.hal_call(message.function_addr, message.args, message.return_address)
+
+        self.hardware_target.protocols.interrupts.pause()
+        self.hardware_target.protocols.hal.hal_call(message.function, message.return_address)
 
     @watch('HALExit')
     def hal_exit(self, message: HALExitMessage):
         self.log.warning(f"hal_exit called with return val {message.return_val} to 0x{message.return_address:x}")
-        self.hardware_target.protocols.interrupts.resume()
-        self.virtual_target.protocols.hal.handle_hal_return(message)
+        if message.function.return_args is not None:
+            for arg in message.function.return_args:
+                if arg is None or not arg.needs_transfer:  # Return value is handled in r0 (if None -> void function)
+                    continue
+                self.log.info(f"Transferring return-argument of size {arg.size} at address 0x{arg.value:x}")
+                arg_data = self.hardware_target.protocols.execution.read_memory(arg.value, size=1, num_words=arg.size)
+                self.virtual_target.write_memory(arg.value, size=1, value=arg_data, num_words=arg.size)
 
+        self.hardware_target.protocols.interrupts.resume()
+        self.hardware_target.protocols.hal.continue_after_hal(message)
+        self.virtual_target.protocols.hal.handle_hal_return(message)
 
     def enable_hal_calling(self):
         assert isinstance(self.hardware_target, OpenOCDTarget), "HAL-Caller `hardware_target` must be OpenOCDTarget"
         assert isinstance(self.virtual_target, QemuTarget), "HAL-Caller `virtual_target` must be QemuTarget"
 
-        self.hardware_target.protocols.hal.enable()
+        self.hardware_target.protocols.hal.enable(self.functions)
         self.virtual_target.protocols.hal.enable(self.functions)
 
         self.avatar.message_handlers.update({

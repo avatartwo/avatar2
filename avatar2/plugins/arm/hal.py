@@ -1,3 +1,6 @@
+from typing import Union, List
+
+
 class FuncArg:
     def __init__(self, value: int | None, needs_transfer=False, size=None):
         assert value is None or isinstance(value, int), "Address must be an integer or None for read from register"
@@ -24,7 +27,7 @@ class FuncReturnArg(FuncArg):
 
 class HALFunction:
 
-    def __init__(self, address: int, args: [FuncArg], return_args: [FuncReturnArg] = None):
+    def __init__(self, address: int, args: [FuncArg], return_args: Union[List[FuncReturnArg], None] = None):
         self.address = address
         self.args = args
         self.return_args = return_args
