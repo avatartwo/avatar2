@@ -305,21 +305,27 @@ class OpenOCDProtocol(Thread):
         :param raw:       Specifies whether to write in raw or word mode
         :returns:         True on success else False
         """
-        for i in range(0, num_words):
-            if raw:
-                write_val = '0x' + encode(value[i * size:i * size + size], 'hex_codec').decode('ascii')
-            elif isinstance(value, int):
-                write_val = hex(value).rstrip("L")
-            else:
-                # A list of ints
-                write_val = hex(value[i]).rstrip("L")
-            write_addr = hex(address + i * size).rstrip("L")
-            if size == 1:
-                self.execute_command('mwb %s %s' % (write_addr, write_val))
-            elif size == 2:
-                self.execute_command('mwh %s %s' % (write_addr, write_val))
-            else:
-                self.execute_command('mww %s %s' % (write_addr, write_val))
+        if raw:
+            if not (isinstance(value, list) or isinstance(value, bytes) or isinstance(value, bytearray)):
+                self.log.error(f"Raw write value must be a list of integers")
+                return False
+            write_val = '{' + ' '.join([hex(v).rstrip("L") for v in value]) + '}'
+            width = size * 8
+            self.execute_command(f"write_memory {hex(address).rstrip('L')} {width} {write_val}")
+        else:
+            for i in range(0, num_words):
+                if isinstance(value, int):
+                    write_val = hex(value).rstrip("L")
+                else:
+                    # A list of ints
+                    write_val = hex(value[i]).rstrip("L")
+                write_addr = hex(address + i * size).rstrip("L")
+                if size == 1:
+                    self.execute_command(f'mwb {write_addr} {write_val}')
+                elif size == 2:
+                    self.execute_command(f'mwh {write_addr} {write_val}')
+                else:
+                    self.execute_command(f'mww {write_addr} {write_val}')
 
         return True
 
@@ -334,25 +340,31 @@ class OpenOCDProtocol(Thread):
         """
         num2fmt = {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}
         raw_mem = b''
-        words = []
-        for i in range(0, num_words):
-            read_addr = hex(address + (i * size)).rstrip('L')
-            if size == 1:
-                resp = self.execute_command('mrb %s' % read_addr)
-            elif size == 2:
-                resp = self.execute_command("mrh %s" % read_addr)
-            else:
-                resp = self.execute_command('mrw %s' % read_addr)
-            if resp:
-                val = int(resp, 16)
-                raw_mem += val.to_bytes(size, byteorder=sys.byteorder)
-            else:
-                self.log.error("Could not read from address %s" % read_addr)
-                return None
-
         if raw:
-            return raw_mem
+            ocd_size = size * 8
+            resp = self.execute_command(f"read_memory {hex(address).rstrip('L')} {ocd_size} {num_words}")
+            if resp:
+                raw_mem = bytearray([int(v, 16) for v in resp.split(' ')])
+                return raw_mem
+            else:
+                self.log.error(f"Could not read from address 0x{address:x}")
+                return None
         else:
+            for i in range(0, num_words):
+                read_addr = hex(address + (i * size)).rstrip('L')
+                if size == 1:
+                    resp = self.execute_command('mrb %s' % read_addr)
+                elif size == 2:
+                    resp = self.execute_command("mrh %s" % read_addr)
+                else:
+                    resp = self.execute_command('mrw %s' % read_addr)
+                if resp:
+                    val = int(resp, 16)
+                    raw_mem += val.to_bytes(size, byteorder=sys.byteorder)
+                else:
+                    self.log.error(f"Could not read from address {read_addr}")
+                    return None
+
             # Todo: Endianness support
             fmt = '<%d%s' % (num_words, num2fmt[size])
             mem = list(unpack(fmt, raw_mem))

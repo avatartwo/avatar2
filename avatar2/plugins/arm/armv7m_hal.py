@@ -30,7 +30,7 @@ class HALCaller:
             if arg.needs_transfer:
                 self.log.info(f"Transferring argument of size {arg.size} at address 0x{arg.value:x}")
                 arg_data = self.virtual_target.read_memory(arg.value, size=1, num_words=arg.size)
-                self.hardware_target.write_memory(arg.value, size=1, value=arg_data, num_words=arg.size)
+                self.hardware_target.write_memory(arg.value, size=1, value=arg_data, num_words=arg.size, raw=True)
 
         self.hardware_target.protocols.interrupts.pause()
         self.hardware_target.protocols.hal.hal_call(message.function, message.return_address)
@@ -43,7 +43,7 @@ class HALCaller:
                 if arg is None or not arg.needs_transfer:  # Return value is handled in r0 (if None -> void function)
                     continue
                 self.log.info(f"Transferring return-argument of size {arg.size} at address 0x{arg.value:x}")
-                arg_data = self.hardware_target.protocols.execution.read_memory(arg.value, size=1, num_words=arg.size)
+                arg_data = self.hardware_target.read_memory(arg.value, size=1, num_words=arg.size, raw=True)
                 self.virtual_target.write_memory(arg.value, size=1, value=arg_data, num_words=arg.size)
 
         self.hardware_target.protocols.interrupts.resume()
