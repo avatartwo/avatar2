@@ -111,10 +111,7 @@ class ARMV7HALCallerProtocol(Thread):
         if message.address != self._stub_end:
             return
         current_func: HALFunction = self.current_hal_call[0]
-
-        self.dispatch_message(HALExitMessage(self.target, current_func, return_val=self.target.regs.r0,
-                                             return_address=self.current_hal_call[1]))
-        self.current_hal_call = None
+        return_address = self.current_hal_call[1]
 
         self.target.regs.r0 = self.restore_regs_r0
         self.target.regs.r1 = self.restore_regs_r1
@@ -125,6 +122,10 @@ class ARMV7HALCallerProtocol(Thread):
         self.target.regs.lr = self.restore_regs_lr
         self.target.regs.pc = self.return_after_hal
         self.return_after_hal = None
+
+        self.dispatch_message(HALExitMessage(self.target, current_func, return_val=self.target.regs.r0,
+                                             return_address=return_address))
+        self.current_hal_call = None
 
     def _do_hal_call(self, function: HALFunction):
         assert self._stub_entry is not None, "Stub not injected yet"

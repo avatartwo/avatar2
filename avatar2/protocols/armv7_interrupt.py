@@ -295,6 +295,11 @@ class ARMV7InterruptProtocol(Thread):
         self.msg_counter += 1
         self._avatar_fast_queue.put(msg)
 
+    def _panic_exec(self):
+        self.log.critical(f"Received hard-fault exception, stopping target")
+        if self._origin.state == TargetStates.RUNNING:
+            self._origin.stop()
+        self._close.set()
     def run(self):
         TICK_DELAY = 0.0001
         self.log.info("Starting ARMV7InterruptProtocol thread")
@@ -311,6 +316,8 @@ class ARMV7InterruptProtocol(Thread):
                         irq_num, _ = self._internal_irq_queue.get_nowait()
                         self.dispatch_exception_packet(int_num=irq_num)
                         self._internal_irq_queue.task_done()
+                        if irq_num == 0x3:  # Hard-fault
+                            self._panic_exec()
                         sleep(TICK_DELAY)
                         continue
                 except queue.Empty:
@@ -328,6 +335,8 @@ class ARMV7InterruptProtocol(Thread):
                     self.inject_exc_return()  # TODO: This has a lot of side effects
                 else:
                     self.dispatch_exception_packet(int_num=mtb_val)
+                if mtb_val == 0x3:  # Hard-fault
+                    self._panic_exec()
         except:
             self.log.exception("Error processing trace")
         self.log.info("Interrupt thread exiting...")

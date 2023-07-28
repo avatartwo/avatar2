@@ -46,9 +46,9 @@ class HALCaller:
                 arg_data = self.hardware_target.read_memory(arg.value, size=1, num_words=arg.size, raw=True)
                 self.virtual_target.write_memory(arg.value, size=1, value=arg_data, num_words=arg.size)
 
-        self.hardware_target.protocols.interrupts.resume()
         self.hardware_target.protocols.hal.continue_after_hal(message)
         self.virtual_target.protocols.hal.handle_hal_return(message)
+        self.hardware_target.protocols.interrupts.resume()
 
     def enable_hal_calling(self):
         assert isinstance(self.hardware_target, OpenOCDTarget), "HAL-Caller `hardware_target` must be OpenOCDTarget"
