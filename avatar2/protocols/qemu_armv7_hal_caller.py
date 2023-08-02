@@ -66,6 +66,9 @@ class QemuARMV7HALCallerProtocol(Thread):
         else:
             self.log.warning(f"Return value of function is void, skipping return value injection")
         self.target.regs.pc = message.return_address
+        self.continue_target()
+
+    def continue_target(self):
         self.command_queue.put((CMD_CONT,))
 
     def run(self):
