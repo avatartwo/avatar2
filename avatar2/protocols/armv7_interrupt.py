@@ -43,22 +43,29 @@ ETM_FFRR = 0xe0041028
 ETM_FFLR = 0xe004102c
 
 
-class HWInterruptState(Enum):
-    HW_INTERRUPT_STATE_UNDEF = 0x000000ff
-    HW_INTERRUPT_STATE_IDLE = 0
-    HW_INTERRUPT_STATE_INT = 1
+class UniqueQueue(queue.Queue):
+    def __contains__(self, item):
+        with self.mutex:
+            return item in self.queue
 
-    @classmethod
-    def has_value(cls, value):
-        return value in cls._value2member_map_
+    def _init(self, maxsize):
+        self.queue = list()
+
+    def _put(self, item):
+        if item not in self.queue:
+            self.queue.append(item)
+
+    def _get(self):
+        return self.queue.pop(0)
 
 
 class ARMV7InterruptProtocol(Thread):
-    def __init__(self, avatar, origin):
+    def __init__(self, avatar, origin, ignored_irqs=[]):
         self.avatar = avatar
         self._avatar_queue = avatar.queue
         self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
+        self._ignored_irqs = ignored_irqs
         self._close = Event()
         self._closed = Event()
 
@@ -69,11 +76,12 @@ class ARMV7InterruptProtocol(Thread):
         self._monitor_stub_writeme = None
         self._original_vtor = None
         self.original_vt = None
+        self.injected_interrupt = None
 
         self.msg_counter = 0
         self._current_isr_num = 0
 
-        self._internal_irq_queue = queue.Queue()
+        self._internal_irq_queue = UniqueQueue()
         self._paused = Event()
 
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
@@ -84,6 +92,8 @@ class ARMV7InterruptProtocol(Thread):
         self.shutdown()
 
     def inject_interrupt(self, interrupt_number, cpu_number=0):
+        self.log.critical(f"Injecting interrupt {interrupt_number}")
+        self.injected_interrupt = interrupt_number
         # Set an interrupt using the STIR
         self._origin.write_memory(SCB_STIR, 4, interrupt_number)
 
@@ -93,6 +103,7 @@ class ARMV7InterruptProtocol(Thread):
         :param interrupt_number:
         :return:
         """
+        self.log.critical(f"Enabling interrupt {interrupt_number}")
         assert (0 < interrupt_number < 256)
         iser_num = interrupt_number // 32  # 32 interrupts per ISER register
         iser_addr = NVIC_ISER0 + (iser_num * 4)  # Calculate ISER_X address
@@ -270,6 +281,7 @@ class ARMV7InterruptProtocol(Thread):
                 "You need to inject the monitor stub before you can inject exc_returns")
             return False
         int_num = self._current_isr_num
+        self._current_isr_num = None
         self.log.info(f"Returning from interrupt {int_num}.")
         # We can just BX LR for now.
         return self._origin.write_memory(address=self._monitor_stub_writeme, size=4, value=1)
@@ -288,7 +300,7 @@ class ARMV7InterruptProtocol(Thread):
     def dispatch_exception_packet(self, int_num):
         self._current_isr_num = int_num
 
-        self.log.warning(f"Dispatching exception for interrupt number {int_num}")
+        self.log.debug(f"Dispatching exception for interrupt number {int_num}")
 
         msg = TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=int_num,
                                           isr_addr=self.original_vt[int_num])
@@ -300,6 +312,7 @@ class ARMV7InterruptProtocol(Thread):
         if self._origin.state == TargetStates.RUNNING:
             self._origin.stop()
         self._close.set()
+
     def run(self):
         TICK_DELAY = 0.0001
         self.log.info("Starting ARMV7InterruptProtocol thread")
@@ -314,6 +327,7 @@ class ARMV7InterruptProtocol(Thread):
                 try:
                     if not self._paused.is_set() and self._internal_irq_queue.qsize() != 0:
                         irq_num, _ = self._internal_irq_queue.get_nowait()
+                        self.log.info(f"IRQ event from queue {irq_num} q={self._internal_irq_queue}")
                         self.dispatch_exception_packet(int_num=irq_num)
                         self._internal_irq_queue.task_done()
                         if irq_num == 0x3:  # Hard-fault
@@ -329,6 +343,12 @@ class ARMV7InterruptProtocol(Thread):
                     continue
 
                 mtb_pos = (mtb_pos + 1) & 0xff
+                if mtb_val in self._ignored_irqs:
+                    self.log.warning(f"Ignoring irq event {mtb_val}")
+                    self._current_isr_num = mtb_val  # TODO: It's not ignoring it's just syncing
+                    # self.inject_exc_return()
+                    continue
+
                 self.log.info(f"IRQ event {mtb_val}")
                 if self._paused.is_set():
                     self.queue_irq(mtb_val, self.original_vt[mtb_val])

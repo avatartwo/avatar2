@@ -22,8 +22,9 @@ def add_protocols(self: Avatar, **kwargs):
     target = kwargs['watched_target']
     logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupts protocol to {target}")
     if isinstance(target, OpenOCDTarget):
-        # target.protocols.interrupts = CoreSightProtocol(target.avatar, target)
-        target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target)
+        ignored_irqs = [] if 'ignored_irqs' not in self._plugins_armv7m_interrupts_config else \
+            self._plugins_armv7m_interrupts_config['ignored_irqs']
+        target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target, ignored_irqs)
 
         # We want to remove the decorators around the read_memory function of
         # this target, to allow reading while it is running (thanks oocd)
@@ -113,16 +114,16 @@ def transfer_interrupt_state(self, to_target, from_target):
 def forward_interrupt(self, message: TargetInterruptEnterMessage):
     origin = message.origin
     assert origin is self._hardware_target, "Origin is not the hardware target"
-    self.log.warning(
-        f"forward_interrupt hit with origin '{type(origin).__name__}' and message '{message.__dict__}'")
+    self.log.info(f"forwarding interrupt {message.interrupt_num}")
+
     if self._virtual_target.state != TargetStates.RUNNING:
         self.log.critical(f"Interrupt destination not running, pushing irq={message.interrupt_num} onto queue")
         self._hardware_target.protocols.interrupts.queue_irq(message.interrupt_num, message.isr_addr)
-        return
+        return False
     if self._plugins_armv7m_interrupts_injected_irq is not None:
-        self.log.critical(f"Interrupt interleaving not supported, pushing irq={message.interrupt_num} onto queue")
+        self.log.critical(f"Interrupt nesting not supported, pushing irq={message.interrupt_num} onto queue")
         self._hardware_target.protocols.interrupts.queue_irq(message.interrupt_num, message.isr_addr)
-        return
+        return False
 
     # self.queue.put(message)
 
@@ -131,13 +132,20 @@ def forward_interrupt(self, message: TargetInterruptEnterMessage):
     destination = self._virtual_target
     destination.protocols.interrupts.inject_interrupt(irq_num)
     self._plugins_armv7m_interrupts_injected_irq = irq_num
+    self._plugins_armv7m_interrupts_from_hardware = True
+    self.log.warning(f"forward_interrupt {self._plugins_armv7m_interrupts_from_hardware})")
+    return True
 
 
 @watch('RemoteInterruptEnter')
 def _handle_remote_interrupt_enter_message(self, message):
     self.log.warning(
-        f"_handle_remote_interrupt_enter_message origin={message.origin})")
+        f"_handle_remote_interrupt_enter_message {self._plugins_armv7m_interrupts_from_hardware})")
     self._plugins_armv7m_interrupts_injected_irq = message.interrupt_num
+
+    if not self._plugins_armv7m_interrupts_from_hardware:
+        self._plugins_armv7m_interrupts_from_hardware = True
+        self._hardware_target.protocols.interrupts.inject_interrupt(message.interrupt_num)
 
     self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,
                                                                      True)
@@ -167,12 +175,13 @@ def _handle_remote_interrupt_exit_message(self, message: RemoteInterruptExitMess
 
     origin = message.origin
     if origin is self._virtual_target and self._plugins_armv7m_interrupts_injected_irq is not None:
-        self._hardware_target.protocols.interrupts.inject_exc_return()
+        if self._plugins_armv7m_interrupts_from_hardware:
+            self._hardware_target.protocols.interrupts.inject_exc_return()
+            self._plugins_armv7m_interrupts_from_hardware = False
         self._plugins_armv7m_interrupts_injected_irq = None
 
     # Always ack the exit message
-    self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id,
-                                                                    True)
+    self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id, True)
 
 
 def _handle_remote_memory_write_message_nvic(self, message: RemoteMemoryWriteMessage):
@@ -195,7 +204,7 @@ def _handle_remote_memory_write_message_nvic(self, message: RemoteMemoryWriteMes
     return message.id, message.value, success
 
 
-def load_plugin(avatar):
+def load_plugin(avatar, config):
     if avatar.arch not in ARMV7M:
         avatar.log.error("Tried to load armv7-m interrupt plugin " +
                          "with mismatching architecture")
@@ -205,5 +214,7 @@ def load_plugin(avatar):
     avatar.enable_interrupt_forwarding = MethodType(enable_interrupt_forwarding, avatar)
     avatar.transfer_interrupt_state = MethodType(transfer_interrupt_state, avatar)
     avatar._plugins_armv7m_interrupts_injected_irq = None
+    avatar._plugins_armv7m_interrupts_from_hardware = False
+    avatar._plugins_armv7m_interrupts_config = config
 
     avatar.watchmen.add_watchman('TargetInit', when=AFTER, callback=add_protocols)

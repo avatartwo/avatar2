@@ -92,7 +92,7 @@ class HALEnterMessage(AvatarMessage):
         self.return_address = return_address
 
     def __str__(self):
-        return f"{self.__class__.__name__} from {self.origin.name} to 0x{self.return_address:x}"
+        return f"{self.__class__.__name__} from {self.origin.name} returning to 0x{self.return_address:x}"
 
     def __repr__(self):
         return self.__str__()

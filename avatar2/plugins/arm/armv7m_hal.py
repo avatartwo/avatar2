@@ -4,6 +4,7 @@ from types import MethodType
 import avatar2
 from avatar2 import QemuTarget
 from avatar2.archs import ARMV7M
+from avatar2.plugins.arm.hal import RegisterFuncArg
 from avatar2.protocols.armv7_hal_caller import ARMV7HALCallerProtocol
 from avatar2.protocols.qemu_armv7_hal_caller import QemuARMV7HALCallerProtocol
 from avatar2.targets import OpenOCDTarget
@@ -27,10 +28,16 @@ class HALCaller:
     def hal_enter(self, message: HALEnterMessage):
         self.log.warning(f"hal_enter called with {message}")
         for arg in message.function.args:
+            if isinstance(arg, RegisterFuncArg):
+                arg.value = self.virtual_target.read_register(arg.register)
             if arg.needs_transfer:
                 self.log.info(f"Transferring argument of size {arg.size} at address 0x{arg.value:x}")
                 arg_data = self.virtual_target.read_memory(arg.value, size=1, num_words=arg.size)
                 self.hardware_target.write_memory(arg.value, size=1, value=arg_data, num_words=arg.size, raw=True)
+        for field in message.function.context_transfers:
+            self.log.warning(f"Transferring context field of size {field.size} at address 0x{field.value:x}")
+            field_data = self.virtual_target.read_memory(field.value, size=1, num_words=field.size)
+            self.hardware_target.write_memory(field.value, size=1, value=field_data, num_words=field.size, raw=True)
 
         self.hardware_target.protocols.interrupts.pause()
         self.hardware_target.protocols.hal.hal_call(message.function, message.return_address)
