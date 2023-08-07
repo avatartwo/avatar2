@@ -39,7 +39,7 @@ void qmp_avatar_armv7m_set_vector_table_base(int64_t num_cpu, int64_t base, Erro
 }
 
 
-void avatar_armv7m_nvic_forward_write(uint32_t offset, uint32_t value, unsigned size)
+bool avatar_armv7m_nvic_forward_write(uint32_t offset, uint32_t value, unsigned size)
 {
     int ret;
     RemoteMemoryResp resp;
@@ -47,7 +47,7 @@ void avatar_armv7m_nvic_forward_write(uint32_t offset, uint32_t value, unsigned 
     qemu_log_mask(LOG_AVATAR, "armv7m nvic write at offset 0x%x\n", offset);
     qemu_log_flush();
     if(!armv7m_exception_handling_enabled){
-        return;
+        return false;
     }
 
     memset(&resp, 0, sizeof(resp));
@@ -60,10 +60,10 @@ void avatar_armv7m_nvic_forward_write(uint32_t offset, uint32_t value, unsigned 
     qemu_avatar_mq_send(rmem_tx_queue_ref, &request, sizeof(request));
     ret = qemu_avatar_mq_receive(rmem_rx_queue_ref, &resp, sizeof(resp));
     if(!resp.success || (resp.id != request.id)){
-
         error_report("RemoteMemoryWrite for NVIC failed (%d)!\n", ret);
         exit(1);
     }
+    return resp.value != 0; // 0 -> keep processing this memory operation; 1 -> skip processing this memory operation
 }
 
 void qmp_avatar_armv7m_enable_irq(const char *irq_rx_queue_name,

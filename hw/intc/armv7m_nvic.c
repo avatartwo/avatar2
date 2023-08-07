@@ -2364,7 +2364,9 @@ static MemTxResult nvic_sysreg_write(void *opaque, hwaddr addr,
     unsigned setval = 0;
 
 #ifdef CONFIG_AVATAR
-    avatar_armv7m_nvic_forward_write(offset, value, size);
+    if (avatar_armv7m_nvic_forward_write(offset, value, size)) {
+        goto exit_ok;
+    }
 #endif
     trace_nvic_sysreg_write(addr, value, size);
 
