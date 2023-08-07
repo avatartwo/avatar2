@@ -60,11 +60,10 @@ class UniqueQueue(queue.Queue):
 
 
 class ARMV7InterruptProtocol(Thread):
-    def __init__(self, avatar, origin, software_irqs=[]):
+    def __init__(self, avatar, origin):
         self.avatar = avatar
         self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
-        self._software_irqs = software_irqs
         self._close = Event()
         self._closed = Event()
 
@@ -344,12 +343,6 @@ class ARMV7InterruptProtocol(Thread):
                     continue
 
                 mtb_pos = (mtb_pos + 1) & 0xff
-
-                if mtb_val in self._software_irqs:
-                    self.log.warning(f"Software irq event {mtb_val}")
-                    self._current_isr_num = mtb_val  # TODO: It's not ignoring it's just syncing
-                    # self.inject_exc_return()
-                    continue
 
                 self.log.info(f"IRQ event {mtb_val}")
                 if self._paused.is_set():

@@ -22,9 +22,7 @@ def add_protocols(self: Avatar, **kwargs):
     target = kwargs['watched_target']
     logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupts protocol to {target}")
     if isinstance(target, OpenOCDTarget):
-        software_irqs = [] if 'software_irqs' not in self._plugins_armv7m_interrupts_config else \
-            self._plugins_armv7m_interrupts_config['software_irqs']
-        target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target, software_irqs)
+        target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target)
 
         # We want to remove the decorators around the read_memory function of
         # this target, to allow reading while it is running (thanks oocd)
