@@ -60,12 +60,11 @@ class UniqueQueue(queue.Queue):
 
 
 class ARMV7InterruptProtocol(Thread):
-    def __init__(self, avatar, origin, ignored_irqs=[]):
+    def __init__(self, avatar, origin, software_irqs=[]):
         self.avatar = avatar
-        self._avatar_queue = avatar.queue
         self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
-        self._ignored_irqs = ignored_irqs
+        self._software_irqs = software_irqs
         self._close = Event()
         self._closed = Event()
 
@@ -180,6 +179,7 @@ class ARMV7InterruptProtocol(Thread):
                     "nop\n"
 
                     "stub:\n" +
+                    "push {r4, r5}\n" +
                     # # "mrs  r0, IPSR\n" +  # Get the interrupt number
                     "nop\nnop\n" +  # Placeholder to be replaced with `mrs r5, IPSR` due to keystone error
                     "ldr  r1, =irq_buffer_ptr\n" +
@@ -205,6 +205,7 @@ class ARMV7InterruptProtocol(Thread):
 
                     "movs r4, #0\n" +
                     "str  r4, [r3]\n" +  # Reset `writeme`
+                    "pop {r4, r5}\n" +
 
                     "bx   lr\n"  # Return from the interrupt, set by the interrupt calling convention
                     )
@@ -257,7 +258,7 @@ class ARMV7InterruptProtocol(Thread):
 
         self.log.info(f"Inserting the stub ...")
         # Inject the stub
-        isr_offset = self._monitor_stub_isr - self._monitor_stub_addr
+        isr_offset = self._monitor_stub_isr - self._monitor_stub_addr + 2 # +2 for push instruction
         self._origin.inject_asm(self._get_stub(MTB_SIZE), self._monitor_stub_addr,
                                 patch={isr_offset: b'\xef\xf3\x05\x80'})
 
@@ -343,8 +344,9 @@ class ARMV7InterruptProtocol(Thread):
                     continue
 
                 mtb_pos = (mtb_pos + 1) & 0xff
-                if mtb_val in self._ignored_irqs:
-                    self.log.warning(f"Ignoring irq event {mtb_val}")
+
+                if mtb_val in self._software_irqs:
+                    self.log.warning(f"Software irq event {mtb_val}")
                     self._current_isr_num = mtb_val  # TODO: It's not ignoring it's just syncing
                     # self.inject_exc_return()
                     continue

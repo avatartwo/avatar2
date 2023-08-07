@@ -22,9 +22,9 @@ def add_protocols(self: Avatar, **kwargs):
     target = kwargs['watched_target']
     logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupts protocol to {target}")
     if isinstance(target, OpenOCDTarget):
-        ignored_irqs = [] if 'ignored_irqs' not in self._plugins_armv7m_interrupts_config else \
-            self._plugins_armv7m_interrupts_config['ignored_irqs']
-        target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target, ignored_irqs)
+        software_irqs = [] if 'software_irqs' not in self._plugins_armv7m_interrupts_config else \
+            self._plugins_armv7m_interrupts_config['software_irqs']
+        target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target, software_irqs)
 
         # We want to remove the decorators around the read_memory function of
         # this target, to allow reading while it is running (thanks oocd)
@@ -77,11 +77,6 @@ def enable_interrupt_forwarding(self, from_target, to_target=None):
     self._handle_remote_memory_write_message_nvic = MethodType(_handle_remote_memory_write_message_nvic, self)
 
     self.message_handlers.update({
-        RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
-        RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message,
-        TargetInterruptEnterMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
-    })
-    self.message_handlers.update({
         RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic}
     )
 
@@ -89,6 +84,8 @@ def enable_interrupt_forwarding(self, from_target, to_target=None):
     # So we listen on state-updates and figure out the rest on our own
     self._interrupt_enter_handler = MethodType(forward_interrupt, self)
     self.fast_queue_listener.message_handlers.update({
+        RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
+        RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message,
         TargetInterruptEnterMessage: self._interrupt_enter_handler,
     })
 
@@ -129,11 +126,12 @@ def forward_interrupt(self, message: TargetInterruptEnterMessage):
 
     irq_num = message.interrupt_num
     self.log.info("Injecting IRQ 0x%x" % irq_num)
-    destination = self._virtual_target
-    destination.protocols.interrupts.inject_interrupt(irq_num)
+    # State update MUST be before signaling the protocol due to async processing
     self._plugins_armv7m_interrupts_injected_irq = irq_num
     self._plugins_armv7m_interrupts_from_hardware = True
     self.log.warning(f"forward_interrupt {self._plugins_armv7m_interrupts_from_hardware})")
+    destination = self._virtual_target
+    destination.protocols.interrupts.inject_interrupt(irq_num)
     return True
 
 
@@ -185,7 +183,6 @@ def _handle_remote_interrupt_exit_message(self, message: RemoteInterruptExitMess
 
 
 def _handle_remote_memory_write_message_nvic(self, message: RemoteMemoryWriteMessage):
-    # self.log.critical(f"_handle_remote_memory_write_message_nvic 0x{message.address:x} -> 0x{message.value:x}")
     # NVIC address according to coresight manual
     if message.address < 0xe000e000 or message.address > 0xe000f000 or self._irq_src is None:
         return self._handle_remote_memory_write_message(message)
@@ -198,13 +195,16 @@ def _handle_remote_memory_write_message_nvic(self, message: RemoteMemoryWriteMes
         success = self._irq_src.write_memory(message.address,
                                              message.size,
                                              message.value)
+    drop_further_processing = 0
+    if isinstance(success, tuple):
+        success, drop_further_processing = success
 
-    message.origin.protocols.remote_memory.send_response(message.id, 0,
-                                                         success)
+    message.origin.protocols.remote_memory.send_response(message.id, drop_further_processing, success)
+
     return message.id, message.value, success
 
 
-def load_plugin(avatar, config):
+def load_plugin(avatar, config={}):
     if avatar.arch not in ARMV7M:
         avatar.log.error("Tried to load armv7-m interrupt plugin " +
                          "with mismatching architecture")
