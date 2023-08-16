@@ -39,7 +39,8 @@ class HALCaller:
             field_data = self.virtual_target.read_memory(field.value, size=1, num_words=field.size)
             self.hardware_target.write_memory(field.value, size=1, value=field_data, num_words=field.size, raw=True)
 
-        self.hardware_target.protocols.interrupts.pause()
+        if getattr(self.hardware_target.protocols, 'interrupts', None) is not None:
+            self.hardware_target.protocols.interrupts.pause()
         self.hardware_target.protocols.hal.hal_call(message.function, message.return_address)
 
     @watch('HALExit')
@@ -55,7 +56,8 @@ class HALCaller:
 
         self.hardware_target.protocols.hal.continue_after_hal(message)
         self.virtual_target.protocols.hal.handle_hal_return(message)
-        self.hardware_target.protocols.interrupts.resume()
+        if getattr(self.hardware_target.protocols, 'interrupts', None) is not None:
+            self.hardware_target.protocols.interrupts.resume()
 
     def enable_hal_calling(self):
         assert isinstance(self.hardware_target, OpenOCDTarget), "HAL-Caller `hardware_target` must be OpenOCDTarget"
