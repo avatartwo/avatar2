@@ -17,7 +17,6 @@ class ARMV7InterruptRecordingProtocol(Thread):
     def __init__(self, avatar, origin):
         self._original_vtor = None
         self.avatar = avatar
-        self._avatar_queue = avatar.queue
         self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
         self._close = Event()
@@ -86,7 +85,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
                     "irq_buffer_ptr: .word 0xdeafbeef\n" +
 
                     # "stub: \n" +
-                    "push {r0, r1, r2, r3, r4, r5, r6, r7}\n" +
+                    "push {r4, r5, r6, r7}\n" +
                     # # "mrs  r0, IPSR\n" +  # Get the interrupt number
                     "nop\nnop\n" +  # Placeholder to be replaced with `mrs r5, IPSR` due to keystone error
                     "ldr r1, =irq_buffer_ptr\n" +
@@ -135,7 +134,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
                     "strb  r5, [r4]\n" +  # Save the interrupt number with exit flag (highest bit)
 
                     # Restore registers and return
-                    "pop {r0, r1, r2, r3, r4, r5, r6, r7}\n" +
+                    "pop {r4, r5, r6, r7}\n" +
                     "bx lr\n"  # Return from the interrupt, set by the interrupt calling convention
                     )
 
