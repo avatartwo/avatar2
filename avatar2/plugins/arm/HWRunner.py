@@ -5,8 +5,8 @@ import avatar2
 from avatar2 import QemuTarget
 from avatar2.archs import ARMV7M
 from avatar2.plugins.arm.hal import RegisterFuncArg
-from avatar2.protocols.armv7_hal_caller import ARMV7HALCallerProtocol
-from avatar2.protocols.qemu_armv7_hal_caller import QemuARMV7HALCallerProtocol
+from avatar2.protocols.armv7_HWRunner import ARMV7HALCallerProtocol
+from avatar2.protocols.qemu_HWRunner import QemuARMV7HALCallerProtocol
 from avatar2.targets import OpenOCDTarget
 from avatar2.watchmen import AFTER
 

@@ -142,7 +142,7 @@ class ARMV7HALCallerProtocol(Thread):
         self.restore_regs_r4 = self.target.regs.r4
         self.target.write_memory(self._stub_func_ptr, size=4, value=function.address | 0x01)
 
-        # TODO generic
+        # TODO stack allocated objects
         if len(function.args) >= 1:
             self.target.regs.r0 = function.args[0].value
         if len(function.args) >= 2:
@@ -152,6 +152,7 @@ class ARMV7HALCallerProtocol(Thread):
         if len(function.args) >= 4:
             self.target.regs.r3 = function.args[3].value
         if len(function.args) >= 5:
+            # Push the stack parameters
             for i in range(4, len(function.args)):
                 self.target.write_memory(self.target.regs.sp - 4 * (i - 4), size=4, value=function.args[i].value)
             self.target.regs.sp = self.target.regs.sp - 4 * (len(function.args) - 4)
