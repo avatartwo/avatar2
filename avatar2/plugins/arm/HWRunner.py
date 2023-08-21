@@ -63,6 +63,9 @@ class HALCaller:
         assert isinstance(self.hardware_target, OpenOCDTarget), "HAL-Caller `hardware_target` must be OpenOCDTarget"
         assert isinstance(self.virtual_target, QemuTarget), "HAL-Caller `virtual_target` must be QemuTarget"
 
+        # We need OpenOCD as the memory protocol to perform memory access while the target is running
+        self.hardware_target.protocols.memory = self.hardware_target.protocols.monitor
+
         self.hardware_target.protocols.hal.enable(self.functions)
         self.virtual_target.protocols.hal.enable(self.functions)
 
