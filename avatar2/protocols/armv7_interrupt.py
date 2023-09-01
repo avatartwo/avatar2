@@ -60,10 +60,10 @@ class UniqueQueue(queue.Queue):
 
 
 class ARMV7InterruptProtocol(Thread):
-    def __init__(self, avatar, origin):
+    def __init__(self, avatar, target):
         self.avatar = avatar
         self._avatar_fast_queue = avatar.fast_queue
-        self._origin = origin
+        self._target = target
         self._close = Event()
         self._closed = Event()
 
@@ -71,10 +71,9 @@ class ARMV7InterruptProtocol(Thread):
         self._monitor_stub_base = None
         self._monitor_stub_isr = None
         self._monitor_stub_loop = None
-        self._monitor_stub_writeme = None
+        self._monitor_stub_ctrl = None
         self._original_vtor = None
         self.original_vt = None
-        self.injected_interrupt = None
 
         self.msg_counter = 0
         self._current_isr_num = 0
@@ -91,9 +90,8 @@ class ARMV7InterruptProtocol(Thread):
 
     def inject_interrupt(self, interrupt_number, cpu_number=0):
         self.log.critical(f"Injecting interrupt {interrupt_number}")
-        self.injected_interrupt = interrupt_number
         # Set an interrupt using the STIR
-        self._origin.write_memory(SCB_STIR, 4, interrupt_number)
+        self._target.write_memory(SCB_STIR, 4, interrupt_number)
 
     def enable_interrupt(self, interrupt_number):
         """
@@ -106,52 +104,52 @@ class ARMV7InterruptProtocol(Thread):
         iser_num = interrupt_number // 32  # 32 interrupts per ISER register
         iser_addr = NVIC_ISER0 + (iser_num * 4)  # Calculate ISER_X address
         iser_val = 1 << (interrupt_number % 32)  # Set the corresponding bit for the interrupt to 1
-        self._origin.write_memory(iser_addr, 4, iser_val)
+        self._target.write_memory(iser_addr, 4, iser_val)
 
     def get_enabled_interrupts(self, iser_num: int = 0):
-        enabled_interrupts = self._origin.read_memory(NVIC_ISER0 + iser_num * 4, size=4)
+        enabled_interrupts = self._target.read_memory(NVIC_ISER0 + iser_num * 4, size=4)
         return enabled_interrupts
 
     def set_enabled_interrupts(self, enabled_interrupts_bitfield: int, iser_num: int = 0):
-        self._origin.write_memory(NVIC_ISER0 + iser_num * 4, size=4, value=enabled_interrupts_bitfield)
+        self._target.write_memory(NVIC_ISER0 + iser_num * 4, size=4, value=enabled_interrupts_bitfield)
 
     def get_vtor(self):
-        return self._origin.read_memory(SCB_VTOR, 4)
+        return self._target.read_memory(SCB_VTOR, 4)
 
     def get_ivt_addr(self):
-        if getattr(self._origin, 'ivt_address', None) is not None:
-            return self._origin.ivt_address
+        if getattr(self._target, 'ivt_address', None) is not None:
+            return self._target.ivt_address
         else:
             return self.get_vtor()
 
     def set_vtor(self, addr):
         self.log.warning(f"Changing VTOR location to 0x{addr:x}")
-        res = self._origin.write_memory(SCB_VTOR, 4, addr)
+        res = self._target.write_memory(SCB_VTOR, 4, addr)
         if res:
-            self._origin.ivt_address = addr
+            self._target.ivt_address = addr
         return res
 
     def get_isr(self, interrupt_num):
-        return self._origin.read_memory(
+        return self._target.read_memory(
             self.get_ivt_addr() + (interrupt_num * 4), 4)
 
     def set_isr(self, interrupt_num, addr):
         base = self.get_ivt_addr()
         ivt_addr = base + (interrupt_num * 4)
-        return self._origin.write_memory(ivt_addr, 4, addr)
+        return self._target.write_memory(ivt_addr, 4, addr)
 
     def shutdown(self):
         if self.is_alive() is True:
             self.stop()
 
     def connect(self):
-        if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
+        if not isinstance(self._target.protocols.monitor, OpenOCDProtocol):
             raise Exception("ARMV7InterruptProtocol requires OpenOCDProtocol to be present.")
 
     def enable_interrupts(self):
         try:
             self.log.info(f"Enabling interrupts")
-            if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
+            if not isinstance(self._target.protocols.monitor, OpenOCDProtocol):
                 raise Exception(
                     "ARMV7InterruptProtocol requires OpenOCDProtocol to be present.")
 
@@ -228,7 +226,7 @@ class ARMV7InterruptProtocol(Thread):
         :return:
         """
         self.log.warning(
-            f"Injecting monitor stub into {self._origin.name}. (IVT: 0x{self.get_ivt_addr():08x}, 0x{self.get_vtor():08x}, 0x{vtor:08x})")
+            f"Injecting monitor stub into {self._target.name}. (IVT: 0x{self.get_ivt_addr():08x}, 0x{self.get_vtor():08x}, 0x{vtor:08x})")
         MTB_SIZE = 256
 
         self._monitor_stub_addr = addr
@@ -239,8 +237,8 @@ class ARMV7InterruptProtocol(Thread):
         self.log.info(f"_monitor_stub_loop     = 0x{self._monitor_stub_loop:08x}")
         self._monitor_stub_isr = self._monitor_stub_loop + 4
         self.log.info(f"_monitor_stub_isr      = 0x{self._monitor_stub_isr:08x}")
-        self._monitor_stub_writeme = self._monitor_stub_base + 4
-        self.log.info(f"_monitor_stub_writeme  = 0x{self._monitor_stub_writeme:08x}")
+        self._monitor_stub_ctrl = self._monitor_stub_base + 4
+        self.log.info(f"_monitor_stub_writeme  = 0x{self._monitor_stub_ctrl:08x}")
 
         # Pivot VTOR, if needed
         # On CM0, you can't, so don't.
@@ -251,29 +249,29 @@ class ARMV7InterruptProtocol(Thread):
         self.log.info(f"Validate new VTOR address 0x{self.get_vtor():8x}")
 
         # Sometimes, we need to gain access to the IVT (make it writable). Do that here.
-        if getattr(self._origin, 'ivt_unlock', None) is not None:
-            unlock_addr, unlock_val = self._origin.ivt_unlock
-            self._origin.write_memory(unlock_addr, 4, unlock_val)
+        if getattr(self._target, 'ivt_unlock', None) is not None:
+            unlock_addr, unlock_val = self._target.ivt_unlock
+            self._target.write_memory(unlock_addr, 4, unlock_val)
 
         self.log.info(f"Inserting the stub ...")
         # Inject the stub
         isr_offset = self._monitor_stub_isr - self._monitor_stub_addr + 2 # +2 for push instruction
-        self._origin.inject_asm(self._get_stub(MTB_SIZE), self._monitor_stub_addr,
+        self._target.inject_asm(self._get_stub(MTB_SIZE), self._monitor_stub_addr,
                                 patch={isr_offset: b'\xef\xf3\x05\x80'})
 
         self.log.info(f"Setting up IVT...")
-        self.original_vt = self._origin.read_memory(self._original_vtor, size=4, num_words=num_isr)
+        self.original_vt = self._target.read_memory(self._original_vtor, size=4, num_words=num_isr)
         # Set the IVT to our stub but DON'T wipe out the 0'th position.
-        self._origin.write_memory(vtor, value=self._origin.read_memory(self._original_vtor, size=4), size=4)
+        self._target.write_memory(vtor, value=self._target.read_memory(self._original_vtor, size=4), size=4)
         for interrupt_num in range(1, num_isr):
             self.set_isr(interrupt_num, self._monitor_stub_isr + 1)  # +1 for thumb mode
 
-        if self._origin.state != TargetStates.STOPPED:
+        if self._target.state != TargetStates.STOPPED:
             self.log.critical(
                 "Not setting PC to the monitor stub; Target not stopped")
         else:
-            self._origin.write_register('pc', self._monitor_stub_loop)
-            self.log.warning(f"Updated PC to 0x{self._origin.regs.pc:8x}")
+            self._target.write_register('pc', self._monitor_stub_loop)
+            self.log.warning(f"Updated PC to 0x{self._target.regs.pc:8x}")
 
     def inject_exc_return(self):
         if not self._monitor_stub_base:
@@ -284,7 +282,7 @@ class ARMV7InterruptProtocol(Thread):
         self._current_isr_num = None
         self.log.info(f"Returning from interrupt {int_num}.")
         # We can just BX LR for now.
-        return self._origin.write_memory(address=self._monitor_stub_writeme, size=4, value=1)
+        return self._target.write_memory(address=self._monitor_stub_ctrl, size=4, value=1)
 
     def queue_irq(self, interrupt_num, isr_addr):
         self._internal_irq_queue.put((interrupt_num, isr_addr))
@@ -297,20 +295,20 @@ class ARMV7InterruptProtocol(Thread):
         self.log.warning("IRQ protocol resuming...")
         self._paused.clear()
 
-    def dispatch_exception_packet(self, int_num):
+    def _dispatch_exception_packet(self, int_num):
         self._current_isr_num = int_num
 
         self.log.debug(f"Dispatching exception for interrupt number {int_num}")
 
-        msg = TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=int_num,
+        msg = TargetInterruptEnterMessage(self._target, self.msg_counter, interrupt_num=int_num,
                                           isr_addr=self.original_vt[int_num])
         self.msg_counter += 1
         self._avatar_fast_queue.put(msg)
 
     def _panic_exec(self):
         self.log.critical(f"Received hard-fault exception, stopping target")
-        if self._origin.state == TargetStates.RUNNING:
-            self._origin.stop()
+        if self._target.state == TargetStates.RUNNING:
+            self._target.stop()
         self._close.set()
 
     def run(self):
@@ -328,7 +326,7 @@ class ARMV7InterruptProtocol(Thread):
                     if not self._paused.is_set() and self._internal_irq_queue.qsize() != 0:
                         irq_num, _ = self._internal_irq_queue.get_nowait()
                         self.log.info(f"IRQ event from queue {irq_num} q={self._internal_irq_queue}")
-                        self.dispatch_exception_packet(int_num=irq_num)
+                        self._dispatch_exception_packet(int_num=irq_num)
                         self._internal_irq_queue.task_done()
                         if irq_num == 0x3:  # Hard-fault
                             self._panic_exec()
@@ -337,7 +335,7 @@ class ARMV7InterruptProtocol(Thread):
                 except queue.Empty:
                     pass
 
-                mtb_val = self._origin.read_memory(self._monitor_stub_addr + mtb_pos, size=1)
+                mtb_val = self._target.read_memory(self._monitor_stub_addr + mtb_pos, size=1)
                 if mtb_val == 0xff:
                     sleep(TICK_DELAY)
                     continue
@@ -349,7 +347,7 @@ class ARMV7InterruptProtocol(Thread):
                     self.queue_irq(mtb_val, self.original_vt[mtb_val])
                     self.inject_exc_return()  # TODO: This has a lot of side effects
                 else:
-                    self.dispatch_exception_packet(int_num=mtb_val)
+                    self._dispatch_exception_packet(int_num=mtb_val)
                 if mtb_val == 0x3:  # Hard-fault
                     self._panic_exec()
         except:

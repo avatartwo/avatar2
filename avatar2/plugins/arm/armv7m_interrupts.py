@@ -70,20 +70,20 @@ def enable_interrupt_forwarding(self, from_target, to_target=None):
     if self._virtual_target:
         self._virtual_target.protocols.interrupts.enable_interrupts()
 
-    self._handle_remote_interrupt_enter_message = MethodType(_handle_remote_interrupt_enter_message, self)
-    self._handle_remote_interrupt_exit_message = MethodType(_handle_remote_interrupt_exit_message, self)
-    self._handle_remote_memory_write_message_nvic = MethodType(_handle_remote_memory_write_message_nvic, self)
+    self._remote_interrupt_enter = MethodType(_remote_interrupt_enter, self)
+    self._remote_interrupt_exit = MethodType(_remote_interrupt_exit, self)
+    self._remote_memory_write_nvic = MethodType(_remote_memory_write_nvic, self)
 
     self.message_handlers.update({
-        RemoteMemoryWriteMessage: self._handle_remote_memory_write_message_nvic}
+        RemoteMemoryWriteMessage: self._remote_memory_write_nvic}
     )
 
     # OpenOCDProtocol does not emit breakpointhitmessages currently,
     # So we listen on state-updates and figure out the rest on our own
     self._interrupt_enter_handler = MethodType(forward_interrupt, self)
     self.fast_queue_listener.message_handlers.update({
-        RemoteInterruptEnterMessage: self._handle_remote_interrupt_enter_message,
-        RemoteInterruptExitMessage: self._handle_remote_interrupt_exit_message,
+        RemoteInterruptEnterMessage: self._remote_interrupt_enter,
+        RemoteInterruptExitMessage: self._remote_interrupt_exit,
         TargetInterruptEnterMessage: self._interrupt_enter_handler,
     })
 
@@ -134,7 +134,7 @@ def forward_interrupt(self, message: TargetInterruptEnterMessage):
 
 
 @watch('RemoteInterruptEnter')
-def _handle_remote_interrupt_enter_message(self, message):
+def _remote_interrupt_enter(self, message):
     self.log.warning(
         f"_handle_remote_interrupt_enter_message {self._plugins_armv7m_interrupts_from_hardware})")
     self._plugins_armv7m_interrupts_injected_irq = message.interrupt_num
@@ -145,20 +145,10 @@ def _handle_remote_interrupt_enter_message(self, message):
 
     self._irq_dst.protocols.interrupts.send_interrupt_enter_response(message.id,
                                                                      True)
-    # if self._irq_src is None or self._irq_semi_forwarding is True:
-    #     return
-
-    # status = self._irq_src.get_status()
-    # if status['state'] == TargetStates.STOPPED:
-    #     self.log.info("Target stopped, restarting " + repr(message.origin))
-    #     try:
-    #         self._irq_src.cont(blocking=False)
-    #     except:
-    #         self.log.exception(" ")
 
 
 @watch('RemoteInterruptExit')
-def _handle_remote_interrupt_exit_message(self, message: RemoteInterruptExitMessage):
+def _remote_interrupt_exit(self, message: RemoteInterruptExitMessage):
     """
     Handle an interrupt exiting properly
     If the interrupt was trigged by the hardware, we need to tell the
@@ -180,7 +170,7 @@ def _handle_remote_interrupt_exit_message(self, message: RemoteInterruptExitMess
     self._irq_dst.protocols.interrupts.send_interrupt_exit_response(message.id, True)
 
 
-def _handle_remote_memory_write_message_nvic(self, message: RemoteMemoryWriteMessage):
+def _remote_memory_write_nvic(self, message: RemoteMemoryWriteMessage):
     # NVIC address according to coresight manual
     if message.address < 0xe000e000 or message.address > 0xe000f000 or self._irq_src is None:
         return self._handle_remote_memory_write_message(message)
