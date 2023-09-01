@@ -9,7 +9,7 @@ from avatar2.watchmen import AFTER
 CMD_CONT = 0
 
 
-class QemuARMV7HALCallerProtocol(Thread):
+class QemuARMv7MHWRunnerProtocol(Thread):
     def __init__(self, avatar, origin):
         self.avatar = avatar
         self._avatar_fast_queue = avatar.fast_queue
@@ -55,10 +55,10 @@ class QemuARMV7HALCallerProtocol(Thread):
             if message.address == function.address:
                 self.log.info(f"Dispatching HALEnterMessage for function at 0x{function.address:x}")
                 return_address = self.target.regs.lr
-                self.dispatch_message(HALEnterMessage(self.target, function, return_address=return_address))
+                self._dispatch_message(HALEnterMessage(self.target, function, return_address=return_address))
                 return
 
-    def handle_hal_return(self, message: HALExitMessage):
+    def handle_func_return(self, message: HALExitMessage):
         self.log.info(
             f"Continuing QEmu, injecting return value {message.return_val} and continuing at 0x{message.return_address:x}")
         if message.function.return_args is None or message.function.return_args[0] is not None:
@@ -92,7 +92,7 @@ class QemuARMV7HALCallerProtocol(Thread):
         self.log.debug("QemuARMV7HALCallerProtocol thread exiting...")
         self._closed.set()
 
-    def dispatch_message(self, message):
+    def _dispatch_message(self, message):
         self._avatar_fast_queue.put(message)
 
     def stop(self):
