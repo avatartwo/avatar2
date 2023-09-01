@@ -13,12 +13,12 @@ SCB_VTOR = 0xe000ed08  # Vector Table offset register
 NVIC_ISER0 = 0xe000e100
 
 
-class ARMV7InterruptRecordingProtocol(Thread):
-    def __init__(self, avatar, origin):
+class ARMv7MInterruptRecordingProtocol(Thread):
+    def __init__(self, avatar, target):
         self._original_vtor = None
         self.avatar = avatar
         self._avatar_fast_queue = avatar.fast_queue
-        self._origin = origin
+        self._target = target
         self._close = Event()
         self._closed = Event()
         self._monitor_stub_base = None
@@ -36,19 +36,19 @@ class ARMV7InterruptRecordingProtocol(Thread):
         self.shutdown()
 
     def get_vtor(self):
-        return self._origin.read_memory(SCB_VTOR, 4)
+        return self._target.read_memory(SCB_VTOR, 4)
 
     def get_ivt_addr(self):
-        if getattr(self._origin, 'ivt_address', None) is not None:
-            return self._origin.ivt_address
+        if getattr(self._target, 'ivt_address', None) is not None:
+            return self._target.ivt_address
         else:
             return self.get_vtor()
 
     def set_vtor(self, addr):
         self.log.warning(f"Changing VTOR location to 0x{addr:x}")
-        res = self._origin.write_memory(SCB_VTOR, 4, addr)
+        res = self._target.write_memory(SCB_VTOR, 4, addr)
         if res:
-            self._origin.ivt_address = addr
+            self._target.ivt_address = addr
         return res
 
     def shutdown(self):
@@ -56,13 +56,13 @@ class ARMV7InterruptRecordingProtocol(Thread):
             self.stop()
 
     def connect(self):
-        if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
+        if not isinstance(self._target.protocols.monitor, OpenOCDProtocol):
             raise Exception("ARMV7InterruptRecordingProtocol requires OpenOCDProtocol to be present.")
 
     def enable_interrupt_recording(self):
         try:
             self.log.info(f"Enabling interrupt recording")
-            if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
+            if not isinstance(self._target.protocols.monitor, OpenOCDProtocol):
                 raise Exception(
                     "ARMV7InterruptRecordingProtocol requires OpenOCDProtocol to be present.")
 
@@ -72,10 +72,6 @@ class ARMV7InterruptRecordingProtocol(Thread):
             self.start()
         except:
             self.log.exception("Error starting ARMV7InterruptRecordingProtocol")
-
-    def get_enabled_interrupts(self, iser_num: int = 0):
-        enabled_interrupts = self._origin.read_memory(NVIC_ISER0 + iser_num * 4, size=4)
-        return enabled_interrupts
 
     # TODO what this stub does
     MONITOR_STUB = ("" +
@@ -148,7 +144,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
     def set_isr(self, interrupt_num, addr):
         base = self.get_ivt_addr()
         ivt_addr = base + (interrupt_num * 4)
-        return self._origin.write_memory(ivt_addr, 4, addr)
+        return self._target.write_memory(ivt_addr, 4, addr)
 
     def inject_monitor_stub(self, addr=0x20010000, vtor=0x20011000, num_isr=48):
         """
@@ -163,7 +159,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
         :return:
         """
         self.log.warning(
-            f"Injecting monitor stub into {self._origin.name}. (IVT: 0x{self.get_ivt_addr():08x}, 0x{self.get_vtor():08x}, 0x{vtor:08x})")
+            f"Injecting monitor stub into {self._target.name}. (IVT: 0x{self.get_ivt_addr():08x}, 0x{self.get_vtor():08x}, 0x{vtor:08x})")
 
         self._monitor_stub_base = addr
         self.log.info(f"_monitor_stub_base          = 0x{self._monitor_stub_base:08x}")
@@ -185,29 +181,29 @@ class ARMV7InterruptRecordingProtocol(Thread):
         self.log.info(f"Validate new VTOR address 0x{self.get_vtor():8x}")
 
         # Sometimes, we need to gain access to the IVT (make it writable). Do that here.
-        if getattr(self._origin, 'ivt_unlock', None) is not None:
-            unlock_addr, unlock_val = self._origin.ivt_unlock
-            self._origin.write_memory(unlock_addr, 4, unlock_val)
+        if getattr(self._target, 'ivt_unlock', None) is not None:
+            unlock_addr, unlock_val = self._target.ivt_unlock
+            self._target.write_memory(unlock_addr, 4, unlock_val)
 
         self.log.info(f"Inserting the stub ...")
         # Inject the stub
         stub_offset = self._monitor_stub_isr - self._monitor_stub_base + 2
-        self._origin.inject_asm(self._get_stub(), self._monitor_stub_base, patch={stub_offset: b'\xef\xf3\x05\x80'})
-        self._origin.write_memory(self._monitor_stub_isr - 4, size=4, value=0x00)  # set irq_buffer_ptr to 0
-        self._origin.write_memory(self._monitor_stub_mtb, size=1, value=0xff)  # Ensure end of buffer flag
+        self._target.inject_asm(self._get_stub(), self._monitor_stub_base, patch={stub_offset: b'\xef\xf3\x05\x80'})
+        self._target.write_memory(self._monitor_stub_isr - 4, size=4, value=0x00)  # set irq_buffer_ptr to 0
+        self._target.write_memory(self._monitor_stub_mtb, size=1, value=0xff)  # Ensure end of buffer flag
 
         self.log.info(f"Setting up IVT buffer...")
         # Copy the vector table to our buffer
-        self.original_vt = self._origin.read_memory(self._original_vtor, size=4, num_words=num_isr)
-        self._origin.write_memory(self._monitor_stub_vt_buffer, value=self.original_vt, size=4, num_words=num_isr)
+        self.original_vt = self._target.read_memory(self._original_vtor, size=4, num_words=num_isr)
+        self._target.write_memory(self._monitor_stub_vt_buffer, value=self.original_vt, size=4, num_words=num_isr)
 
         self.log.info(f"Setting up IVT...")
         # Set the IVT to our stub but DON'T wipe out the 0'th position.
-        self._origin.write_memory(vtor, value=self._origin.read_memory(self._original_vtor, size=4), size=4)
+        self._target.write_memory(vtor, value=self._target.read_memory(self._original_vtor, size=4), size=4)
         for interrupt_num in range(1, num_isr):
             self.set_isr(interrupt_num, self._monitor_stub_isr + 1)  # +1 for thumb mode
 
-    def dispatch_message(self, message):
+    def _dispatch_message(self, message):
         self._avatar_fast_queue.put(message)
 
     def run(self):
@@ -221,7 +217,7 @@ class ARMV7InterruptRecordingProtocol(Thread):
         buffer_pos = 0
         try:
             while not (self.avatar._close.is_set() or self._close.is_set()):
-                curr_isr = self._origin.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
+                curr_isr = self._target.read_memory(address=self._monitor_stub_trace_buffer + buffer_pos, size=1)
                 if curr_isr == 0xff:
                     sleep(TICK_DELAY)
                     continue
@@ -232,13 +228,13 @@ class ARMV7InterruptRecordingProtocol(Thread):
                 if curr_isr > 0x80:
                     curr_isr = curr_isr & 0x7f
                     addr = self.original_vt[curr_isr]
-                    self.dispatch_message(
-                        TargetInterruptExitMessage(self._origin, self.msg_counter, interrupt_num=curr_isr,
+                    self._dispatch_message(
+                        TargetInterruptExitMessage(self._target, self.msg_counter, interrupt_num=curr_isr,
                                                    isr_addr=addr))
                 else:
                     addr = self.original_vt[curr_isr]
-                    self.dispatch_message(
-                        TargetInterruptEnterMessage(self._origin, self.msg_counter, interrupt_num=curr_isr,
+                    self._dispatch_message(
+                        TargetInterruptEnterMessage(self._target, self.msg_counter, interrupt_num=curr_isr,
                                                     isr_addr=addr))
 
 

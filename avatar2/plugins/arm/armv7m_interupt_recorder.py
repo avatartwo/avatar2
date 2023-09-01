@@ -1,9 +1,10 @@
 import logging
+from datetime import datetime
 from types import MethodType
 
 import avatar2
 from avatar2.archs import ARMV7M
-from avatar2.protocols.armv7_interrupt_recording import ARMV7InterruptRecordingProtocol
+from avatar2.protocols.armv7_interrupt_recording import ARMv7MInterruptRecordingProtocol
 from avatar2.targets import OpenOCDTarget
 from avatar2.watchmen import AFTER
 
@@ -17,15 +18,22 @@ class InterruptRecorderPlugin:
     def __init__(self, avatar):
         self.avatar = avatar
         self.hardware_target = None
+        self.trace = []
         self.log = logging.getLogger(f'{avatar.log.name}.plugins.{self.__class__.__name__}')
 
     @watch('TargetInterruptEnter')
     def _handle_interrupt_enter(self, message: TargetInterruptEnterMessage):
-        pass
+        interrupt_num = message.interrupt_num
+        self.trace.append(
+            {'id': message.id, 'event': 'enter', 'interrupt_num': interrupt_num,
+             'timestamp': datetime.now().isoformat()})
 
     @watch('TargetInterruptExit')
     def _handle_interrupt_exit(self, message: TargetInterruptExitMessage):
-        pass
+        interrupt_num = message.interrupt_num
+        self.trace.append(
+            {'id': message.id, 'event': 'exit', 'interrupt_num': interrupt_num,
+             'timestamp': datetime.now().isoformat()})
 
     def enable_interrupt_recording(self):
         assert self.hardware_target is not None, "Interrupt-Recorder can only be enabled after a hardware target is set"
@@ -48,7 +56,7 @@ def add_protocols(self: avatar2.Avatar, **kwargs):
         return
     logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupt-Recorder protocol to {target}")
 
-    target.protocols.interrupts = ARMV7InterruptRecordingProtocol(target.avatar, target)
+    target.protocols.interrupts = ARMv7MInterruptRecordingProtocol(target.avatar, target)
     self.hardware_target = target
 
     # We want to remove the decorators around the read_memory function of
