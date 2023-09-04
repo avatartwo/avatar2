@@ -94,7 +94,7 @@ def transfer_interrupt_state(self, to_target, from_target):
     assert getattr(self, '_hardware_target', None) is not None, "Missing hardware target"
     assert getattr(self, '_virtual_target', None) is not None, "Missing virtual target"
 
-    hw_irq_p: CoreSightProtocol = self._hardware_target.protocols.interrupts
+    hw_irq_p: ARMV7InterruptProtocol = self._hardware_target.protocols.interrupts
     vm_irq_p: QEmuARMV7MInterruptProtocol = self._virtual_target.protocols.interrupts
 
     # Transfer the vector table location

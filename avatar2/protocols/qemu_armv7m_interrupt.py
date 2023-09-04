@@ -90,7 +90,7 @@ class QEmuARMV7MInterruptProtocol(Thread):
         self._rx_queue = None
         self._tx_queue = None
         self._avatar_queue = target.avatar.fast_queue
-        self._target = target
+        self.target = target
         self._close = Event()
         self._closed = Event()
         self._close.clear()
@@ -110,13 +110,13 @@ class QEmuARMV7MInterruptProtocol(Thread):
                 request[0])
 
             if RINOperation(req_struct.operation) == RINOperation.ENTER:
-                msg = RemoteInterruptEnterMessage(self._target, req_struct.id,
+                msg = RemoteInterruptEnterMessage(self.target, req_struct.id,
                                                   req_struct.num_irq)
                 self.log.warning(
                     "Received an InterruptEnterRequest for irq %d (%x)" %
                     (req_struct.num_irq, req_struct.type))
             elif RINOperation(req_struct.operation) == RINOperation.EXIT:
-                msg = RemoteInterruptExitMessage(self._target, req_struct.id,
+                msg = RemoteInterruptExitMessage(self.target, req_struct.id,
                                                  req_struct.type,
                                                  req_struct.num_irq)
                 self.log.warning(
@@ -138,12 +138,12 @@ class QEmuARMV7MInterruptProtocol(Thread):
         self._closed.wait()
 
     def enable_interrupts(self):
-        if isinstance(self._target, QemuTarget):
+        if isinstance(self.target, QemuTarget):
             # TODO: Make this more clean, i.e., check for remote memory
-            rmem_rx_qname = self._target.protocols.remote_memory.rx_queue_name
-            rmem_tx_qname = self._target.protocols.remote_memory.tx_queue_name
+            rmem_rx_qname = self.target.protocols.remote_memory.rx_queue_name
+            rmem_tx_qname = self.target.protocols.remote_memory.tx_queue_name
             # the tx-queue for qemu is the rx-queue for avatar and vice versa
-            self._target.protocols.monitor.execute_command(
+            self.target.protocols.monitor.execute_command(
                 'avatar-armv7m-enable-irq',
                 {'irq-rx-queue-name': self._tx_queue_name,
                  'irq-tx-queue-name': self._rx_queue_name,
@@ -153,7 +153,7 @@ class QEmuARMV7MInterruptProtocol(Thread):
             )
         else:
             raise Exception("V7MInterruptProtocol is not implemented for %s" %
-                            self._target.__class__)
+                            self.target.__class__)
 
         try:
             self._rx_queue = MessageQueue(self._rx_queue_name, flags=O_RDONLY,
@@ -172,39 +172,39 @@ class QEmuARMV7MInterruptProtocol(Thread):
 
         self.daemon = True
         self.start()
-        self.log.info("Enabled Interrupt Forwarding for %s" % self._target)
+        self.log.info("Enabled Interrupt Forwarding for %s" % self.target)
         return True
 
     def ignore_interrupt_return(self, interrupt_number):
-        if isinstance(self._target, QemuTarget):
+        if isinstance(self.target, QemuTarget):
             self.log.info(
                 "Disable handling of irq return for %d" % interrupt_number)
-            self._target.protocols.monitor.execute_command(
+            self.target.protocols.monitor.execute_command(
                 'avatar-armv7m-ignore-irq-return',
                 {'num-irq': interrupt_number}
             )
 
     def unignore_interrupt_return(self, interrupt_number):
-        if isinstance(self._target, QemuTarget):
+        if isinstance(self.target, QemuTarget):
             self.log.info(
                 "Re-enable handling of irq return for %d" % interrupt_number)
-            self._target.protocols.monitor.execute_command(
+            self.target.protocols.monitor.execute_command(
                 'avatar-armv7m-unignore-irq-return',
                 {'num-irq': interrupt_number}
             )
 
     def inject_interrupt(self, interrupt_number, cpu_number=0):
-        if isinstance(self._target, QemuTarget):
+        if isinstance(self.target, QemuTarget):
             self.log.info("Injecting interrupt %d" % interrupt_number)
-            self._target.protocols.monitor.execute_command(
+            self.target.protocols.monitor.execute_command(
                 'avatar-armv7m-inject-irq',
                 {'num-irq': interrupt_number, 'num-cpu': cpu_number}
             )
 
     def set_vector_table_base(self, base, cpu_number=0):
-        if isinstance(self._target, QemuTarget):
+        if isinstance(self.target, QemuTarget):
             self.log.info("Setting vector table base to 0x%x" % base)
-            self._target.protocols.monitor.execute_command(
+            self.target.protocols.monitor.execute_command(
                 'avatar-armv7m-set-vector-table-base',
                 {'base': base, 'num-cpu': cpu_number}
             )
@@ -233,12 +233,12 @@ class QEmuARMV7MInterruptProtocol(Thread):
             return False
 
     def get_enabled_interrupts(self, iser_num: int = 0):
-        enabled_interrupts = self._target.read_memory(NVIC_ISER0 + iser_num * 4, size=4)
+        enabled_interrupts = self.target.read_memory(NVIC_ISER0 + iser_num * 4, size=4)
         return enabled_interrupts
 
     def set_enabled_interrupts(self, enabled_interrupts_bitfield: int, iser_num: int = 0):
         self.log.warning(f"Setting enabled interrupts to 0x{enabled_interrupts_bitfield:x}")
-        self._target.write_memory(NVIC_ISER0 + iser_num * 4, size=4, value=enabled_interrupts_bitfield)
+        self.target.write_memory(NVIC_ISER0 + iser_num * 4, size=4, value=enabled_interrupts_bitfield)
 
     def __del__(self):
         self.shutdown()

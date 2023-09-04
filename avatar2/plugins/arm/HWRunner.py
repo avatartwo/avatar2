@@ -81,13 +81,12 @@ class HWRunnerPlugin:
 
 def add_protocols(self: avatar2.Avatar, **kwargs):
     target = kwargs['watched_target']
+    logging.getLogger("avatar").info(f"Attaching ARMv7 HWRunner protocol to {target}")
     if isinstance(target, OpenOCDTarget):
-        logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupt-Recorder protocol to {target}")
         target.protocols.hal = ARMv7MHWRunnerProtocol(target.avatar, target)
         self._plugin_hal_caller.hardware_target = target
 
     elif isinstance(target, QemuTarget):
-        logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupt-Recorder protocol to {target}")
         target.protocols.hal = QemuARMv7MHWRunnerProtocol(target.avatar, target)
         self._plugin_hal_caller.virtual_target = target
     else:

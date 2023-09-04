@@ -31,7 +31,7 @@ class ARMv7MHWRunnerProtocol(Thread):
 
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
         Thread.__init__(self, daemon=True, name=f"Thread-{self.__class__.__name__}")
-        self.log.info(f"ARMV7HALCallerProtocol initialized")
+        self.log.info(f"ARMv7MHWRunnerProtocol initialized")
 
     def __del__(self):
         self.shutdown()
@@ -55,7 +55,7 @@ class ARMv7MHWRunnerProtocol(Thread):
             self.log.info(f"Starting ARMv7 HAL catching thread")
             self.start()
         except:
-            self.log.exception("Error starting ARMV7HALCallerProtocol")
+            self.log.exception("Error starting ARMv7MHWRunnerProtocol")
 
     # TODO what this stub does
     MONITOR_STUB = ("" +
@@ -162,7 +162,7 @@ class ARMv7MHWRunnerProtocol(Thread):
         self.command_queue.put((CMD_CONT,))
 
     def run(self):
-        self.log.info("Starting ARMV7HALCallerProtocol thread")
+        self.log.info("Starting ARMv7MHWRunnerProtocol thread")
 
         try:
             while not (self.avatar._close.is_set() or self._close.is_set()):
@@ -184,9 +184,9 @@ class ARMv7MHWRunnerProtocol(Thread):
                     continue
 
         except:
-            self.log.exception("Error processing ARMV7HALCallerProtocol thread")
+            self.log.exception("Error processing ARMv7MHWRunnerProtocol thread")
             self._closed.set()
-        self.log.debug("ARMV7HALCallerProtocol thread exiting...")
+        self.log.debug("ARMv7MHWRunnerProtocol thread exiting...")
         self._closed.set()
 
     def _dispatch_message(self, message):

@@ -57,7 +57,7 @@ def add_protocols(self: avatar2.Avatar, **kwargs):
     logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupt-Recorder protocol to {target}")
 
     target.protocols.interrupts = ARMv7MInterruptRecordingProtocol(target.avatar, target)
-    self.hardware_target = target
+    self._plugin_interrupt_recorder.hardware_target = target
 
     # We want to remove the decorators around the read_memory function of
     # this target, to allow reading while it is running (thanks OpenOCD)
