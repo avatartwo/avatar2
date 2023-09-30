@@ -82,7 +82,7 @@ def watch(watched_type):
                 avatar = self.avatar
                 cb_kwargs['watched_target'] = self
             else:
-                logging.getLogger('avatar').warning(f"Watchmen decorator called on unsupported object {self}")
+                logging.getLogger('avatar').warning("Watchmen decorator called on unsupported object %s" % self)
 
             avatar.watchmen.t(watched_type, BEFORE, *args, **cb_kwargs)
             ret = func(self, *args, **kwargs)
@@ -111,7 +111,7 @@ class AsyncReaction(Thread):
 class WatchedEvent(object):
     # noinspection PyUnusedLocal
     def __init__(self, watch_type, when, callback, is_async,
-                 overwrite_return = False, *args, **kwargs):
+                 overwrite_return=False, *args, **kwargs):
         self._callback = callback
         self.type = watch_type
         self.when = when
@@ -137,7 +137,6 @@ class WatchedEvent(object):
                 ret = self._callback(avatar, *args, **kwargs)
                 if self.overwrite_return:
                     return ret
-                
 
 
 class Watchmen(object):
@@ -157,7 +156,8 @@ class Watchmen(object):
             if self.watched_types._add(type):
                 self._watched_events[type] = []
 
-    def add_watchman(self, watch_type, when=BEFORE, callback=None, is_async=False, overwrite_return=False, *args, **kwargs):
+    def add_watchman(self, watch_type, when=BEFORE, callback=None, is_async=False, overwrite_return=False, *args,
+                     **kwargs):
 
         if watch_type not in self.watched_types:
             raise Exception("Requested event_type does not exist")
@@ -174,7 +174,8 @@ class Watchmen(object):
                            if x.overwrite_return]
 
         if len(overwriting_cbs) > 1:
-            self._avatar.log.warning("More than one watchman can modify the return value for the event. Watch type: %s" % watch_type)
+            self._avatar.log.warning(
+                "More than one watchman can modify the return value for the event. Watch type: %s" % watch_type)
         self._watched_events[watch_type].append(w)
         return w
 

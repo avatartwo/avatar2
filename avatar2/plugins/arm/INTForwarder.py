@@ -5,7 +5,7 @@ from types import MethodType
 
 from avatar2 import Avatar, TargetStates
 from avatar2.archs import ARMV7M
-from avatar2.protocols.armv7_INTForwarder import ARMV7InterruptProtocol
+from avatar2.protocols.armv7_INTForwarder import ARMV7INTForwarderProtocol
 from avatar2.protocols.coresight import CoreSightProtocol
 from avatar2.protocols.qemu_armv7m_interrupt import QEmuARMV7MInterruptProtocol
 from avatar2.targets import OpenOCDTarget, QemuTarget
@@ -22,7 +22,7 @@ def add_protocols(self: Avatar, **kwargs):
     target = kwargs['watched_target']
     logging.getLogger("avatar").info(f"Attaching ARMv7 Interrupts protocol to {target}")
     if isinstance(target, OpenOCDTarget):
-        target.protocols.interrupts = ARMV7InterruptProtocol(target.avatar, target)
+        target.protocols.interrupts = ARMV7INTForwarderProtocol(target.avatar, target)
 
         # We want to remove the decorators around the read_memory function of
         # this target, to allow reading while it is running (thanks oocd)
@@ -94,7 +94,7 @@ def transfer_interrupt_state(self, to_target, from_target):
     assert getattr(self, '_hardware_target', None) is not None, "Missing hardware target"
     assert getattr(self, '_virtual_target', None) is not None, "Missing virtual target"
 
-    hw_irq_p: ARMV7InterruptProtocol = self._hardware_target.protocols.interrupts
+    hw_irq_p: ARMV7INTForwarderProtocol = self._hardware_target.protocols.interrupts
     vm_irq_p: QEmuARMV7MInterruptProtocol = self._virtual_target.protocols.interrupts
 
     # Transfer the vector table location

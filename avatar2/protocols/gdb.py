@@ -285,7 +285,6 @@ class GDBProtocol(object):
         self._communicator = GDBResponseListener(
             self, self._gdbmi, queue, fast_queue, origin)
         self._communicator.daemon = True
-        self._communicator.name = f"Thread-GDBResponseListener-{origin.name}"
         self._communicator.start()
         self._origin = origin
         self.log = logging.getLogger('%s.%s' %
@@ -633,9 +632,9 @@ class GDBProtocol(object):
                 ["-data-write-memory-bytes", str(address), hex_contents],
                 GDB_PROT_DONE)
         if 'message' in resp and resp['message'] == 'error':
-            self.log.error(f"Attempted to write memory. Received error response: {resp}")
+            self.log.error("Attempted to write memory. Received error response: %s" % resp)
         else:
-            self.log.debug(f"Attempted to write memory. Received response [{ret}]: {resp}")
+            self.log.debug("Attempted to write memory. Received response [%s]: %s" % (ret, resp))
         return ret
 
     def read_memory(self, address, size=4, num_words=1, raw=False):
@@ -662,7 +661,7 @@ class GDBProtocol(object):
             self.log.debug("Attempted to read memory. Received response: %s" % resp)
 
             if not res:
-                raise Exception(f"Failed to read memory!  Response: {resp}")
+                raise Exception("Failed to read memory!  Response: %s" % resp)
 
             # the indirection over the bytearray is needed for legacy python support
             read_mem = bytearray.fromhex(resp['payload']['memory'][0]['contents'])
@@ -773,10 +772,11 @@ class GDBProtocol(object):
     def cont(self):
         """Continues the execution of the target
         :returns: True on success"""
-        self.log.info(f"Continuing execution of {self._origin.name}")
+        self.log.info("Continuing execution of %s" % self._origin.name)
         ret, resp = self._sync_request(["-exec-continue"], GDB_PROT_RUN)
 
-        self.log.info(f"Attempted to continue execution on the target. Received response:{resp}, returning {ret}")
+        self.log.info(
+            "Attempted to continue execution on the target. Received response: %s, returning %s" % (resp, ret))
         return ret
 
     def stop(self):

@@ -59,7 +59,7 @@ class UniqueQueue(queue.Queue):
         return self.queue.pop(0)
 
 
-class ARMV7InterruptProtocol(Thread):
+class ARMV7INTForwarderProtocol(Thread):
     def __init__(self, avatar, target: OpenOCDTarget):
         self.avatar = avatar
         self._avatar_fast_queue = avatar.fast_queue

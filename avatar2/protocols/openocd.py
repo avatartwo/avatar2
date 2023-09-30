@@ -58,7 +58,8 @@ class OpenOCDProtocol(Thread):
             self.openocd_files = openocd_script
         else:
             raise TypeError("Wrong type for OpenOCD configuration files")
-        self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
+        self.log = logging.getLogger('%s.%s' % (origin.log.name, self.__class__.__name__)) if origin else \
+            logging.getLogger(self.__class__.__name__)
         self._tcl_port = tcl_port
         self._gdb_port = gdb_port
         self._host = host
@@ -93,7 +94,7 @@ class OpenOCDProtocol(Thread):
             self.log.debug("Starting OpenOCD with command line: %s" % (" ".join(self._cmd_line)))
             self._openocd = subprocess.Popen(self._cmd_line,
                                              stdout=out, stderr=err)  # , shell=True)
-        Thread.__init__(self, name=f"Thread-{self.__class__.__name__}-{origin.name}")
+        Thread.__init__(self)
         self.daemon = True
 
     def connect(self):
@@ -273,7 +274,7 @@ class OpenOCDProtocol(Thread):
                             # We didn't ask for it.  Just debug it
                             self.log.debug(line)
                         else:
-                            self.log.debug(f"response --> '{line}'")
+                            self.log.debug("response --> '%s'" % line)
                             self.out_queue.put(line)
                             cmd = None
                 sleep(.001)  # Have a heart. Give other threads a chance
@@ -307,11 +308,11 @@ class OpenOCDProtocol(Thread):
         """
         if raw:
             if not (isinstance(value, list) or isinstance(value, bytes) or isinstance(value, bytearray)):
-                self.log.error(f"Raw write value must be a list of integers")
+                self.log.error("Raw write value must be a list of integers")
                 return False
             write_val = '{' + ' '.join([hex(v).rstrip("L") for v in value]) + '}'
             width = size * 8
-            self.execute_command(f"write_memory {hex(address).rstrip('L')} {width} {write_val}")
+            self.execute_command("write_memory %s %d %s" % (hex(address).rstrip("L"), width, write_val))
         else:
             for i in range(0, num_words):
                 if isinstance(value, int):
@@ -342,12 +343,12 @@ class OpenOCDProtocol(Thread):
         raw_mem = b''
         if raw:
             ocd_size = size * 8
-            resp = self.execute_command(f"read_memory {hex(address).rstrip('L')} {ocd_size} {num_words}")
+            resp = self.execute_command("read_memory %s %d %d" % (hex(address).rstrip("L"), ocd_size, num_words))
             if resp:
                 raw_mem = bytearray([int(v, 16) for v in resp.split(' ')])
                 return raw_mem
             else:
-                self.log.error(f"Could not read from address 0x{address:x}")
+                self.log.error("Could not read from address %s" % hex(address))
                 return None
         else:
             for i in range(0, num_words):
@@ -362,7 +363,7 @@ class OpenOCDProtocol(Thread):
                     val = int(resp, 16)
                     raw_mem += val.to_bytes(size, byteorder=sys.byteorder)
                 else:
-                    self.log.error(f"Could not read from address {read_addr}")
+                    self.log.error("Could not read from address %s" % read_addr)
                     return None
 
             # Todo: Endianness support

@@ -80,7 +80,7 @@ class QemuTarget(Target):
             self.avatar.output_directory,
             self.name,
         )
-        self.log.info(f"QEmuTarget using executable '{self.executable}'")
+        self.log.info("QEmuTarget using executable '%s'" % self.executable)
 
     def assemble_cmd_line(self):
         if isfile(self.executable + self._arch.qemu_name):

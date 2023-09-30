@@ -39,8 +39,8 @@ class QMPProtocol(object):
         if args:
             command['arguments'] = args
         command['id'] = self.id
-        command_str = f"{json.dumps(command)}\r\n".encode('ascii')
-        self.log.info(f"Sending command: {command_str}")
+        command_str = (json.dumps(command) + "\r\n").encode('ascii')
+        self.log.info("Sending command: %s" % command_str)
         self._telnet.write(command_str)
 
         while True:
