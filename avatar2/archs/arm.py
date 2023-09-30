@@ -85,10 +85,8 @@ class ARM_CORTEX_M3(ARM):
         pass
 
 
-class ARM_CORTEX_M4(ARM_CORTEX_M3):
-    cpu_model = 'cortex-m4'
 
-ARMV7M = [ARM_CORTEX_M3, ARM_CORTEX_M4]
+ARMV7M = [ARM_CORTEX_M3]
 
 
 class ARMBE(ARM):

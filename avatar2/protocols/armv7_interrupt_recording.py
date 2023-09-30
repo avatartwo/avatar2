@@ -82,7 +82,7 @@ class ARMv7MInterruptRecordingProtocol(Thread):
 
                     # "stub: \n" +
                     "push {r4, r5, r6, r7}\n" +
-                    # # "mrs  r0, IPSR\n" +  # Get the interrupt number
+                    # "mrs  r0, IPSR\n" +  # Get the interrupt number
                     "nop\nnop\n" +  # Placeholder to be replaced with `mrs r5, IPSR` due to keystone error
                     "ldr r1, =irq_buffer_ptr\n" +
                     "ldr r2, =irq_buffer_0\n" +

@@ -1,4 +1,4 @@
-from .plugins.arm.hal import HALFunction
+from .plugins.arm.hal import HWFunction
 
 
 class AvatarMessage(object):
@@ -85,8 +85,8 @@ class TargetInterruptExitMessage(AvatarMessage):
         self.isr_addr = isr_addr
 
 
-class HALEnterMessage(AvatarMessage):
-    def __init__(self, origin, function: HALFunction, return_address: int):
+class HWEnterMessage(AvatarMessage):
+    def __init__(self, origin, function: HWFunction, return_address: int):
         super(self.__class__, self).__init__(origin)
         self.function = function
         self.return_address = return_address
@@ -98,8 +98,8 @@ class HALEnterMessage(AvatarMessage):
         return self.__str__()
 
 
-class HALExitMessage(AvatarMessage):
-    def __init__(self, origin, function: HALFunction, return_val: int, return_address: int):
+class HWExitMessage(AvatarMessage):
+    def __init__(self, origin, function: HWFunction, return_val: int, return_address: int):
         super(self.__class__, self).__init__(origin)
         self.function = function
         self.return_val = return_val

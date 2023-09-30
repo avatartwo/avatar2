@@ -61,7 +61,7 @@ class ContextTransferArg(FuncArg):
             return f"ContextTransferArg(value=0x{self.value:x})"
 
 
-class HALFunction:
+class HWFunction:
     """
     Represents a function that is called on the hardware target.
 

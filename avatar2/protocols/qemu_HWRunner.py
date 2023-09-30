@@ -2,8 +2,8 @@ import logging
 import queue
 from threading import Thread, Event
 
-from avatar2.message import BreakpointHitMessage, HALEnterMessage, HALExitMessage
-from avatar2.plugins.arm.hal import HALFunction
+from avatar2.message import BreakpointHitMessage, HWEnterMessage, HWExitMessage
+from avatar2.plugins.arm.hal import HWFunction
 from avatar2.watchmen import AFTER
 
 CMD_CONT = 0
@@ -16,7 +16,7 @@ class QemuARMv7MHWRunnerProtocol(Thread):
         self._close = Event()
         self._closed = Event()
         self.target = origin
-        self.functions: [HALFunction] = []
+        self.functions: [HWFunction] = []
         self.command_queue = queue.Queue()
 
         self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
@@ -33,7 +33,7 @@ class QemuARMv7MHWRunnerProtocol(Thread):
     def connect(self):
         pass
 
-    def enable(self, functions: [HALFunction]):
+    def enable(self, functions: [HWFunction]):
         try:
             self.log.info(f"Enabling QEmu HAL catching")
             self.functions = functions
@@ -53,12 +53,12 @@ class QemuARMv7MHWRunnerProtocol(Thread):
             return
         for function in self.functions:
             if message.address == function.address:
-                self.log.info(f"Dispatching HALEnterMessage for function at 0x{function.address:x}")
+                self.log.info(f"Dispatching HWEnterMessage for function at 0x{function.address:x}")
                 return_address = self.target.regs.lr
-                self._dispatch_message(HALEnterMessage(self.target, function, return_address=return_address))
+                self._dispatch_message(HWEnterMessage(self.target, function, return_address=return_address))
                 return
 
-    def handle_func_return(self, message: HALExitMessage):
+    def handle_func_return(self, message: HWExitMessage):
         self.log.info(
             f"Continuing QEmu, injecting return value {message.return_val} and continuing at 0x{message.return_address:x}")
         if message.function.return_args is None or message.function.return_args[0] is not None:

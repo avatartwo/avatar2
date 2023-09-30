@@ -3,8 +3,8 @@ from threading import Thread, Event
 import logging
 
 from avatar2 import TargetStates
-from avatar2.message import BreakpointHitMessage, HALExitMessage
-from avatar2.plugins.arm.hal import HALFunction
+from avatar2.message import BreakpointHitMessage, HWExitMessage
+from avatar2.plugins.arm.hal import HWFunction
 from avatar2.watchmen import AFTER
 
 CMD_HAL_CALL = 0
@@ -98,7 +98,7 @@ class ARMv7MHWRunnerProtocol(Thread):
         self.log.info(f"Injecting the stub ...")
         self.target.inject_asm(self.MONITOR_STUB, self._stub_base)
 
-    def func_call(self, function: HALFunction, return_address: int):
+    def func_call(self, function: HWFunction, return_address: int):
         self.command_queue.put((CMD_HAL_CALL, function, return_address))
 
     def _do_func_return(self, avatar, message: BreakpointHitMessage, *args,
@@ -108,7 +108,7 @@ class ARMv7MHWRunnerProtocol(Thread):
             return
         if message.address != self._stub_end:
             return
-        current_func: HALFunction = self.current_hal_call[0]
+        current_func: HWFunction = self.current_hal_call[0]
         return_address = self.current_hal_call[1]
 
         self.target.regs.r0 = self.restore_regs_r0
@@ -121,11 +121,11 @@ class ARMv7MHWRunnerProtocol(Thread):
         self.target.regs.pc = self.return_after_hal
         self.return_after_hal = None
 
-        self._dispatch_message(HALExitMessage(self.target, current_func, return_val=self.target.regs.r0,
-                                              return_address=return_address))
+        self._dispatch_message(HWExitMessage(self.target, current_func, return_val=self.target.regs.r0,
+                                             return_address=return_address))
         self.current_hal_call = None
 
-    def _do_func_call(self, function: HALFunction):
+    def _do_func_call(self, function: HWFunction):
         assert self._stub_entry is not None, "Stub not injected yet"
         self.log.warning(f"_do_hal_call (func=0x{function.address:x}, args = {function.args})...")
         if self.target.state == TargetStates.RUNNING:
@@ -158,7 +158,7 @@ class ARMv7MHWRunnerProtocol(Thread):
         self.target.regs.pc = self._stub_entry
         self.target.cont()
 
-    def continue_after_hal(self, message: HALExitMessage):
+    def continue_after_hal(self, message: HWExitMessage):
         self.command_queue.put((CMD_CONT,))
 
     def run(self):

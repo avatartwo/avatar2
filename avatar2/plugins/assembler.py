@@ -4,8 +4,7 @@ from types import MethodType
 from keystone import *
 
 
-def assemble(self, asmstr, addr=None,
-             arch=None, mode=None):
+def assemble(self, asmstr, addr=None, arch=None, mode=None):
     """
     Main purpose of the assembler plugin, it's used to assemble
     instructions
@@ -43,7 +42,7 @@ def inject_asm(self, asmstr, addr=None, arch=None, mode=None, patch=None):
     arch = self._arch.keystone_arch if not arch else arch
     mode = self._arch.keystone_mode if not mode else mode
     addr = self.regs.pc if not addr else addr
-    logging.getLogger('avatar').warning(f"Injecting assembly into address 0x{addr:8x}")
+    logging.getLogger('avatar').debug(f"Injecting assembly into address 0x{addr:8x}")
 
     md = Ks(arch, mode)
     bytelist = md.asm(asmstr, addr)[0]

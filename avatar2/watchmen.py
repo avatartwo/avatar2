@@ -34,8 +34,8 @@ class WatchedTypes(object):
         'TargetInjectInterrupt',
         'TargetInterruptEnter',
         'TargetInterruptExit',
-        'HALEnter',
-        'HALExit'
+        'HWEnter',
+        'HWExit'
     ]
 
     def __init__(self):

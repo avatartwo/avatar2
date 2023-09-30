@@ -38,7 +38,7 @@ class Avatar(Thread):
     def __init__(
             self, arch=ARM, cpu_model=None, output_directory=None, log_to_stdout=True, configure_logging=True
     ):
-        super(Avatar, self).__init__(name="Thread-Avatar")
+        super(Avatar, self).__init__()
 
         self.shutdowned = False
         try:
@@ -464,7 +464,7 @@ class Avatar(Thread):
                 )
             success = True
         except Exception as e:
-            self.log.exception(f"RemoteMemoryRead from {range.forwarded_to} failed: {e}")
+            self.log.exception("RemoteMemoryRead from %s failed: %s" % (range.forwarded_to, e))
             mem = -1
             success = False
 
@@ -543,7 +543,7 @@ class AvatarFastQueueProcessor(Thread):
     """
 
     def __init__(self, avatar):
-        super(AvatarFastQueueProcessor, self).__init__(name="Thread-AvatarFastQueueProcessor")
+        super(AvatarFastQueueProcessor, self).__init__()
         self.avatar = avatar
         self._close = Event()
         self.daemon = True

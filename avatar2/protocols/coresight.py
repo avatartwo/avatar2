@@ -1,5 +1,4 @@
 import sys
-import time
 from threading import Thread, Event, Condition
 from struct import pack, unpack
 from codecs import encode
@@ -22,6 +21,8 @@ from avatar2.targets import TargetStates
 from avatar2.message import AvatarMessage, UpdateStateMessage, \
     BreakpointHitMessage, RemoteInterruptEnterMessage
 from avatar2.protocols.openocd import OpenOCDProtocol
+
+logger = logging.getLogger(__name__)
 
 # ARM System Control Block
 SCB_CPUID = 0xe000ed00  # What is it
@@ -57,7 +58,7 @@ class CoreSightProtocol(Thread):
         self._avatar_queue = avatar.queue
         self._avatar_fast_queue = avatar.fast_queue
         self._origin = origin
-        self.trace_queue: queue.Queue | None = None
+        self.trace_queue = None
         self.trace_buffer = BitStream()
         self._close = Event()
         self._closed = Event()
@@ -65,20 +66,23 @@ class CoreSightProtocol(Thread):
         self._closed.clear()
         self._sync_responses_cv = Condition()
         self._last_exec_token = 0
+        # logger = logging.getLogger('%s.%s' %
+        #                              (origin.log.name, self.__class__.__name__)
+        #                              ) if origin else \
+        #     logging.getLogger(self.__class__.__name__)
         self._monitor_stub_base = None
         self._monitor_stub_isr = None
         self._monitor_stub_loop = None
         self._monitor_stub_writeme = None
-        self.log = logging.getLogger(f'{avatar.log.name}.protocols.{self.__class__.__name__}')
-        Thread.__init__(self, daemon=True)
-        self.log.info(f"CoreSightProtocol starting")
+        Thread.__init__(self)
+        self.daemon = True
 
     def __del__(self):
         self.shutdown()
 
     def inject_interrupt(self, interrupt_number, cpu_number=0):
         # Set an interrupt using the STIR
-        self._origin.write_memory(SCB_STIR, size=4, value=interrupt_number)
+        self._origin.write_memory(SCB_STIR, 4, interrupt_number)
 
     def enable_interrupt(self, interrupt_number):
         """
@@ -87,18 +91,13 @@ class CoreSightProtocol(Thread):
         :return:
         """
         assert (0 < interrupt_number < 256)
-        iser_num = interrupt_number // 32  # 32 interrupts per ISER register
-        iser_addr = NVIC_ISER0 + (iser_num * 4)  # Calculate ISER_X address
-        iser_val = 1 << (interrupt_number % 32)  # Set the corresponding bit for the interrupt to 1
+        iser_num = interrupt_number >> 5
+        iser_addr = NVIC_ISER0 + (iser_num * 4)
+        # iser_off = interrupt_number % 32
+        # iser_val = self._origin.read_memory(iser_addr, 4)
+        iser_val = ((1 << interrupt_number) & 0x1F)
+        # iser_val |= 0x1 << iser_off
         self._origin.write_memory(iser_addr, 4, iser_val)
-
-    def get_enabled_interrupts(self, iser_num: int = 0):
-        enabled_interrupts = self._origin.read_memory(NVIC_ISER0 + iser_num * 4, size=4)
-        return enabled_interrupts
-
-    def set_enabled_interrupts(self, enabled_interrupts_bitfield: int, iser_num: int = 0):
-        self.log.warning(f"Setting enabled interrupts to 0x{enabled_interrupts_bitfield:x}")
-        self._origin.write_memory(NVIC_ISER0 + iser_num * 4, size=4, value=enabled_interrupts_bitfield)
 
     def get_vtor(self):
         return self._origin.read_memory(SCB_VTOR, 4)
@@ -110,11 +109,7 @@ class CoreSightProtocol(Thread):
             return self.get_vtor()
 
     def set_vtor(self, addr):
-        self.log.warning(f"Changing VTOR location to 0x{addr:x}")
-        res = self._origin.write_memory(SCB_VTOR, 4, addr)
-        if res:
-            self._origin.ivt_address = addr
-        return res
+        return self._origin.write_memory(SCB_VTOR, 4, addr)
 
     def get_isr(self, interrupt_num):
         return self._origin.read_memory(
@@ -144,56 +139,57 @@ class CoreSightProtocol(Thread):
 
     def connect(self):
         if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
-            raise Exception("CoreSightProtocol requires OpenOCDProtocol to be present.")
+            raise Exception(("CoreSightProtocol requires OpenOCDProtocol ")
+                            ("to be present."))
 
     def has_bits_to_read(self, b, n):
         return b.len - b.pos > n
 
-    def enable_interrupts(self):
+    def enable_interrupts(self, use_tcl_tracing=False, use_stub=True):
         try:
-            self.log.info(f"Starting CoreSight Protocol")
+            logger.info("Starting CoreSight Protocol")
             if not isinstance(self._origin.protocols.monitor, OpenOCDProtocol):
                 raise Exception(
                     "CoreSightProtocol requires OpenOCDProtocol to be present.")
             openocd = self._origin.protocols.monitor
-            # self.log.debug("Resetting target")
-            # openocd.reset()
+            logger.debug("Resetting target")
+            openocd.reset()
 
-            # Enable TCL tracing
-            if not openocd.trace_enabled.is_set():
-                openocd.enable_trace()
+            if use_tcl_tracing:
+                # Enable TCL tracing
                 if not openocd.trace_enabled.is_set():
-                    self.log.error(
-                        "Can't get trace events without tcl_trace! aborting...")
-                    return False
-            self.trace_queue = openocd.trace_queue
-            # Enable the TPIO output to the FIFO
-            self.log.debug("Enabling TPIU output events")
-            openocd.execute_command(
-                'tpiu config internal - uart off 32000000')
-            # Enable the DWT to get interrupts
-            self.log.debug("Enabling exceptions in DWT")
-            openocd.execute_command(
-                "setbits $COREDEBUG_DEMCR 0x1000000")  # Enable access to trace regs - set TRCENA to 1
-            openocd.execute_command(
-                "mww $DWT_CTRL 0x40010000")  # exc trace only
-            self.log.debug("Enabling ITM passthrough of DWT events")
-            # Enable the ITM to pass DWT output to the TPIU
-            openocd.execute_command("mww $ITM_LAR 0xC5ACCE55")
-            openocd.execute_command(
-                "mww $ITM_TCR 0x0000000d")  # TraceBusID 1, enable dwt/itm/sync
-            openocd.execute_command(
-                "mww $ITM_TER 0xffffffff")  # Enable all stimulus ports
+                    openocd.enable_trace()
+                    if not openocd.trace_enabled.is_set():
+                        logger.error(
+                            "Can't get trace events without tcl_trace! aborting...")
+                        return False
+                self.trace_queue = openocd.trace_queue
+                # Enable the TPIO output to the FIFO
+                logger.debug("Enabling TPIU output events")
+                openocd.execute_command(
+                    'tpiu config internal - uart off 32000000')
+                # Enable the DWT to get interrupts
+                logger.debug("Enabling exceptions in DWT")
+                openocd.execute_command(
+                    "setbits $COREDEBUG_DEMCR 0x1000000")  # Enable access to trace regs - set TRCENA to 1
+                openocd.execute_command(
+                    "mww $DWT_CTRL 0x40010000")  # exc trace only
+                logger.debug("Enabling ITM passthrough of DWT events")
+                # Enable the ITM to pass DWT output to the TPIU
+                openocd.execute_command("mww $ITM_LAR 0xC5ACCE55")
+                openocd.execute_command(
+                    "mww $ITM_TCR 0x0000000d")  # TraceBusID 1, enable dwt/itm/sync
+                openocd.execute_command(
+                    "mww $ITM_TER 0xffffffff")  # Enable all stimulus ports
+                # Run our little daemon thingy
+                logger.debug("Starting interrupt handling thread")
+                self.daemon = True
+                self.start()
 
-            self.log.warning("Injecting interrupt stub")
-            self.inject_monitor_stub(num_isr=48)
-
-            # Run our little daemon thingy
-            self.log.debug("Starting interrupt handling thread")
-            self.daemon = True
-            self.start()
+            elif use_stub:
+                self.inject_monitor_stub()
         except:
-            self.log.exception("Error starting CoreSight")
+            logger.exception("Error starting Coresight")
 
     """
     What this does:
@@ -265,7 +261,7 @@ class CoreSightProtocol(Thread):
         xpsr &= 0xff
         return xpsr
 
-    def inject_monitor_stub(self, addr=0x20001200, vtor=0x20002000, num_isr=254):
+    def inject_monitor_stub(self, addr=0x20001234, vtor=0x20002000):
         """
         Injects a safe monitoring stub.
         This has the following effects:
@@ -277,49 +273,38 @@ class CoreSightProtocol(Thread):
         4.
         :return:
         """
-        self.log.warning(
-            f"Injecting monitor stub into {self._origin.name}. (IVT: 0x{self.get_ivt_addr():08x}, 0x{self.get_vtor():08x}, 0x{vtor:08x})")
+        logger.info(
+            "Injecting monitor stub. (IVT: %s, %s, %s)"
+            ")" % (self.get_ivt_addr(), self.get_vtor(), vtor))
 
         self._monitor_stub_base = addr
-        self.log.warning(f"_monitor_stub_base     = 0x{self._monitor_stub_base:08x}")
         self._monitor_stub_loop = addr + 12
-        self.log.warning(f"_monitor_stub_loop     = 0x{self._monitor_stub_loop:08x}")
-        self._monitor_stub_isr = addr + 24 + 1  # + 1 for thumb mode
-        self.log.warning(f"_monitor_stub_isr      = 0x{self._monitor_stub_isr:08x}")
+        self._monitor_stub_isr = addr + 25
         self._monitor_stub_writeme = addr + 8
-        self.log.warning(f"_monitor_stub_writeme  = 0x{self._monitor_stub_writeme:08x}")
-
         # Pivot VTOR, if needed
         # On CM0, you can't, so don't.
         if getattr(self._origin, 'ivt_address', None) is None:
-            # if self.get_vtor() == 0:
-            self.set_vtor(vtor)
-            self.log.warning(f"Validate new VTOR address 0x{self.get_vtor():8x}")
-
+            if self.get_vtor() == 0:
+                self.set_vtor(vtor)
         # Sometimes, we need to gain access to the IVT (make it writable). Do that here.
         if getattr(self._origin, 'ivt_unlock', None) is not None:
             unlock_addr, unlock_val = self._origin.ivt_unlock
             self._origin.write_memory(unlock_addr, 4, unlock_val)
-
-        self.log.warning(f"Inserting the stub ...")
-        # Inject the stub
+        # put the stub
         self._origin.inject_asm(self.MONITOR_STUB, self._monitor_stub_base)
-
-        self.log.warning(f"Setting up IVT...")
-        # Set the IVT to our stub but DON'T wipe out the 0'th position.
-        for x in range(1, num_isr):
+        # wreck the IVT
+        # ...oh but don't wipe out the 0'th position.
+        for x in range(1, 254):
             self.set_isr(x, self._monitor_stub_isr)
-
         if self._origin.state != TargetStates.STOPPED:
-            self.log.warning(
+            logger.warning(
                 "Not setting PC to the monitor stub; Target not stopped")
         else:
             self._origin.regs.pc = self._monitor_stub_loop
-            self.log.warning(f"Setting PC to 0x{self._origin.regs.pc:8x}")
 
     def inject_exc_return(self, exc_return):
         if not self._monitor_stub_base:
-            self.log.error(
+            logger.error(
                 "You need to inject the monitor stub before you can inject exc_returns")
             return False
         # We can just BX LR for now.
@@ -336,41 +321,33 @@ class CoreSightProtocol(Thread):
     def run(self):
         DWT_PKTSIZE_BITS = 24
         trace_re = re.compile("type target_trace data ([0-9a-f]+)")
-        self.log.info("Starting CoreSight thread")
+        logger.debug("Starting interrupt thread")
         try:
-            while not self.avatar._close.is_set() and not self._close.is_set():
-                if self._monitor_stub_isr is None:
-                    time.sleep(0.1)
-                    continue
-
+            while not self._close.is_set():
+                if self._close.is_set():
+                    break
                 # OpenOCD gives us target_trace events packed with many, many packets.
                 # Get them out, then do them packet-at-a-time
-                if not self.has_bits_to_read(self.trace_buffer, DWT_PKTSIZE_BITS):
+                if not self.has_bits_to_read(self.trace_buffer,
+                                             DWT_PKTSIZE_BITS):
                     # get some more data
-                    # if self.trace_queue.empty():
-                    #     # make sure we can see the shutdown flag
-                    #     continue
-                    try:
-                        new_data = self.trace_queue.get(block=True, timeout=0.5)
-                    except queue.Empty:
+                    if self.trace_queue.empty():
+                        # make sure we can see the shutdown flag
                         continue
+                    new_data = self.trace_queue.get()
                     m = trace_re.match(new_data)
                     if m:
                         self.trace_buffer.append("0x" + m.group(1))
                     else:
                         raise ValueError(
                             "Got a really weird trace packet " + new_data)
-
-                if self.trace_buffer.len > 0:
-                    self.log.debug(f"Trace_buffer has {self.trace_buffer.len} bits")
-                    if self.trace_buffer.len >= 8:
-                        self.log.debug(f"Trace_buffer: {self.trace_buffer.peek(8)}")
-                if not self.has_bits_to_read(self.trace_buffer, DWT_PKTSIZE_BITS):
+                if not self.has_bits_to_read(self.trace_buffer,
+                                             DWT_PKTSIZE_BITS):
                     continue
                 try:
                     pkt = self.trace_buffer.peek(DWT_PKTSIZE_BITS).bytes
                 except ReadError:
-                    self.log.error("Fuck you length is " + repr(
+                    logger.error("Fuck you length is " + repr(
                         len(self.trace_buffer)) + " " + repr(DWT_PKTSIZE_BITS))
                 if ord(pkt[0]) == 0x0E:  # exception packets
                     pkt = pkt[1:]
@@ -381,9 +358,9 @@ class CoreSightProtocol(Thread):
                 else:
                     self.trace_buffer.read(8)
         except:
-            self.log.exception("Error processing trace")
+            logger.exception("Error processing trace")
         self._closed.set()
-        self.log.debug("Interrupt thread exiting...")
+        logger.debug("Interrupt thread exiting...")
 
     def stop(self):
         """Stops the listening thread. Useful for teardown of the target"""

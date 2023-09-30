@@ -10,7 +10,7 @@ from avatar2.protocols.qemu_HWRunner import QemuARMv7MHWRunnerProtocol
 from avatar2.targets import OpenOCDTarget
 from avatar2.watchmen import AFTER
 
-from avatar2.message import HALExitMessage, HALEnterMessage
+from avatar2.message import HWExitMessage, HWEnterMessage
 
 from avatar2.watchmen import watch
 
@@ -24,8 +24,8 @@ class HWRunnerPlugin:
         self.functions = config['functions']
         self.log = logging.getLogger(f'{avatar.log.name}.plugins.{self.__class__.__name__}')
 
-    @watch('HALEnter')
-    def func_enter(self, message: HALEnterMessage):
+    @watch('HWEnter')
+    def func_enter(self, message: HWEnterMessage):
         self.log.warning(f"func_enter called with {message}")
         for arg in message.function.args:
             if isinstance(arg, RegisterFuncArg):
@@ -43,8 +43,8 @@ class HWRunnerPlugin:
             self.hardware_target.protocols.interrupts.pause()
         self.hardware_target.protocols.hal.func_call(message.function, message.return_address)
 
-    @watch('HALExit')
-    def func_exit(self, message: HALExitMessage):
+    @watch('HWExit')
+    def func_exit(self, message: HWExitMessage):
         self.log.warning(f"func_exit called with return val {message.return_val} to 0x{message.return_address:x}")
         if message.function.return_args is not None:
             for arg in message.function.return_args:
@@ -70,12 +70,12 @@ class HWRunnerPlugin:
         self.virtual_target.protocols.hal.enable(self.functions)
 
         self.avatar.message_handlers.update({
-            HALEnterMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
-            HALExitMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
+            HWEnterMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
+            HWExitMessage: lambda m: None,  # Handled in the fast queue, just ignore in the main message queue
         })
         self.avatar.fast_queue_listener.message_handlers.update({
-            HALEnterMessage: self.func_enter,
-            HALExitMessage: self.func_exit,
+            HWEnterMessage: self.func_enter,
+            HWExitMessage: self.func_exit,
         })
 
 
