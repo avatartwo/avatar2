@@ -7,7 +7,7 @@
 Welcome to avatar², the target orchestration framework with focus on dynamic
  analysis of embedded devices' firmware!
 
-Avatar² is developed and maintained by [Eurecom's S3 Group](http://s3.eurecom.fr/).
+Avatar² is developed and maintained by [Eurecom's S3 Group](http://www.s3.eurecom.fr/).
 
 # Building
 
@@ -82,7 +82,7 @@ Additionally, a documentation of the API is provided
 avatar²-scripts can be found
 [here](https://github.com/avatartwo/avatar2-examples).
 Additionally, another good way to get started with avatar² is to read the official
-[avatar² paper](http://s3.eurecom.fr/docs/bar18_muench.pdf) or to watch the
+[avatar² paper](http://www.s3.eurecom.fr/docs/bar18_muench.pdf) or to watch the
 [34c3-talk](https://media.ccc.de/v/34c3-9195-avatar).
 
 For further support or follow-up questions, feel free to send a mail to
@@ -96,7 +96,7 @@ vivid means of communication - if you want an invite, just send us a mail!
 # Publications
 The following publications describe, use, or extend the avatar² framework:
 1. M. Muench, D. Nisi, A. Francillon, D. Balzarotti. "Avatar²: A Multi-target Orchestration Platform." Workshop on Binary Analysis Research (BAR), San Diego, California, February 2018.
-    - [Paper](http://s3.eurecom.fr/docs/bar18_muench.pdf) - [Code](https://github.com/avatartwo/bar18_avatar2)
+    - [Paper](http://www.s3.eurecom.fr/docs/bar18_muench.pdf) - [Code](https://github.com/avatartwo/bar18_avatar2)
 2. M. Muench, J. Stijohann, F. Kargl, A. Francillon, D. Balzarotti. "What You Corrupt Is Not What You Crash: Challenges in Fuzzing Embedded Devices." Network and Distributed System Security Symposium (NDSS), San Diego, California, 2018.
     - [Paper](http://www.s3.eurecom.fr/docs/ndss18_muench.pdf) - [Code](https://github.com/avatartwo/ndss18_wycinwyc)
 3. D. Maier, B. Radtke, B. Harren. "Unicorefuzz: On the Viability of Emulation for Kernelspace Fuzzing." Workshop on Offensive Technologies (WOOT), Santa Clara, California, August 2019.
@@ -108,7 +108,7 @@ The following publications describe, use, or extend the avatar² framework:
 6. C. Cao, L. Guan, J. Ming, P. Liu. "Device-agnostic Firmware Execution is Possible: A Concolic Execution Approach for Peripheral Emulation." Annual Computer Security Applications Conference (ACSAC), December 2020.
     - [Paper](https://dl.acm.org/doi/10.1145/3427228.3427280) - [Code](https://github.com/dongmu/Laelaps)
 7. G. Hernandez, M. Muench, D. Maier, A. Milburn, S. Park, T. Scharnowski, T. Tucker, P. Traynor, K. R.B. Butler. "FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware." Symposium on Network and Distributed System Security (NDSS), April 2022.
-    - [Paper](https://github.com/FirmWire/FirmWire/blob/main/firmwire-ndss22.pdf?raw=true) - [Code](https://github.com/FirmWire/FirmWire)
+    - [Paper](https://hernan.de/research/papers/firmwire-ndss22-hernandez.pdf) - [Code](https://github.com/FirmWire/FirmWire)
 
 
 # Acknowledgements
