@@ -772,7 +772,6 @@ class GDBProtocol(object):
     def cont(self):
         """Continues the execution of the target
         :returns: True on success"""
-        self.log.info("Continuing execution of %s" % self._origin.name)
         ret, resp = self._sync_request(["-exec-continue"], GDB_PROT_RUN)
 
         self.log.info(
