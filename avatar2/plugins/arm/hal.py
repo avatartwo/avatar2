@@ -7,7 +7,7 @@ class FuncArg:
     By default, this is a constant value, for argument transfer at runtime use RegisterFuncArg.
     """
 
-    def __init__(self, value: int | None, needs_transfer=False, size=None):
+    def __init__(self, value, needs_transfer=False, size=None):
         assert value is None or isinstance(value, int), "Address must be an integer or None for read from register"
         if needs_transfer:
             assert isinstance(size, int), "Size must be specified if needs_transfer is True"
