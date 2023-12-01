@@ -97,7 +97,7 @@ jobs:
               run: |
                 git clone https://github.com/panda-re/panda.git
                 cd panda
-                git checkout 5fb8a5098d0647a13e5e7d39d20ff9f04242572d
+                git checkout 1704a0aed6b329523022e7758fc6674cb2f6c3a3
                 sudo prefix=/usr/local ./panda/scripts/install_ubuntu.sh i386-softmmu,arm-softmmu,mips-softmmu
                 pushd build
                 sudo make install
