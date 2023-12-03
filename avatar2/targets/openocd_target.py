@@ -17,6 +17,7 @@ class OpenOCDTarget(Target):
                  openocd_script=None, additional_args=None,
                  tcl_port=6666,
                  gdb_executable=None, gdb_additional_args=None, gdb_port=3333,
+                 binary=None,
                  **kwargs
                  ):
 
@@ -33,6 +34,7 @@ class OpenOCDTarget(Target):
         self.tcl_port = tcl_port
         self.gdb_additional_args = gdb_additional_args if gdb_additional_args else []
         self.gdb_port = gdb_port
+        self.binary = binary
 
     @watch("TargetInit")
     def init(self):
@@ -49,7 +51,7 @@ class OpenOCDTarget(Target):
         gdb = GDBProtocol(gdb_executable=self.gdb_executable,
                           arch=self._arch,
                           additional_args=self.gdb_additional_args,
-                          avatar=self.avatar, origin=self)
+                          avatar=self.avatar, origin=self, binary=self.binary)
         self.log.debug("Connecting to OpenOCD GDB port")
         gdb_connected = gdb.remote_connect(port=self.gdb_port)
         script_has_reset = False

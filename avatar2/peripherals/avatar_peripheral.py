@@ -9,7 +9,6 @@ else:
     from cached_property import cached_property
 
 
-
 class AvatarPeripheral(object):
     def __init__(self, name, address, size, **kwargs):
         self.name = name if name else "%s_%x" % (self.__class__.__name__, address)
@@ -39,7 +38,7 @@ class AvatarPeripheral(object):
         """
         pass
 
-    def write_memory(self, address, size, value, num_words=1, raw=False, pc=0):
+    def write_memory(self, address, size, value, num_words=1, raw=False, origin=None, pc=0):
 
         if num_words != 1 or raw is True:
             raise Exception(
@@ -48,7 +47,7 @@ class AvatarPeripheral(object):
             )
 
         offset = address - self.address
-        intervals = self.write_handler[offset : offset + size]
+        intervals = self.write_handler[offset: offset + size]
         if intervals == set():
             raise Exception(
                 "No write handler for peripheral %s at offset %d \
@@ -62,10 +61,12 @@ class AvatarPeripheral(object):
                 % (self.name, offset)
             )
 
-        kwargs = {} if self.write_supports_pc is False else {"pc": pc}
+        kwargs = {'origin': origin}
+        if self.write_supports_pc is True:
+            kwargs["pc"] = pc
         return intervals.pop().data(offset, size, value, **kwargs)
 
-    def read_memory(self, address, size, num_words=1, raw=False, pc=0):
+    def read_memory(self, address, size, num_words=1, raw=False, origin=None, pc=0):
         if num_words != 1 or raw is True:
             raise Exception(
                 "read_memory for AvatarPeripheral does not support \
@@ -73,7 +74,7 @@ class AvatarPeripheral(object):
             )
 
         offset = address - self.address
-        intervals = self.read_handler[offset : offset + size]
+        intervals = self.read_handler[offset: offset + size]
 
         if intervals == set():
             raise Exception(
@@ -87,5 +88,7 @@ class AvatarPeripheral(object):
                             at offset %d"
                 % (self.name, offset)
             )
-        kwargs = {} if self.write_supports_pc is False else {"pc": pc}
+        kwargs = {'origin': origin}
+        if self.write_supports_pc is True:
+            kwargs["pc"] = pc
         return intervals.pop().data(offset, size, **kwargs)

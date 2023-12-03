@@ -202,7 +202,7 @@ if __name__ == '__main__':
     # Number each test is repeated
     n = 2
 
-    avatar = Avatar(arch=ARMV7M, output_directory='/tmp/inception-tests')
+    avatar = Avatar(arch=ARM_CORTEX_M3, output_directory='/tmp/inception-tests')
     nucleo = avatar.add_target(InceptionTarget, name='nucleo')
     dum = avatar.add_target(DummyTarget, name='dum')
     #qemu = avatar.add_target(QemuTarget, gdb_port=1236)

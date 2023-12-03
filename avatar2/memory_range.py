@@ -33,7 +33,7 @@ class MemoryRange(object):
         self.name = (
             name
             if name is not None else
-            "mem_range_0x{:08x}_0x{:08x}".format(address, address+size))
+            "mem_range_0x{:08x}_0x{:08x}".format(address, address + size))
         self.permissions = permissions
         self.file = abspath(file) if file is not None else None
         self.file_offset = file_offset if file_offset is not None else None
@@ -44,23 +44,25 @@ class MemoryRange(object):
         self.forwarded_to = forwarded_to
         self.__dict__.update(kwargs)
 
-
     def dictify(self):
         """
         Returns the memory range as *printable* dictionary
         """
-        from .avatar2 import Avatar # we cannot do this import at top-level
+        from .avatar2 import Avatar  # we cannot do this import at top-level
         # Assumption: dicts saved in mrs are of primitive types only
         expected_types = (str, bool, int, dict, AvatarPeripheral, Avatar, list)
-        if version_info < (3, 0): expected_types += (unicode, )
+        if version_info < (3, 0): expected_types += (unicode,)
 
         tmp_dict = dict(self.__dict__)
         mr_dict = {}
         while tmp_dict != {}:
             k, v = tmp_dict.popitem()
-            if v is None or False: continue
-            elif k == 'forwarded_to': v = v.name
-            # TODO handle emulate
+            if v is None or False:
+                continue
+            elif k == 'forwarded_to':
+                v = v.name
+            if k == 'emulate_config':  # Skip config for emulated peripheral
+                continue
             if not isinstance(v, expected_types):
                 raise Exception(
                     "Unsupported type %s for dictifying %s for mem_range at 0x%x"
@@ -71,5 +73,3 @@ class MemoryRange(object):
                 v = v.__class__.__name__
             mr_dict[k] = v
         return mr_dict
-
-

@@ -9,6 +9,7 @@ import re
 import pygdbmi.gdbcontroller
 
 import parse
+
 if sys.version_info < (3, 0):
     import Queue as queue
     # __class__ = instance.__class__
@@ -33,13 +34,13 @@ class GDBResponseListener(Thread):
     """
 
     def __init__(self, gdb_protocol, gdb_controller, avatar_queue,
-                 avatar_fast_queue,  origin=None):
+                 avatar_fast_queue, origin=None):
         super(GDBResponseListener, self).__init__()
         self._protocol = gdb_protocol
         self._token = -1
         self._async_responses = queue.Queue() if avatar_queue is None \
             else avatar_queue
-        self._async_fast_responses = queue.Queue() if avatar_fast_queue is None\
+        self._async_fast_responses = queue.Queue() if avatar_fast_queue is None \
             else avatar_fast_queue
         self._sync_responses = {}
         self._gdb_controller = gdb_controller
@@ -128,10 +129,10 @@ class GDBResponseListener(Thread):
                     self._origin, TargetStates.STOPPED)
             elif payload.get('reason') == 'syscall-entry':
                 avatar_msg = SyscallCatchedMessage(self._origin, int(payload['bkptno']),
-                                                  int(payload['frame']['addr'], 16), 'entry')
+                                                   int(payload['frame']['addr'], 16), 'entry')
             elif payload.get('reason') == 'syscall-return':
                 avatar_msg = SyscallCatchedMessage(self._origin, int(payload['bkptno']),
-                                                  int(payload['frame']['addr'], 16), 'return')
+                                                   int(payload['frame']['addr'], 16), 'return')
             elif payload.get('reason') is not None:
                 self.log.critical("Target stopped with unknown reason: %s" %
                                   payload['reason'])
@@ -232,6 +233,7 @@ class GDBResponseListener(Thread):
         if self._console_enable:
             self._console_output += '\n'
             self._console_output += msg['payload']
+
 
 class GDBProtocol(object):
     """Main class for the gdb communication protocol
@@ -468,9 +470,8 @@ class GDBProtocol(object):
         """
         if hasattr(self._origin, 'regs'):
             regs = self.get_register_names()
-            regs_dict = dict([(r,i) for i, r in enumerate(regs) if r != ''])
+            regs_dict = dict([(r, i) for i, r in enumerate(regs) if r != ''])
             self._origin.regs._update(regs_dict)
-
 
     def set_breakpoint(self, line,
                        hardware=False,
@@ -583,9 +584,6 @@ class GDBProtocol(object):
             return True
         return int(expected_bp_num)
 
-
-
-
     def remove_breakpoint(self, bkpt):
         """Deletes a breakpoint"""
         ret, resp = self._sync_request(
@@ -596,13 +594,13 @@ class GDBProtocol(object):
             resp)
         return ret
 
-    def write_memory(self, address, wordsize, val, num_words=1, raw=False):
+    def write_memory(self, address, size, value, num_words=1, raw=False):
         """Writes memory
 
         :param address:   Address to write to
-        :param wordsize:  the size of the write (1, 2, 4 or 8)
-        :param val:       the written value
-        :type val:        int if num_words == 1 and raw == False
+        :param size:      the size of the write (1, 2, 4 or 8)
+        :param value:     the written value
+        :type value:      int if num_words == 1 and raw == False
                           list if num_words > 1 and raw == False
                           str or byte if raw == True
         :param num_words: The amount of words to read
@@ -614,34 +612,36 @@ class GDBProtocol(object):
         max_write_size = 0x100
 
         if raw:
-            if not len(val):
+            if not len(value):
                 raise ValueError("val had zero length")
-            for i in range(0, len(val), max_write_size):
-                write_val = encode(val[i:max_write_size + i], 'hex_codec').decode('ascii')
+            for i in range(0, len(value), max_write_size):
+                write_val = encode(value[i:max_write_size + i], 'hex_codec').decode('ascii')
                 ret, resp = self._sync_request(
                     ["-data-write-memory-bytes", str(address + i), write_val],
                     GDB_PROT_DONE)
 
         else:
-            fmt = '<%d%s' % (num_words, num2fmt[wordsize])
+            fmt = '<%d%s' % (num_words, num2fmt[size])
             if num_words == 1:
-                contents = pack(fmt, val)
+                contents = pack(fmt, value)
             else:
-                contents = pack(fmt, *val)
+                contents = pack(fmt, *value)
 
             hex_contents = encode(contents, 'hex_codec').decode('ascii')
             ret, resp = self._sync_request(
                 ["-data-write-memory-bytes", str(address), hex_contents],
                 GDB_PROT_DONE)
-
-        self.log.debug("Attempted to write memory. Received response: %s" % resp)
+        if 'message' in resp and resp['message'] == 'error':
+            self.log.error("Attempted to write memory. Received error response: %s" % resp)
+        else:
+            self.log.debug("Attempted to write memory. Received response [%s]: %s" % (ret, resp))
         return ret
 
-    def read_memory(self, address, wordsize=4, num_words=1, raw=False):
+    def read_memory(self, address, size=4, num_words=1, raw=False):
         """reads memory
 
         :param address:   Address to read from
-        :param wordsize:  the size of a read word (1, 2, 4 or 8)
+        :param size:  the size of a read word (1, 2, 4 or 8)
         :param num_words: the amount of read words
         :param raw:       Whether the read memory should be returned unprocessed
         :return:          The read memory
@@ -651,9 +651,9 @@ class GDBProtocol(object):
 
         max_read_size = 0x100
         raw_mem = b''
-        for i in range(0, wordsize * num_words, max_read_size):
-            to_read = max_read_size if wordsize * num_words > i + max_read_size - 1 else \
-                wordsize * num_words % max_read_size
+        for i in range(0, size * num_words, max_read_size):
+            to_read = max_read_size if size * num_words > i + max_read_size - 1 else \
+                size * num_words % max_read_size
             res, resp = self._sync_request(["-data-read-memory-bytes", str(address + i),
                                             str(to_read)],
                                            GDB_PROT_DONE)
@@ -661,7 +661,7 @@ class GDBProtocol(object):
             self.log.debug("Attempted to read memory. Received response: %s" % resp)
 
             if not res:
-                raise Exception("Failed to read memory!")
+                raise Exception("Failed to read memory!  Response: %s" % resp)
 
             # the indirection over the bytearray is needed for legacy python support
             read_mem = bytearray.fromhex(resp['payload']['memory'][0]['contents'])
@@ -671,7 +671,7 @@ class GDBProtocol(object):
             return raw_mem
         else:
             # Todo: Endianness support
-            fmt = '<%d%s' % (num_words, num2fmt[wordsize])
+            fmt = '<%d%s' % (num_words, num2fmt[size])
             mem = list(unpack(fmt, raw_mem))
 
             if num_words == 1:
@@ -699,8 +699,8 @@ class GDBProtocol(object):
 
         ret, resp = self._sync_request(
             ["-data-evaluate-expression", "%s" %
-                self._arch.special_registers[reg]['gdb_expression']],
-             GDB_PROT_DONE)
+             self._arch.special_registers[reg]['gdb_expression']],
+            GDB_PROT_DONE)
         fmt = self._arch.special_registers[reg]['format']
         res = parse.parse(fmt, resp['payload']['value'])
         if res is None:
@@ -709,9 +709,6 @@ class GDBProtocol(object):
             )
             raise Exception("Couldn't parse special register")
         return list(res)
-
-
-
 
     def read_register_from_nr(self, reg_num):
         """Gets the value of a single register
@@ -737,12 +734,12 @@ class GDBProtocol(object):
         if reg in self._arch.special_registers:
 
             fmt = "{:s}=" \
-                  + self._arch.special_registers[reg]['format'].replace(' ','')
+                  + self._arch.special_registers[reg]['format'].replace(' ', '')
 
             ret, resp = self._sync_request(
                 ["-data-evaluate-expression", fmt.format(
-                   self._arch.special_registers[reg]['gdb_expression'], *value)
-                ], GDB_PROT_DONE
+                    self._arch.special_registers[reg]['gdb_expression'], *value)
+                 ], GDB_PROT_DONE
             )
         else:
             ret, resp = self._sync_request(
@@ -777,9 +774,8 @@ class GDBProtocol(object):
         :returns: True on success"""
         ret, resp = self._sync_request(["-exec-continue"], GDB_PROT_RUN)
 
-        self.log.debug(
-            "Attempted to continue execution on the target. Received response: %s" %
-            resp)
+        self.log.info(
+            "Attempted to continue execution on the target. Received response: %s, returning %s" % (resp, ret))
         return ret
 
     def stop(self):

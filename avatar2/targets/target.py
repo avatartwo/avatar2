@@ -156,8 +156,8 @@ class TargetProtocolStore(object):
 
     def shutdown(self):
         """Shutsdown all the associated protocols"""
-        for p in self.protocols:
-            #print("Unloading %s" % str(p))
+        l = list(self.protocols)
+        for p in reversed(l):
             setattr(self, p, None)
 
     def __setattr__(self, name, value):
@@ -356,7 +356,7 @@ class Target(object):
         if target_range is not None and target_range.forwarded is True and \
         target_range.forwarded_to != self:
             return target_range.forwarded_to.write_memory(address, size, value,
-                                                          num_words, raw)
+                                                          num_words, raw, origin=self)
         
         return self.protocols.memory.write_memory(address, size, value,
                                                   num_words, raw)
@@ -381,12 +381,12 @@ class Target(object):
         if target_range is not None and target_range.forwarded is True and \
         target_range.forwarded_to != self:
             return target_range.forwarded_to.read_memory(address, size,
-                                                         num_words, raw)
+                                                         num_words, raw, origin=self)
         
         return self.protocols.memory.read_memory(address, size, num_words, raw)
 
     @watch('TargetRegisterWrite')
-    #@action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
     def write_register(self, register, value):
         """
         Writing a register to the target
@@ -397,7 +397,7 @@ class Target(object):
         return self.protocols.registers.write_register(register, value)
 
     @watch('TargetRegisterRead')
-    #@action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
+    @action_valid_decorator_factory(TargetStates.STOPPED, 'registers')
     def read_register(self, register):
         """
         Reading a register from the target
