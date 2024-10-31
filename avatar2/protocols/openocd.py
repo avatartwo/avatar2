@@ -151,13 +151,13 @@ class OpenOCDProtocol(Thread):
             return
 
         # mode halt | run | init
-        reset_re = re.compile("type target_reset mode (\w+)")
+        reset_re = re.compile(r"type target_reset mode (\w+)")
         # Trace data (from TPIU) Hex-encoded.
-        trace_re = re.compile("type target_trace data ([0-9a-f]+)")
+        trace_re = re.compile(r"type target_trace data ([0-9a-f]+)")
         # State change
-        state_re = re.compile("type target_state state (\S+)")
+        state_re = re.compile(r"type target_state state (\S+)")
         # Generic event
-        event_re = re.compile("type target_event event (\S+)")
+        event_re = re.compile(r"type target_event event (\S+)")
 
         mreset = reset_re.match(str)
         mtrace = trace_re.match(str)
