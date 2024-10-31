@@ -9,55 +9,58 @@ Welcome to avatar², the target orchestration framework with focus on dynamic
 
 Avatar² is developed and maintained by [Eurecom's S3 Group](http://s3.eurecom.fr/).
 
+
 # Building
 
-Building avatar² is easy!
+### Docker
 
-First, make sure that all the dependencies are present:
-
+Two Dockerfile are present: `avatar2-lite.Dockerfile` builds avatar² with QEmu target endpoints, while `avatar2.Dockerfile` builds both QEmu and PANDA target endpoints.
+For example, to build and run a container with avatar2 and PANDA configured for the ARM architecture:
 ```
-sudo apt-get install python-pip python-setuptools python-dev cmake
-```
-
-Afterwards, use python-pip to install avatar2:
-
-```
-pip install avatar2
+$ COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose build avatar2-arm
+$ docker-compose run avatar2-arm
 ```
 
-Now you are all ready to go. Additionally, if you want to install specific
-target entpoints, please run the avatar2-installer, which tries to fetch and
-install the endpoints automatically.
-
-```
-python -m avatar2.installer
-```
-
-### Building with Docker
-
-A Dockerfile is present which build by default avatar² with QEmu and PANDA target endpoints:
-
-```
-$ docker build -t avatar2 .
-$ docker run --rm avatar2 python3 -c "import avatar2"
-```
-
-Alternately, you can use `generate_dockerfile.py` to build a docker image with only the target endpoints your need:
-
+Alternately, `generate_dockerfile.py` helps you generate the docker image with the endpoints you want:
 ```
 $ python3 generate_dockerfile.py --endpoint_list avatar-qemu --qemu_targets arm-softmmu
 $ docker build -t avatar2 .
 ```
 
+### PyPI
+
+Avatar² can be installed from PyPI.
+
+First, make sure that all the dependencies are present:
+```
+sudo apt-get install python-pip python-setuptools python-dev cmake
+```
+
+We recommands you to use a [Python virtual environment](https://virtualenvwrapper.readthedocs.io/en/latest/).
+
+Afterwards, use python-pip to install avatar2:
+```
+python3 -m pip install avatar2
+```
+
+Now you will need to install the supported endpoints you would like to use, such as debuggers (`gdb-multiarch`, `openocd`) and emulators (`qemu-system-*`, `panda-system-*`, etc.).
+
+The old avatar2-installer tries to fetch and install them automatically, but is not actively supported.
+```
+python -m avatar2.installer
+```
+
 ### Building manually
 
 Avatar² can also be built manually.
+
 The following three commands are enough to install the core.
 ```
 $ git clone https://github.com/avatartwo/avatar2.git
 $ cd avatar2
-$ sudo python setup.py install
+$ python setup.py install
 ```
+
 Afterwards, the different target endpoints can be built, such as QEmu or PANDA.
 For doing so, we are providing build-scripts for Ubuntu 20.04 - while other
 distributions are not officially supported (yet), the scripts are known to
@@ -72,7 +75,9 @@ $ ./build_*.sh
 with this, please consider building avatar² in a VM/Container or install the
 dependencies manually and adjust the scripts.
 
+
 # Getting started
+
 For discovering the power of avatar² and getting a feeling of its usage,
 we recommend highly checking out the
 [handbook](https://github.com/avatartwo/avatar2/tree/master/handbook) here on
@@ -94,7 +99,9 @@ vivid means of communication - if you want an invite, just send us a mail!
 
 
 # Publications
+
 The following publications describe, use, or extend the avatar² framework:
+
 1. M. Muench, D. Nisi, A. Francillon, D. Balzarotti. "Avatar²: A Multi-target Orchestration Platform." Workshop on Binary Analysis Research (BAR), San Diego, California, February 2018.
     - [Paper](http://s3.eurecom.fr/docs/bar18_muench.pdf) - [Code](https://github.com/avatartwo/bar18_avatar2)
 2. M. Muench, J. Stijohann, F. Kargl, A. Francillon, D. Balzarotti. "What You Corrupt Is Not What You Crash: Challenges in Fuzzing Embedded Devices." Network and Distributed System Security Symposium (NDSS), San Diego, California, 2018.
@@ -112,4 +119,5 @@ The following publications describe, use, or extend the avatar² framework:
 
 
 # Acknowledgements
+
 The avatar² project was partially funded through, and supported by, SIEMENS AG - Technology.

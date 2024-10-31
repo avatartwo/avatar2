@@ -1,0 +1,79 @@
+version: "3.7"
+
+
+x-options: &options
+    command: ipython3
+    stdin_open: true
+    tty: true
+    privileged: true
+    volumes:
+        - /run/udev:/run/udev:ro
+        - /dev/bus:/dev/bus:ro
+
+x-avatar: &avatar
+    image: avatartwo/avatar2
+    build:
+        dockerfile: avatar2.Dockerfile
+        context: .
+
+x-avatar-lite: &avatar-lite
+    image: avatartwo/avatar2-lite
+    build:
+        dockerfile: avatar2-lite.Dockerfile
+        context: .
+
+ 
+services:
+
+    avatar2-lite-arm:
+        <<: *avatar-lite
+        <<: *options
+        environment:
+            AVATAR2_ARCH: ARM
+            AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+            AVATAR2_QEMU_EXECUTABLE: qemu-system-arm
+
+    avatar2-lite-mips:
+        <<: *avatar-lite
+        <<: *options
+        environment:
+            AVATAR2_ARCH: MIPS
+            AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+            AVATAR2_QEMU_EXECUTABLE: qemu-system-mips
+
+    avatar2-lite-x86:
+        <<: *avatar-lite
+        <<: *options
+        environment:
+            AVATAR2_ARCH: X86
+            AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+            AVATAR2_QEMU_EXECUTABLE: qemu-system-x86_64
+
+
+    avatar2-arm:
+        <<: *avatar
+        <<: *options
+        environment:
+            AVATAR2_ARCH: ARM
+            AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+            AVATAR2_QEMU_EXECUTABLE: qemu-system-arm
+            AVATAR2_PANDA_EXECUTABLE: panda-system-arm
+
+    avatar2-mips:
+        <<: *avatar
+        <<: *options
+        environment:
+            AVATAR2_ARCH: MIPS
+            AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+            AVATAR2_QEMU_EXECUTABLE: qemu-system-mips
+            AVATAR2_PANDA_EXECUTABLE: panda-system-mips
+
+    avatar2-x86:
+        <<: *avatar
+        <<: *options
+        environment:
+            AVATAR2_ARCH: X86
+            AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+            AVATAR2_QEMU_EXECUTABLE: qemu-system-x86_64
+            AVATAR2_PANDA_EXECUTABLE: panda-system-x86_64
+
