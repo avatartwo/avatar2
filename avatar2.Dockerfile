@@ -1,29 +1,8 @@
-### Stage 0: the base avatar2-core image
 FROM ubuntu:20.04 AS base
 
-# avatar2 run-time dependencies
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 python3-setuptools ipython3 libcapstone3 gdb gdbserver gdb-multiarch udev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
 
 
-
-### Stage 1: The avatar2-core build image
-FROM base AS build-core
-
-# avatar2 build dependencies
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git cmake pkg-config build-essential python3-dev python3-pip libcapstone-dev && \
-    pip3 install --upgrade --no-cache-dir pip
-
-RUN git clone https://github.com/avatartwo/avatar2 /root/avatar2/
-RUN cd /root/avatar2 && \
-    python3 setup.py install
-
-
-
-### Stage 2: Build avatar-qemu
+### Build avatar-qemu
 FROM base AS build-avatar-qemu
 ARG QEMU_TARGETS="arm-softmmu,mips-softmmu,i386-softmmu,x86_64-softmmu"
 
@@ -45,29 +24,11 @@ RUN cd /root/avatar-qemu/build/ && make install
 
 
 
-### Stage 3: Pull official panda image
-FROM pandare/panda:latest AS panda
-
-
-
-### Stage 4: Assemble the final image
-FROM base AS avatar2
-
-COPY --from=build-core /usr/local /usr/local
+### Stage 3: Assemble the final image
+FROM avatar2-core AS avatar2
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libpulse0
 
 COPY --from=build-avatar-qemu /usr/local /usr/local
-
-# PANDA run-time dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates wget && \
-    wget 'https://raw.githubusercontent.com/panda-re/panda/master/panda/dependencies/ubuntu:20.04_base.txt' && \
-    DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends $(cat ./ubuntu:20.04_base.txt | grep -o '^[^#]*') && \
-    rm -f ./ubuntu:20.04_base.txt && \
-    apt-get remove -y ca-certificates wget
-
-COPY --from=panda /usr/local /usr/local
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
