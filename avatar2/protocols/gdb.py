@@ -852,6 +852,18 @@ class GDBProtocol(object):
         self.log.debug("Attempt to resolve the symbol %s. " +
                        "Received: %s" % resp)
         return ret, resp
+        
+    def get_address(self, address):
+        self._communicator.start_console_collection()
+        req = ['info', 'symbol', '0x%x' % address]
+        #print(req)
+        ret, resp = self._sync_request(req, GDB_PROT_DONE)
+        self._communicator.stop_console_collection()
+        if ret:
+            resp = self._communicator._console_output
+        self.log.debug("Attempt to resolve the address %x. " +
+                       "Received: %s" % resp)
+        return ret, resp
 
     def set_gdb_variable(self, variable, value):
         req = ['-gdb-set', str(variable), str(value)]

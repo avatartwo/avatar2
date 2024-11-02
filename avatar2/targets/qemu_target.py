@@ -1,6 +1,6 @@
 import json
 from subprocess import Popen
-from os.path import isfile, exists
+from os.path import isfile, exists, expanduser
 
 from avatar2.protocols.gdb import GDBProtocol
 from avatar2.protocols.qmp import QMPProtocol
@@ -47,6 +47,9 @@ class QemuTarget(Target):
                 if executable is not None
                 else self._arch.get_qemu_executable()
             )
+        # allow ~/ to be used in the path
+        self.executable = expanduser(self.executable)
+
         self.fw = firmware
         self.cpu_model = cpu_model
         self.entry_address = entry_address

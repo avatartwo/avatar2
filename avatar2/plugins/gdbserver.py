@@ -11,11 +11,14 @@ import xml.etree.ElementTree as ET
 from time import sleep
 from struct import pack
 from types import MethodType
+from typing import Iterable, NamedTuple, Type
 from threading import Thread, Event
 from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
 from os.path import dirname
 
 from avatar2.targets import TargetStates
+from avatar2.archs import AARCH64, Architecture
+from avatar2 import Target
 
 l = logging.getLogger('avatar2.gdbplugin')
 
@@ -25,10 +28,14 @@ match_hex = lambda m, s: [int(x, 16) for x in re.match(m, s).groups()]
 TIMEOUT_TIME = 1.0
 
 
-class GDBRSPServer(Thread):
+class Register(NamedTuple):
+    name: str
+    bitsize: int
+    num: int
 
-    def __init__(self, avatar, target, port=3333, xml_file=None,
-                 do_forwarding=False):
+
+class GDBRSPServer(Thread):
+    def __init__(self, avatar, target, port=3333, do_forwarding=False):
         super().__init__()
         self.daemon=True
         self.sock = socket.socket(AF_INET, SOCK_STREAM)
@@ -37,18 +44,15 @@ class GDBRSPServer(Thread):
         self.avatar = avatar
         self.target = target
         self.port = port
-        self.xml_file = xml_file
         self.do_forwarding = do_forwarding
 
         self._packetsize=0x47FF
         self.running = False
         self.bps = {}
         self._do_shutdown = Event()
-        
 
-        xml_regs = ET.parse(self.xml_file).getroot().find('feature')
-        self.registers = [reg.attrib for reg in xml_regs if reg.tag == 'reg']
-        assert(len(self.registers))
+        self.registers = list(self._fetch_registers(self.avatar.arch, self.target))
+        assert(self.registers)
 
         self.handlers = {
             'q' : self.query,
@@ -68,6 +72,62 @@ class GDBRSPServer(Thread):
             'z' : self.remove_breakpoint,
             'D' : self.detach,
         }
+
+    @staticmethod
+    def _make_gdb_xml(arch: Type[Architecture], registers: Iterable[Register]):
+        target = ET.Element("target")
+
+        architecture = ET.Element("architecture")
+        architecture.text = arch.gdb_name
+        target.append(architecture)
+
+        feature = ET.Element("feature", attrib={"name": f"org.gnu.gdb.{arch.gdb_name}.core"})
+
+        for register in registers:
+            # v* registers are used for floating point and SIMD in AArch64, the others map to those
+            # they use a different size, which we can send to gdb, but gdb does not like registers with a size of 128
+            # therefore we skip them
+            if re.match(r"[bhsdqv][0-9]+", register.name):
+                continue
+
+            reg = ET.Element("reg", attrib={
+                "name": register.name,
+                "bitsize": str(register.bitsize),
+                "regnum": str(register.num),
+            })
+
+            if register.name in ["pc"]:
+                reg.attrib["type"] = "data_ptr"
+
+            elif register.name in ["sp"]:
+                reg.attrib["type"] = "code_ptr"
+
+            feature.append(reg)
+
+        target.append(feature)
+
+        return ET.tostring(target)
+
+    @staticmethod
+    def _fetch_registers(arch: Type[Architecture], target: Target) -> Iterable[Register]:
+        register_names = target.protocols.registers.get_register_names()
+
+        # we do not support different-size registers at the moment
+        # gdb for instance has complained about the 128 bit v* registers (see also the filter below)
+        if arch == AARCH64:
+            bitsize = 64
+            arch_name = "aarch64"
+        else:
+            raise NotImplementedError(f"architecture {repr(arch)} not implemented yet")
+
+        for num, name in enumerate(register_names):
+            # v* registers are used for floating point and SIMD in AArch64, the others map to those
+            # they use a different size, which we can send to gdb, but gdb does not like registers with a size of 128
+            # therefore we skip them
+            if arch == AARCH64 and re.match(r"[bhsdqv][0-9]+", name):
+                continue
+
+            yield Register(name, bitsize, num)
 
     def shutdown(self):
         self._do_shutdown.set()
@@ -125,8 +185,7 @@ class GDBRSPServer(Thread):
             off, length = match_hex('qXfer:features:read:target.xml:(.*),(.*)',
                                    pkt.decode())
             
-            with open(self.xml_file, 'rb') as f:
-                data = f.read()
+            data = self._make_gdb_xml(self.avatar.arch, self.registers)
             resp_data = data[off:off+length]
             if len(resp_data) < length:
                 prefix = b'l'
@@ -181,11 +240,9 @@ class GDBRSPServer(Thread):
     def read_registers(self, pkt):
         resp = ''
         for reg in self.registers:
-            
-            bitsize = int(reg['bitsize'])
-            assert( bitsize % 8 == 0)
-            r_len = int(bitsize / 8)
-            r_val = self.target.read_register(reg['name'])
+            assert(reg.bitsize % 8 == 0)
+            r_len = reg.bitsize / 8
+            r_val = self.target.read_register(reg.name)
             #l.debug(f'{reg["name"]}, {r_val}, {r_len}')
 
             resp += r_val.to_bytes(r_len, 'little').hex()
@@ -349,12 +406,8 @@ class GDBRSPServer(Thread):
                 pkt += c
 
 
-def spawn_gdb_server(self, target, port, do_forwarding=True, xml_file=None):
-    if xml_file is None:
-        # default for now: use ARM
-        xml_file = f'{dirname(__file__)}/gdb/arm-target.xml'
-      
-    server = GDBRSPServer(self, target, port, xml_file, do_forwarding)
+def spawn_gdb_server(self, target, port, do_forwarding=True):
+    server = GDBRSPServer(self, target, port, do_forwarding)
     server.start()
     self._gdb_servers.append(server)
     return server

@@ -9,9 +9,12 @@ CONFIG_FILE = expanduser('~/.avatar2/settings.cfg')
 # Constant names for the different targets
 OPENOCD = 'openocd'
 QEMU = 'avatar-qemu'
-PANDA = 'panda'
 GDB_MULTI = 'gdb (multiarch)'
-GDB_X86 = 'gdb (x86)' 
+QEMU_AARCH64 = 'avatar-qemu-aarch64'
+PANDA = 'avatar-panda'
+GDB_ARM = 'gdb (ARM)'
+GDB_AARCH64 = 'gdb (AARCH64)'
+GDB_X86 = 'gdb (x86)'
 
 
 TARGETS = OrderedDict(
@@ -32,6 +35,13 @@ TARGETS = OrderedDict(
              'install_cmd': ['git submodule update --init dtc',
                              './configure', 'make']
           }),
+    (QEMU_AARCH64, {  'git': 'https://github.com/avatartwo/avatar-qemu',
+             'configure': '--disable-sdl --target-list=aarch64-softmmu',
+             'make': '',
+             'rel_path': 'aarch64-softmmu/qemu-system-aarch64',
+             'install_cmd': ['git submodule update --init dtc',
+                             './configure', 'make'],
+          }),
     (PANDA, {'git': 'https://github.com/panda-re/panda',
              'configure': '--disable-sdl --target-list=arm-softmmu',
              'make': '',
@@ -42,13 +52,16 @@ TARGETS = OrderedDict(
              'install_script': 'panda/scripts/install_ubuntu.sh'
            }),
     (GDB_X86, { 'apt_name': 'gdb' }),
-    (GDB_MULTI, { 'apt_name': 'gdb-multiarch'})
+    (GDB_MULTI, { 'apt_name': 'gdb-multiarch'}),
+    (GDB_ARM, { 'apt_name': 'gdb-arm-none-eabi',
+               'sys_name': 'arm-none-eabi-gdb'}),
+    (GDB_AARCH64, {'apt_name': 'gdb-multiarch',}) #TODO: put the path to specific gdb
     ]
 )
 
 
 class AvatarConfig(ConfigParser):
-    
+
 
     def __init__(self):
         super(AvatarConfig, self).__init__()

@@ -330,6 +330,15 @@ class Target(object):
         :returns:         (True, Address) on success else False
         """
         return self.protocols.memory.get_symbol(symbol)
+        
+    def get_address(self, address):
+        """
+        Get the symbol of a address
+
+        :param address:    The address whose symbol is wanted
+        :returns:         (True, Symbol) on success else False
+        """
+        return self.protocols.memory.get_address(address)
 
     @watch('TargetWriteMemory')
     #@action_valid_decorator_factory(TargetStates.STOPPED, 'memory')

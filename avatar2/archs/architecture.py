@@ -1,6 +1,7 @@
 from avatar2.installer.config import AvatarConfig
 import distutils
-from os import environ
+import string
+from os import environ, path
 from re import sub
 
 class Architecture(object):
@@ -14,13 +15,36 @@ class Architecture(object):
         is installed on the system
         """
 
+        def sanitize_env_var_name(name):
+            """
+            Replaces all non-letter and non-digit characters with underscores (_).
+            """
+
+            new_name = []
+
+            for char in name:
+                if char in string.ascii_letters + string.digits:
+                    new_name.append(char)
+                else:
+                    new_name.append("_")
+
+            return "".join(new_name)
+
         env_var_name = 'AVATAR2_%s_EXECUTABLE' % sub(r'avatar-|\W\(.*\)',
                                                      '', exec_name).upper()
-        env_exec = environ.get( env_var_name )
+        env_var_name = sanitize_env_var_name(env_var_name)
+
+        env_exec = environ.get(env_var_name)
+
         if env_exec is not None:
-            target_path = distutils.spawn.find_executable(env_exec)
+            if path.isfile(env_exec):
+                target_path = env_exec
+            else:
+                target_path = distutils.spawn.find_executable(env_exec)
+
         else:
             target_path = AvatarConfig().get_target_path(exec_name)
+
         if target_path is None:
             raise Exception(("Couldn't find executable for %s\n"
                              "Have you tried running the avatar2-installer "

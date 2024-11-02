@@ -21,7 +21,7 @@ from .archs.arm import ARM
 from .memory_range import MemoryRange
 from .message import *
 from .peripherals import AvatarPeripheral
-from .targets.target import TargetStates  # TargetStates
+from .targets.target import Target, TargetStates
 from .watchmen import watch, Watchmen
 
 
@@ -194,8 +194,8 @@ class Avatar(Thread):
         plugin.load_plugin(self, *args, **kwargs)
         self.loaded_plugins += [name]
 
-    @watch("AddTarget")
-    def add_target(self, backend, *args, **kwargs):
+    @watch('AddTarget')
+    def add_target(self, backend, *args, **kwargs) -> Target:
         """
         Adds a new target to the analyses
 
