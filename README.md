@@ -12,33 +12,32 @@ Avatar² is developed and maintained by [Eurecom's S3 Group](http://s3.eurecom.f
 
 # Building
 
+Building avatar² is easy!
+
 ### Docker
 
-Two Dockerfile are present: `avatar2-lite.Dockerfile` builds avatar² with QEmu target endpoints, while `avatar2.Dockerfile` builds both QEmu and PANDA target endpoints.
-For example, to build and run a container with avatar2 and PANDA configured for the ARM architecture:
-```
-$ COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker-compose build avatar2-arm
-$ docker-compose run avatar2-arm
+You can easily get started with two commands:
+```sh
+$ docker-compose build
+$ docker-compose run --rm avatar2-arm
 ```
 
-Alternately, `generate_dockerfile.py` helps you generate the docker image with the endpoints you want:
-```
-$ python3 generate_dockerfile.py --endpoint_list avatar-qemu --qemu_targets arm-softmmu
-$ docker build -t avatar2 .
-```
+We provide under the `docker/` directory two dockerfile `avatar2-core.Dockerfile` and `avatar2.Dockerfile` .
+The main difference between the two images is that the latter includes QEMU.
+For more example on available images, refer to the `docker-compose.yml` file.
 
 ### PyPI
 
-Avatar² can be installed from PyPI.
-
-First, make sure that all the dependencies are present:
-```
-sudo apt-get install python-pip python-setuptools python-dev cmake
-```
+Avatar² is also present on [PyPI](https://pypi.org/project/avatar2/)!
 
 We recommands you to use a [Python virtual environment](https://virtualenvwrapper.readthedocs.io/en/latest/).
 
-Afterwards, use python-pip to install avatar2:
+First, make sure that all the dependencies are present:
+```
+apt-get install python-pip python-setuptools python-dev cmake
+```
+
+Afterwards, use pip to install avatar2:
 ```
 python3 -m pip install avatar2
 ```
@@ -56,10 +55,12 @@ Avatar² can also be built manually.
 
 The following three commands are enough to install the core.
 ```
-$ git clone https://github.com/avatartwo/avatar2.git
+$ git clone https://github.com/avatartwo/avatar2.git avatar2
 $ cd avatar2
-$ python setup.py install
+$ python -m pip install .
 ```
+
+For more detailed installation instructions, we encourage you to take a look at `avatar2-core.Dockerfile` and `avatar2.Docker`, as they provide step-by-step commands similar to shell instructions.
 
 Afterwards, the different target endpoints can be built, such as QEmu or PANDA.
 For doing so, we are providing build-scripts for Ubuntu 20.04 - while other
