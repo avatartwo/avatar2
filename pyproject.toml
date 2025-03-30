@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "avatar2"
+version = "1.4.7"
+description = "A Dynamic Multi-Target Orchestration Framework"
+authors = [
+    {name = "Marius Muench", email = "marius.muench@eurecom.fr"},
+]
+maintainers = [
+    {name = "Marius Muench", email = "marius.muench@eurecom.fr"},
+    {name = "Paul Olivier", email = "paul.olivier@eurecom.fr"},
+]
+requires-python = ">=3.6"
+dependencies = [
+    "pygdbmi>=0.10.0.0; python_version > '3.5'",
+    "pygdbmi==0.9.0.2; python_version <= '3.5'",
+    "enum34; python_version < '3.4'",
+    "cached_property; python_version <= '3.8'",
+    "intervaltree",
+    "posix_ipc>=1.0.0",
+    "capstone>=3.0.4",
+    "keystone-engine",
+    "parse",
+    "configparser",
+    "npyscreen",
+    "unicorn",
+    "bitstring",
+    "pylink-square",
+    "pyusb",
+]
+urls = {Homepage = "https://github.com/avatartwo/avatar2"}
+
+[tool.setuptools]
+packages = {find = {}}
+include-package-data = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "--ignore=tests/pyperipheral/test_pyperipheral.py"
+log_cli = true
+log_cli_level = "INFO"
