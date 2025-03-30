@@ -1,12 +1,19 @@
 ### The base avatar2-core image
 FROM ubuntu:24.04 AS base
 
-# System essentials
+# Runtime dependencies and other tools
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         python3 \
         python3-setuptools \
         python3-pip \
+        ipython3 \
+        libcapstone4 \
+        gdb \
+        gdbserver \
+        gdb-multiarch \
+        openocd \
+        udev \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -25,12 +32,14 @@ RUN apt-get update && \
         pkg-config \
         build-essential \
         python3-dev \
-        python3-pip \
         libcapstone-dev
 
 # Copy the code
-#RUN git clone https://github.com/avatartwo/avatar2 /root/avatar2/
-COPY . /avatartwo/avatar2
+COPY . /avatartwo/avatar2 
+# Ensure the project was copied properly
+RUN ls -la /avatartwo/avatar2/ && \
+    if [ ! -f /avatartwo/avatar2/pyproject.toml ]; then echo "pyproject.toml not found!"; exit 1; fi && \
+    echo "Project structure verified"
 
 # Build and install
 RUN pip3 install --no-cache-dir --break-system-packages .
@@ -39,20 +48,6 @@ RUN pip3 install --no-cache-dir --break-system-packages .
 
 ### Assemble the final image
 FROM base AS avatar2-core
-
-# Runtime dependencies and other tools
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        ipython3 \
-        libcapstone4 \
-        gdb \
-        gdbserver \
-        gdb-multiarch \
-        openocd \
-        udev \
-        && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
 
 # Copy installed Python packages
 COPY --from=build-core /usr/local /usr/local
