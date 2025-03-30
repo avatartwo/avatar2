@@ -36,3 +36,10 @@ urls = {Homepage = "https://github.com/avatartwo/avatar2"}
 [tool.setuptools]
 packages = {find = {}}
 include-package-data = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "--ignore=tests/pyperipheral/test_pyperipheral.py"
+log_cli = true
+log_cli_level = "INFO"
