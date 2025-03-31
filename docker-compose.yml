@@ -1,10 +1,12 @@
 # Usage examples:
 #
 # 1. Building
-#   - all images:
+#   - avatar2-core-arm and avatar2-arm images
 #     $ docker-compose build
 #   - a single image
 #     $ docker-compose build avatar2-core-arm
+#   - the test profile
+#     $ docker-compose --profile test build
 #
 # 2. Running
 #   - By default, ipython3 shell is started
@@ -136,6 +138,7 @@ services:
 # Tests
     tests-arm:
         <<: [*tests, *common-options]
+        profiles: ["test"]
         environment:
             AVATAR2_ARCH: ARM
             AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -144,6 +147,7 @@ services:
 
     tests-mips:
         <<: [*tests, *common-options]
+        profiles: ["test"]
         environment:
             AVATAR2_ARCH: MIPS
             AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -152,6 +156,7 @@ services:
 #
 #    tests-i386:
 #        <<: [*tests, *common-options]
+#        profiles: ["test"]
 #        environment:
 #            AVATAR2_ARCH: X86
 #            AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -160,6 +165,7 @@ services:
 #
 #    tests-x86:
 #        <<: [*tests, *common-options]
+#        profiles: ["test"]
 #        environment:
 #            AVATAR2_ARCH: X86
 #            AVATAR2_GDB_EXECUTABLE: gdb-multiarch
