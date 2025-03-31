@@ -9,122 +9,68 @@ on:
         branches:
             - 'main'
             - 'dev**'
+    workflow_dispatch:      # allow manual trigger
 
 
 jobs:
     build:
+        name: Building avatar2 docker images
         if: github.repository == 'avatartwo/avatar2'
-        runs-on: ubuntu-20.04
+        runs-on: ubuntu-24.04
         strategy:
             fail-fast: false
-            matrix:
-                python-version: ["3.7", "3.8", "3.9"]
 
         steps:
-            - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v2
-              with:
-                python-version: ${{ matrix.python-version }}
-
-            - name: Install dependencies
-              run: |
-                sudo apt-get update
-                sudo apt-get upgrade -y
-                sudo apt-get install -y -m -f --install-suggests cmake build-essential git libcapstone3 libcapstone-dev
-                python -m pip install --upgrade pip
-                pip install pytest
-                pip install "cffi>1.14.3"   # for pypanda
-
-
             - name: Check out repository code
-              uses: actions/checkout@v2
+              uses: actions/checkout@v4
 
-            - name: Build avatar2
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build with docker compose
               run: |
-                cd ${{ github.workspace }}
-                python setup.py install
+                docker compose build
 
-
-            - name: Install debuggers targets
+            - name: Save docker images
               run: |
-                sudo apt-get install -y -m -f --install-suggests gdb gdb-multiarch openocd
+                mkdir -p /tmp/avatar2-docker-images
+                docker save avatartwo/avatar2-core:latest -o /tmp/avatar2-docker-images/avatar2-core.tar
+                docker save avatartwo/avatar2:latest -o /tmp/avatar2-docker-images/avatar2.tar
 
-            - name: Build avatar-qemu target
+            - name: Upload docker images as artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                name: avatar2-docker-images
+                path: /tmp/avatar2-docker-images/
+                retention-days: 30
+                #compression-level: 9
+                overwrite: true
+
+    test:
+        name: Unit Testing
+        needs: build
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Check out repository code
+              uses: actions/checkout@v4
+
+            - name: Download docker images artifacts
+              uses: actions/download-artifact@v4
+              with:
+                name: avatar2-docker-images
+                path: /tmp/avatar2-docker-images/
+
+            - name: Load docker images
               run: |
-                cd ${{ github.workspace }}/targets
-                echo yes | ./build_qemu.sh arm-softmmu,mips-softmmu
-                cd src/avatar-qemu/build
-                sudo make install
+                docker load -i /tmp/avatar2-docker-images/avatar2-core.tar
+                docker load -i /tmp/avatar2-docker-images/avatar2.tar
 
-
-            - name: Run unit tests
-              env: 
-                AVATAR2_ARCH: ARM
-                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
+            - name: Build test profile docker image
               run: |
-                cd ${{ github.workspace }}
-                python ./tests/hello_world.py
-                python ./tests/gdb_memory_map_loader.py
+                docker compose --profile test build
 
             - name: Run unit tests for ARM
-              env: 
-                AVATAR2_ARCH: ARM
-                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
-                AVATAR2_QEMU_EXECUTABLE: qemu-system-arm
-              run: |
-                cd ${{ github.workspace }}/tests
-                pytest test_gdbplugin.py \
-                       test_gdbprotocol.py \
-                       test_inceptionprotocol.py \
-                       test_remote_memoryprotocol.py \
-                       test_qemutarget.py
+              run: docker compose run --rm tests-arm
 
             - name: Run unit tests for MIPS
-              env: 
-                AVATAR2_ARCH: MIPS
-                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
-                AVATAR2_QEMU_EXECUTABLE: qemu-system-mips
-              run: |
-                cd ${{ github.workspace }}/tests
-                pytest test_gdbplugin.py \
-                       test_gdbprotocol.py \
-                       test_inceptionprotocol.py \
-                       test_remote_memoryprotocol.py \
-                       test_qemutarget.py
-
-
-            - name: Build panda target
-              run: |
-                git clone https://github.com/panda-re/panda.git
-                cd panda
-                git checkout 5fb8a5098d0647a13e5e7d39d20ff9f04242572d
-                sudo prefix=/usr/local ./panda/scripts/install_ubuntu.sh i386-softmmu,arm-softmmu,mips-softmmu
-                pushd build
-                sudo make install
-                # Install pandare in the matrix python environment
-                sudo chown -R $(id -u):$(id -u) ../panda/python/core
-                pip install ../panda/python/core
-
-
-            - name: Run unit tests on panda target for ARM
-              env:
-                AVATAR2_ARCH: ARM
-                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
-                AVATAR2_QEMU_EXECUTABLE: panda-system-arm
-                AVATAR2_PANDA_EXECUTABLE: panda-system-arm
-              run: |
-                cd ${{ github.workspace }}/tests
-                pytest test_qemutarget.py \
-                       test_pypandatarget.py
-
-            - name: Run unit tests on panda target for MIPS
-              env:
-                AVATAR2_ARCH: MIPS
-                AVATAR2_GDB_EXECUTABLE: gdb-multiarch
-                AVATAR2_QEMU_EXECUTABLE: panda-system-mips
-                AVATAR2_PANDA_EXECUTABLE: panda-system-mips
-              run: |
-                cd ${{ github.workspace }}/tests
-                pytest test_qemutarget.py \
-                       test_pypandatarget.py
-
+              run: docker compose run --rm tests-mips
