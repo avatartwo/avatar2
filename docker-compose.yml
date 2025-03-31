@@ -2,21 +2,21 @@
 #
 # 1. Building
 #   - avatar2-core-arm and avatar2-arm images
-#     $ docker-compose build
+#     $ docker compose build
 #   - a single image
-#     $ docker-compose build avatar2-core-arm
+#     $ docker compose build avatar2-core-arm
 #   - the test profile
-#     $ docker-compose --profile test build
+#     $ docker compose --profile test build
 #
 # 2. Running
 #   - By default, ipython3 shell is started
-#     $ docker-compose run --rm avatar2-arm
+#     $ docker compose run --rm avatar2-arm
 #   - To start a bash shell
-#     $ docker-compose run --rm avatar2-arm bash
+#     $ docker compose run --rm avatar2-arm bash
 #   - Bind the working directory inside the container and start a shell
-#     $ docker-compose run -i --rm -v $(pwd):/avatar2 avatar2-arm bash
+#     $ docker compose run -i --rm -v $(pwd):/avatar2 avatar2-arm bash
 #   - Launch the tests
-#     $ docker-compose run --rm tests-arm
+#     $ docker compose run --rm tests-arm
 #
 
 x-common-options: &common-options
@@ -59,6 +59,8 @@ services:
 
     avatar2-arm:
         <<: [*avatar2, *common-options]
+        depends_on:
+          - avatar2-core-arm
         environment:
             AVATAR2_ARCH: ARM
             AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -66,6 +68,8 @@ services:
 
     avatar2-mips:
         <<: [*avatar2, *common-options]
+        depends_on:
+          - avatar2-core-mips
         environment:
             AVATAR2_ARCH: MIPS
             AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -73,6 +77,8 @@ services:
 
     avatar2-i386:
         <<: [*avatar2, *common-options]
+        depends_on:
+          - avatar2-core-i386
         environment:
             AVATAR2_ARCH: X86
             AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -80,6 +86,8 @@ services:
 
     avatar2-x86:
         <<: [*avatar2, *common-options]
+        depends_on:
+          - avatar2-core-x86
         environment:
             AVATAR2_ARCH: X86
             AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -139,6 +147,8 @@ services:
     tests-arm:
         <<: [*tests, *common-options]
         profiles: ["test"]
+        depends_on:
+          - avatar2-arm
         environment:
             AVATAR2_ARCH: ARM
             AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -148,6 +158,8 @@ services:
     tests-mips:
         <<: [*tests, *common-options]
         profiles: ["test"]
+        depends_on:
+          - avatar2-mips
         environment:
             AVATAR2_ARCH: MIPS
             AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -157,6 +169,8 @@ services:
 #    tests-i386:
 #        <<: [*tests, *common-options]
 #        profiles: ["test"]
+#        depends_on:
+#          - avatar2-i386
 #        environment:
 #            AVATAR2_ARCH: X86
 #            AVATAR2_GDB_EXECUTABLE: gdb-multiarch
@@ -166,6 +180,8 @@ services:
 #    tests-x86:
 #        <<: [*tests, *common-options]
 #        profiles: ["test"]
+#        depends_on:
+#          - avatar2-x86
 #        environment:
 #            AVATAR2_ARCH: X86
 #            AVATAR2_GDB_EXECUTABLE: gdb-multiarch

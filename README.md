@@ -18,8 +18,8 @@ Building avatar² is easy!
 
 You can easily get started with two commands:
 ```sh
-$ docker-compose build
-$ docker-compose run --rm avatar2-arm
+$ docker compose build
+$ docker compose run --rm avatar2-arm
 ```
 
 We provide under the `docker/` directory two dockerfile `avatar2-core.Dockerfile` and `avatar2.Dockerfile` .

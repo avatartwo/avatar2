@@ -44,7 +44,7 @@ RUN ./configure \
 
 
 ### Stage 3: Assemble the final image
-FROM avatartwo:avatar2-core AS avatar2
+FROM avatartwo/avatar2-core AS avatar2
 
 # QEMU runtime dependencies
 RUN apt-get update && \
