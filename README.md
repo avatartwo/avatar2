@@ -105,7 +105,7 @@ The following publications describe, use, or extend the avatar² framework:
 
 1. M. Muench, D. Nisi, A. Francillon, D. Balzarotti. "Avatar²: A Multi-target Orchestration Platform." Workshop on Binary Analysis Research (BAR), San Diego, California, February 2018.
     - [Paper](http://s3.eurecom.fr/docs/bar18_muench.pdf) - [Code](https://github.com/avatartwo/bar18_avatar2)
-2. M. Muench, J. Stijohann, F. Kargl, A. Francillon, D. Balzarotti. "What You Corrupt Is Not What You Crash: Challenges in Fuzzing Embedded Devices." Network and Distributed System Security Symposium (NDSS), San Diego, California, 2018.
+2. M. Muench, J. Stijohann, F. Kargl, A. Francillon, D. Balzarotti. "What You Corrupt Is Not What You Crash: Challenges in Fuzzing Embedded Devices." Network and Distributed System Security Symposium (NDSS), San Diego, California, February 2018.
     - [Paper](http://www.s3.eurecom.fr/docs/ndss18_muench.pdf) - [Code](https://github.com/avatartwo/ndss18_wycinwyc)
 3. D. Maier, B. Radtke, B. Harren. "Unicorefuzz: On the Viability of Emulation for Kernelspace Fuzzing." Workshop on Offensive Technologies (WOOT), Santa Clara, California, August 2019.
     - [Paper](https://www.usenix.org/system/files/woot19-paper_maier.pdf) - [Code](https://github.com/fgsect/unicorefuzz)
@@ -115,8 +115,47 @@ The following publications describe, use, or extend the avatar² framework:
     - [Paper](https://www.usenix.org/system/files/sec20summer_clements_prepub.pdf) - [Code](https://github.com/embedded-sec/halucinator)
 6. C. Cao, L. Guan, J. Ming, P. Liu. "Device-agnostic Firmware Execution is Possible: A Concolic Execution Approach for Peripheral Emulation." Annual Computer Security Applications Conference (ACSAC), December 2020.
     - [Paper](https://dl.acm.org/doi/10.1145/3427228.3427280) - [Code](https://github.com/dongmu/Laelaps)
-7. G. Hernandez, M. Muench, D. Maier, A. Milburn, S. Park, T. Scharnowski, T. Tucker, P. Traynor, K. R.B. Butler. "FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware." Symposium on Network and Distributed System Security (NDSS), April 2022.
+7. F. Gritti, L. Fontana, E. Gustafson, F. Pagani, A. Continella, C. Kruegel, G. Vigna. "Symbion: Interleaving symbolic with concrete execution." IEEE Conference on Communications and Network Security (CNS), June 2020
+    - [Paper](https://seclab.cs.ucsb.edu/files/publications/gritti2020_symbion.pdf) - [Code](https://github.com/degrigis/symbion-use-cases)
+8. C. Spensky, A. Machiry, N. Redini, C. Unger, G. Foster, E. Blasband, H. Okhravi, C. Kruegel, G. Vigna. "Conware: Automated modeling of hardware peripherals." ACM Asia conference on computer and communications security (ASIACCS), November 2021
+    - [Paper](https://dl.acm.org/doi/abs/10.1145/3433210.3437532) - [Code](https://github.com/ucsb-seclab/conware)
+9. A. Mera, B. Feng, L. Lu, E. Kirda. "DICE: Automatic emulation of DMA input channels for dynamic firmware analysis." IEEE Symposium on Security and Privacy (SP), May 2021
+    - [Paper](https://seclab.nu/static/publications/ieeesp21dice.pdf) - [Code](https://github.com/RiS3-Lab/DICE-DMA-Emulation)
+10. L. Craig, A. Fasano, T. Ballo, T. Leek, B. Dolan-Gavitt, W. Robertson.  "PyPANDA: taming the pandamonium of whole system dynamic analysis." NDSS Binary Analysis Research Workshop (BAR), February 2021
+    - [Paper](https://www.ndss-symposium.org/wp-content/uploads/bar2021_23001_paper.pdf) - [Code](https://github.com/panda-re/bar2021)
+11. T. Scharnowski, N. Bars, M. Schloegel, E. Gustafson, M. Muench, G. Vigna, C. Kruegel, T. Holz, A. Abbasi. "Fuzzware: Using precise MMIO modeling for effective firmware fuzzing." USENIX Security Symposium, Boston,	Massachusetts, August 2022
+    - [Paper](https://www.usenix.org/system/files/sec22-scharnowski.pdf) - [Code](https://github.com/fuzzware-fuzzer/fuzzware)
+12. G. Hernandez, M. Muench, D. Maier, A. Milburn, S. Park, T. Scharnowski, T. Tucker, P. Traynor, K. R.B. Butler. "FirmWire: Transparent Dynamic Analysis for Cellular Baseband Firmware." Symposium on Network and Distributed System Security (NDSS), San Diego, California, April 2022.
     - [Paper](https://github.com/FirmWire/FirmWire/blob/main/firmwire-ndss22.pdf?raw=true) - [Code](https://github.com/FirmWire/FirmWire)
+13. L. Situ, C. Zhang, L. Guan, Z. Zuo, L. Wang, X. Li, P. Liu, J. Shi. "Physical devices-agnostic hybrid fuzzing of IoT firmware." IEEE Internet of Things Journal, 2023
+    - [Paper](https://guanle.org/pdf/iotj23.pdf) - [Code](https://github.com/stuartly/FirmHybirdFuzzer)
+14. K. Feng, M.M. Cook, A.K. Marnerides. "Sizzler: Sequential fuzzing in ladder diagrams for vulnerability detection and discovery in Programmable Logic Controllers." IEEE Transactions on Information Forensics and Security, 2023
+    - [Paper](https://ieeexplore.ieee.org/abstract/document/10347559) - [Code](https://github.com/7linux-0/Sizzler)
+15. C. Lindenmeier, M. Payer, M. Busch. "EL3XIR: Fuzzing COTS Secure Monitors." USENIX Security Symposium, Philadelphia, Pennsylvania, August 2024
+    - [Paper](https://www.usenix.org/system/files/usenixsecurity24-appendix-lindenmeier.pdf) - [Code](https://github.com/HexHive/EL3XIR)
+16. C. Lindenmeier, M. Schulze, J. Röckl, M. Busch. "SyncEmu: Enabling Dynamic Analysis of Stateful Trusted Applications." IEEE European Symposium on Security and Privacy Workshops (EuroS&PW), Vienna, Austria July 2024
+    - [Paper](https://systex24.github.io/papers/systex24-final28.pdf) - [Code](https://github.com/syncemu/syncemu)
+17. P. Olivier, M. Muench, A. Francillon. "0x41414141: Avatar² Artifacts, Advances and Analysis." Annual Computer Security Applications Conference (ACSAC), Finalist of the "Artifacts Competition and Impact Award", Waikiki, Hawaii, December 2024.
+    - [Paper](https://www.s3.eurecom.fr/docs/acsac24_olivier.pdf)
+
+We compiled their features usage below.
+| Publication | Year | Target Orchestration | State Transfer | Peripheral Modeling | Configurable Machine |
+|-------------|------|----------------------|----------------|---------------------|----------------------|
+| WYCINWYC    | 2018 | ✓ | ✓ | ✓ | ✓ |
+| Unicorefuzz | 2019 | ✓ | — | — | — |
+| Pretender   | 2019 | — | — | ✓ | — |
+| HALucinator | 2020 | ✓ | — | — | — |
+| Laelaps     | 2020 | — | ✓ | — | — |
+| SYMBION     | 2020 | ✓ | — | — | — |
+| Conware     | 2021 | — | — | ✓ | — |
+| DICE        | 2021 | — | — | ✓ | — |
+| PyPANDA     | 2021 | — | — | — | ✓ |
+| Fuzzware    | 2022 | — | — | ✓ | — |
+| Firmwire    | 2022 | — | — | ✓ | ✓ |
+| FirmHybridFuzzer | 2023 | — | — | ✓ | ✓ |
+| Sizzler     | 2023 | ✓ | — | — | ✓ |
+| EL3XIR      | 2024 | — | — | ✓ | ✓ |
+| SyncEmu     | 2024 | — | — | ✓ | ✓ |
 
 
 # Acknowledgements
